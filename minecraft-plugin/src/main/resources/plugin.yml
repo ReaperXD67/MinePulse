@@ -1,0 +1,14 @@
+name: MinePulseBridge
+main: com.minepulse.bridge.MinePulseBridgePlugin
+version: 0.1.0
+api-version: "1.20"
+author: MinePulse
+description: Verified playtime rewards and purchase delivery bridge for MinePulse.
+commands:
+  mpcode:
+    description: Confirm the MinePulse anti-AFK challenge.
+    usage: /mpcode <code>
+permissions:
+  minepulse.admin:
+    description: Allows administrative MinePulse diagnostics.
+    default: op

@@ -1,0 +1,16 @@
+api-base-url: "http://localhost:3000"
+server-id: ""
+plugin-secret: ""
+
+heartbeat-interval-seconds: 20
+purchase-poll-seconds: 15
+afk-timeout-seconds: 90
+
+challenge:
+  enabled: true
+  interval-seconds: 300
+  answer-window-seconds: 90
+  required: true
+
+movement:
+  minimum-distance-squared: 0.04

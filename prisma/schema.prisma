@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  ADMIN
+  OWNER
+  PLAYER
+}
+
+enum ServerStatus {
+  ACTIVE
+  PAUSED
+  REMOVED
+}
+
+enum PremiumPlanCode {
+  NONE
+  GOLD
+  DIAMOND
+}
+
+enum StoreItemStatus {
+  ACTIVE
+  HIDDEN
+}
+
+enum PurchaseStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  REFUNDED
+}
+
+enum SessionStatus {
+  ACTIVE
+  CLOSED
+  FLAGGED
+}
+
+enum LedgerType {
+  PLAYER_REWARD
+  PLAYER_SPEND
+  SERVER_TOPUP
+  SERVER_PREMIUM
+  ADMIN_ADJUSTMENT
+  PURCHASE_REFUND
+}
+
+enum BillingKind {
+  POINTS
+  PREMIUM
+  ADMIN_ADJUSTMENT
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  username      String
+  minecraftUuid String?  @unique
+  minecraftName String?
+  passwordHash  String?
+  role          UserRole @default(PLAYER)
+  walletPoints  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ownedServers Server[]        @relation("OwnerServers")
+  sessions     ServerSession[]
+  purchases    Purchase[]      @relation("BuyerPurchases")
+  likes        ServerLike[]
+  favorites    Favorite[]
+  comments     Comment[]
+  ledgers      PointLedger[]
+  billings     BillingLedger[] @relation("OwnerBillings")
+}
+
+model Server {
+  id                       String          @id @default(cuid())
+  ownerId                  String
+  slug                     String          @unique
+  name                     String
+  host                     String
+  port                     Int             @default(25565)
+  version                  String
+  description              String
+  region                   String
+  tags                     String
+  bannerImage              String?
+  status                   ServerStatus    @default(ACTIVE)
+  pointPool                Int             @default(0)
+  rewardRatePerSecond      Int             @default(1)
+  maxPaidPlayers           Int             @default(20)
+  minPlaySecondsForComment Int             @default(1800)
+  premiumPlan              PremiumPlanCode @default(NONE)
+  premiumUntil             DateTime?
+  pluginSecret             String
+  botProtectionLevel       Int             @default(2)
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+
+  owner     User            @relation("OwnerServers", fields: [ownerId], references: [id], onDelete: Cascade)
+  items     StoreItem[]
+  purchases Purchase[]
+  likes     ServerLike[]
+  favorites Favorite[]
+  comments  Comment[]
+  sessions  ServerSession[]
+  ledgers   PointLedger[]
+  billings  BillingLedger[]
+
+  @@index([status, premiumUntil])
+  @@index([ownerId])
+}
+
+model StoreItem {
+  id          String          @id @default(cuid())
+  serverId    String
+  name        String
+  description String
+  pricePoints Int
+  command     String
+  status      StoreItemStatus @default(ACTIVE)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  server    Server     @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+
+  @@index([serverId, status])
+}
+
+model Purchase {
+  id              String         @id @default(cuid())
+  buyerId         String
+  serverId        String
+  itemId          String
+  status          PurchaseStatus @default(PENDING)
+  commandSnapshot String
+  createdAt       DateTime       @default(now())
+  deliveredAt     DateTime?
+
+  buyer  User      @relation("BuyerPurchases", fields: [buyerId], references: [id], onDelete: Cascade)
+  server Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  item   StoreItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([serverId, status])
+  @@index([buyerId, createdAt])
+}
+
+model ServerSession {
+  id              String        @id @default(cuid())
+  serverId        String
+  userId          String
+  minecraftName   String
+  ipHash          String
+  startedAt       DateTime      @default(now())
+  lastHeartbeatAt DateTime      @default(now())
+  endedAt         DateTime?
+  activeSeconds   Int           @default(0)
+  afkSeconds      Int           @default(0)
+  rewardedPoints  Int           @default(0)
+  suspiciousScore Int           @default(0)
+  status          SessionStatus @default(ACTIVE)
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, userId, status])
+  @@index([lastHeartbeatAt])
+}
+
+model ServerLike {
+  id        String   @id @default(cuid())
+  serverId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, userId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  serverId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, userId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  serverId  String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, createdAt])
+}
+
+model PointLedger {
+  id           String     @id @default(cuid())
+  userId       String?
+  serverId     String?
+  type         LedgerType
+  amountPoints Int
+  balanceAfter Int?
+  note         String
+  createdAt    DateTime   @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  server Server? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+
+  @@index([type, createdAt])
+  @@index([serverId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model BillingLedger {
+  id           String      @id @default(cuid())
+  ownerId      String
+  serverId     String?
+  kind         BillingKind
+  amountPoints Int         @default(0)
+  moneyCents   Int         @default(0)
+  planCode     String?
+  note         String
+  createdAt    DateTime    @default(now())
+
+  owner  User    @relation("OwnerBillings", fields: [ownerId], references: [id], onDelete: Cascade)
+  server Server? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+
+  @@index([kind, createdAt])
+  @@index([ownerId, createdAt])
+}
+
+model PointPackage {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  label      String
+  points     Int
+  priceCents Int
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PremiumTier {
+  id           String          @id @default(cuid())
+  code         PremiumPlanCode @unique
+  name         String
+  priceCents   Int
+  durationDays Int
+  active       Boolean         @default(true)
+  accentColor  String
+  priority     Int             @default(1)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
