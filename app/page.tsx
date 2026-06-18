@@ -1,7 +1,9 @@
-import { Coins, Crown, RefreshCw, Server, ShieldCheck } from "lucide-react";
+import { Coins, Crosshair, RadioTower, RefreshCw, Server, ShieldCheck, Sparkles, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
+import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { currentUser } from "@/lib/auth";
+import { UserRole } from "@/lib/generated/prisma/client";
 import { compact, money, points } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { shuffle } from "@/lib/random";
@@ -86,61 +88,83 @@ export default async function MarketplacePage() {
   const [usersCount, pools, purchaseCount, playtime] = platform;
   const cheapestPackage = pointPackages[0];
   const topPremium = premiumTiers[0];
+  const canManageServers = user?.role === UserRole.OWNER || user?.role === UserRole.ADMIN;
 
   return (
     <main>
-      <section className="container market-header">
-        <div className="headline-panel">
+      <section className="arena-hero">
+        <VoxelHeroScene />
+        <div className="hero-noise" aria-hidden="true" />
+        <div className="container arena-layer">
           <div className="headline-copy">
             <p className="eyebrow">
               <ShieldCheck size={15} /> Verified playtime economy
             </p>
-            <h1>Minecraft servers compete with points, not fake votes.</h1>
+            <h1>Play servers. Earn points. Spend rewards anywhere.</h1>
             <p className="lead">
-              Owners buy reward pools, plugins prove real player activity, and players spend earned
-              points on ranks, crates, cosmetics, or any server reward configured by the owner.
+              MinePulse turns real Minecraft playtime into a cross-server economy. Owners fund rewards
+              to grow communities; players earn without buying ranks with cash.
             </p>
             <div className="command-strip">
-              <Link className="solid-button" href="/owner">
-                <Server size={16} /> Add server
+              <Link className="solid-button" href="#servers">
+                <Crosshair size={16} /> Browse servers
               </Link>
               <Link className="ghost-button" href="/player">
-                <Coins size={16} /> Wallet
+                <WalletCards size={16} /> Open wallet
               </Link>
-              <Link className="ghost-button" href="/admin">
-                <Crown size={16} /> Admin console
-              </Link>
+              {canManageServers ? (
+                <Link className="ghost-button" href="/owner">
+                  <Server size={16} /> Server console
+                </Link>
+              ) : (
+                <Link className="ghost-button" href="/login">
+                  <RadioTower size={16} /> List a server
+                </Link>
+              )}
             </div>
           </div>
-        </div>
 
-        <aside className="stats-rail" aria-label="Platform snapshot">
-          <div className="stat-tile" style={{ "--accent": "var(--lime)" } as React.CSSProperties}>
-            <span>Server reward pools</span>
-            <strong>{points(pools._sum.pointPool ?? 0)}</strong>
-          </div>
-          <div className="stat-tile" style={{ "--accent": "var(--cyan)" } as React.CSSProperties}>
-            <span>Players and owners</span>
-            <strong>{usersCount}</strong>
-          </div>
-          <div className="stat-tile" style={{ "--accent": "var(--gold)" } as React.CSSProperties}>
-            <span>Purchases queued</span>
-            <strong>{purchaseCount}</strong>
-          </div>
-          <div className="stat-tile" style={{ "--accent": "var(--rose)" } as React.CSSProperties}>
-            <span>Verified playtime</span>
-            <strong>{compact(playtime._sum.activeSeconds ?? 0)}s</strong>
-          </div>
-        </aside>
+          <aside className="hero-hud" aria-label="Platform snapshot">
+            <div className="hud-tile" style={{ "--accent": "var(--lime)" } as React.CSSProperties}>
+              <span>Reward pools</span>
+              <strong>{points(pools._sum.pointPool ?? 0)}</strong>
+            </div>
+            <div className="hud-tile" style={{ "--accent": "var(--cyan)" } as React.CSSProperties}>
+              <span>Players and owners</span>
+              <strong>{usersCount}</strong>
+            </div>
+            <div className="hud-tile" style={{ "--accent": "var(--gold)" } as React.CSSProperties}>
+              <span>Queued perks</span>
+              <strong>{purchaseCount}</strong>
+            </div>
+            <div className="hud-tile" style={{ "--accent": "var(--rose)" } as React.CSSProperties}>
+              <span>Verified play</span>
+              <strong>{compact(playtime._sum.activeSeconds ?? 0)}s</strong>
+            </div>
+          </aside>
+        </div>
       </section>
 
-      <section className="container">
+      <section className="container market-pulse" aria-label="Trust signals">
+        <div className="pulse-item">
+          <Sparkles size={18} />
+          <span>Premium boosts shuffle first, never burying normal servers forever.</span>
+        </div>
+        <div className="pulse-item">
+          <Coins size={18} />
+          <span>When a server pool hits zero, it disappears until the owner funds it again.</span>
+        </div>
+        <div className="pulse-item">
+          <ShieldCheck size={18} />
+          <span>Plugin heartbeats reward movement, activity, and challenge-passed sessions only.</span>
+        </div>
+      </section>
+
+      <section className="container" id="servers">
         <div className="section-bar">
           <div>
             <h2>Live server list</h2>
-            <p>
-              Premium servers shuffle first. Regular listings reshuffle every refresh. Empty pools are hidden.
-            </p>
+            <p>Premium servers shuffle first. Regular listings reshuffle every refresh. Empty pools are hidden.</p>
           </div>
           <Link className="ghost-button" href="/">
             <RefreshCw size={16} /> Refresh list
@@ -158,7 +182,7 @@ export default async function MarketplacePage() {
         )}
       </section>
 
-      <section className="container dashboard-grid" style={{ paddingBottom: 56 }}>
+      <section className="container dashboard-grid economy-band" style={{ paddingBottom: 56 }}>
         <div className="panel">
           <div className="panel-header">
             <div>
@@ -189,7 +213,9 @@ export default async function MarketplacePage() {
               <div className="mini-metric" key={tier.id}>
                 <span className="metric-label">{tier.name}</span>
                 <strong>{money(tier.priceCents)}</strong>
-                <p className="toast-line">{tier.durationDays} days · priority {tier.priority}</p>
+                <p className="toast-line">
+                  {tier.durationDays} days - priority {tier.priority}
+                </p>
               </div>
             ))}
             {topPremium ? (

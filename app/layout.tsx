@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Coins, LayoutDashboard, LogOut, Shield, Store, Trophy, UserRound } from "lucide-react";
+import { Coins, Gamepad2, LayoutDashboard, LogOut, Store, UserRound, WalletCards } from "lucide-react";
 import "./globals.css";
 import { currentUser } from "@/lib/auth";
+import { UserRole } from "@/lib/generated/prisma/client";
 import { points } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -16,6 +17,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const user = await currentUser();
+  const consoleHref =
+    user?.role === UserRole.ADMIN ? "/admin" : user?.role === UserRole.OWNER ? "/owner" : user ? "/player" : "/";
 
   return (
     <html lang="en">
@@ -42,24 +45,25 @@ export default async function RootLayout({
                 <Link href="/">
                   <Store size={16} /> Servers
                 </Link>
-                <Link href="/player">
-                  <Trophy size={16} /> Player
-                </Link>
-                <Link href="/owner">
-                  <LayoutDashboard size={16} /> Owner
-                </Link>
-                <Link href="/admin">
-                  <Shield size={16} /> Admin
-                </Link>
+                {user ? (
+                  <>
+                    <Link href="/player" title="Wallet">
+                      <WalletCards size={16} /> Wallet
+                    </Link>
+                    <Link href={consoleHref} title="Console">
+                      <LayoutDashboard size={16} /> Console
+                    </Link>
+                  </>
+                ) : null}
               </nav>
 
               {user ? (
                 <div className="user-chip">
-                  <UserRound size={18} />
+                  <Gamepad2 size={18} />
                   <div>
                     <strong>{user.username}</strong>
                     <span>
-                      {user.role} · <Coins size={12} /> {points(user.walletPoints)}
+                      <Coins size={12} /> {points(user.walletPoints)}
                     </span>
                   </div>
                   <form action="/api/auth/logout" method="post">
@@ -69,7 +73,7 @@ export default async function RootLayout({
                   </form>
                 </div>
               ) : (
-                <Link className="solid-button" href="/login">
+                <Link className="solid-button login-cta" href="/login">
                   <UserRound size={16} /> Login
                 </Link>
               )}

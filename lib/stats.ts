@@ -1,4 +1,5 @@
 import { LedgerType } from "@/lib/generated/prisma/client";
+import { weekdayLabel } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 export type ChartPoint = {
@@ -45,7 +46,7 @@ export function ledgerChart(
     const date = new Date(Date.now() - offset * 24 * 60 * 60 * 1000);
     const key = date.toISOString().slice(0, 10);
     days.set(key, {
-      label: date.toLocaleDateString("en", { weekday: "short" }),
+      label: weekdayLabel(date),
       rewards: 0,
       spend: 0
     });

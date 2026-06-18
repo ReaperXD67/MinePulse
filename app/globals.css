@@ -764,3 +764,268 @@ h1 {
     min-height: auto;
   }
 }
+
+/* 2026 gamer-grade shell refresh */
+.topbar {
+  border-bottom: 1px solid rgba(72, 227, 255, 0.18);
+  background:
+    linear-gradient(90deg, rgba(155, 255, 91, 0.08), transparent 20%, rgba(72, 227, 255, 0.08) 78%, transparent),
+    rgba(5, 7, 9, 0.84);
+  backdrop-filter: blur(22px);
+}
+
+.brand {
+  letter-spacing: 0.6px;
+}
+
+.solid-button {
+  background:
+    linear-gradient(135deg, rgba(155, 255, 91, 0.95), rgba(72, 227, 255, 0.9)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 8px, transparent 8px 16px);
+  box-shadow: 0 0 28px rgba(72, 227, 255, 0.16);
+}
+
+.user-chip span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.arena-hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 720px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(72, 227, 255, 0.15);
+  background:
+    linear-gradient(180deg, rgba(5, 7, 9, 0.08), rgba(5, 7, 9, 0.7) 78%, #0b0d10),
+    linear-gradient(90deg, rgba(155, 255, 91, 0.1), transparent 34%, rgba(255, 111, 145, 0.08) 68%, rgba(72, 227, 255, 0.1));
+}
+
+.voxel-scene {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+}
+
+.voxel-scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-noise {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(155, 255, 91, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(72, 227, 255, 0.045) 1px, transparent 1px),
+    repeating-linear-gradient(180deg, transparent 0 8px, rgba(255, 255, 255, 0.018) 8px 9px);
+  background-size: 40px 40px, 40px 40px, 100% 9px;
+  mask-image: linear-gradient(180deg, black 0, black 68%, transparent 100%);
+}
+
+.arena-hero::after {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: -1;
+  height: 180px;
+  content: "";
+  background:
+    repeating-linear-gradient(90deg, rgba(155, 255, 91, 0.22) 0 16px, transparent 16px 34px),
+    linear-gradient(180deg, transparent, rgba(5, 7, 9, 0.92));
+  opacity: 0.28;
+}
+
+.arena-hero::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  background:
+    linear-gradient(90deg, rgba(5, 7, 9, 0.88) 0%, rgba(5, 7, 9, 0.58) 34%, rgba(5, 7, 9, 0.08) 72%),
+    linear-gradient(180deg, rgba(5, 7, 9, 0.1), rgba(5, 7, 9, 0.42));
+  pointer-events: none;
+}
+
+.arena-layer {
+  display: grid;
+  grid-template-columns: minmax(0, 760px) minmax(280px, 390px);
+  gap: 28px;
+  align-items: end;
+  min-height: 720px;
+  padding-top: 96px;
+  padding-bottom: 72px;
+}
+
+.arena-hero .headline-copy {
+  padding: 0;
+}
+
+.arena-hero h1 {
+  max-width: 740px;
+  text-shadow: 0 0 38px rgba(155, 255, 91, 0.12);
+}
+
+.arena-hero .lead {
+  max-width: 650px;
+  color: #ddf0ea;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.42);
+}
+
+.hero-hud {
+  display: grid;
+  gap: 10px;
+  align-self: end;
+}
+
+.hud-tile {
+  position: relative;
+  overflow: hidden;
+  min-height: 96px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 16px 18px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent, var(--lime)) 16%, transparent), transparent 45%),
+    rgba(8, 13, 16, 0.72);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.32), inset 0 0 34px rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(16px);
+}
+
+.hud-tile::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: "";
+  background: var(--accent, var(--lime));
+  box-shadow: 0 0 24px var(--accent, var(--lime));
+}
+
+.hud-tile::after {
+  position: absolute;
+  inset: auto 12px 12px auto;
+  width: 72px;
+  height: 10px;
+  content: "";
+  background: repeating-linear-gradient(90deg, var(--accent, var(--lime)) 0 10px, transparent 10px 16px);
+  opacity: 0.52;
+}
+
+.hud-tile span {
+  color: #b8c9c4;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.hud-tile strong {
+  display: block;
+  margin-top: 9px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.market-pulse {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: -36px;
+  margin-bottom: 22px;
+}
+
+.pulse-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 74px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: rgba(13, 20, 24, 0.86);
+  color: #d8e9e3;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.pulse-item svg {
+  flex: 0 0 auto;
+  color: var(--cyan);
+}
+
+.server-card {
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.server-card:hover {
+  border-color: rgba(72, 227, 255, 0.38);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45), 0 0 34px rgba(72, 227, 255, 0.08);
+  transform: translateY(-4px);
+}
+
+.badge.diamond {
+  box-shadow: 0 0 20px rgba(72, 227, 255, 0.12);
+}
+
+.economy-band .panel {
+  background:
+    linear-gradient(135deg, rgba(155, 255, 91, 0.05), rgba(72, 227, 255, 0.035)),
+    var(--panel);
+}
+
+@media (max-width: 1120px) {
+  .arena-layer {
+    grid-template-columns: 1fr;
+    align-items: end;
+    min-height: 760px;
+  }
+
+  .hero-hud {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .arena-hero,
+  .arena-layer {
+    min-height: 780px;
+  }
+
+  .arena-layer {
+    padding-top: 58px;
+    padding-bottom: 54px;
+  }
+
+  .arena-hero h1 {
+    font-size: 48px;
+  }
+
+  .arena-hero::before {
+    background:
+      linear-gradient(180deg, rgba(5, 7, 9, 0.9) 0%, rgba(5, 7, 9, 0.56) 42%, rgba(5, 7, 9, 0.3) 100%),
+      linear-gradient(90deg, rgba(5, 7, 9, 0.82), rgba(5, 7, 9, 0.2));
+  }
+
+  .arena-hero .command-strip {
+    display: grid;
+    grid-template-columns: 1fr;
+    max-width: 220px;
+  }
+
+  .arena-hero .ghost-button,
+  .arena-hero .solid-button {
+    justify-content: flex-start;
+    background-color: rgba(8, 13, 16, 0.82);
+  }
+
+  .hero-hud,
+  .market-pulse {
+    grid-template-columns: 1fr;
+  }
+
+  .market-pulse {
+    margin-top: 12px;
+  }
+}

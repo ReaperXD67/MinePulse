@@ -17,6 +17,24 @@ export function compact(value: number) {
   }).format(value);
 }
 
+export function shortDate(date: Date | string) {
+  const value = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC"
+  }).format(value);
+}
+
+export function weekdayLabel(date: Date | string) {
+  const value = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone: "UTC"
+  }).format(value);
+}
+
 export function minutesLabel(seconds: number) {
   if (seconds < 60) {
     return `${seconds}s`;

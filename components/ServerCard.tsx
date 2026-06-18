@@ -101,7 +101,7 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
           </div>
           {server.premiumPlan !== "NONE" ? (
             <span className={`badge ${premiumClass}`}>
-              <Zap size={13} /> {server.premiumPlan} · {daysLeft(server.premiumUntil)}
+              <Zap size={13} /> {server.premiumPlan} - {daysLeft(server.premiumUntil)}
             </span>
           ) : (
             <span className="badge">Random</span>
@@ -141,7 +141,7 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
               <div>
                 <h4>{item.name}</h4>
                 <p>
-                  {item.description} · {points(item.pricePoints)} pts
+                  {item.description} - {points(item.pricePoints)} pts
                 </p>
               </div>
               <button

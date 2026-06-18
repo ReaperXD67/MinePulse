@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Crown, Save, ServerCog } from "lucide-react";
-import { money, points } from "@/lib/format";
+import { money, points, shortDate } from "@/lib/format";
 
 type PackageRow = {
   id: string;
@@ -194,8 +194,8 @@ export function AdminConsole({
               <div className="form-grid">
                 <strong>{server.name}</strong>
                 <p className="toast-line">
-                  {server.owner} · {points(server.pointPool)} · {server.premiumPlan}
-                  {server.premiumUntil ? ` until ${new Date(server.premiumUntil).toLocaleDateString()}` : ""}
+                  {server.owner} - {points(server.pointPool)} - {server.premiumPlan}
+                  {server.premiumUntil ? ` until ${shortDate(server.premiumUntil)}` : ""}
                 </p>
                 <div className="form-grid two">
                   <input className="field" name="adjustPoints" type="number" defaultValue="0" aria-label="Point adjustment" />

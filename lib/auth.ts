@@ -18,7 +18,17 @@ type SessionPayload = {
 export type SessionUser = Pick<User, "id" | "email" | "username" | "role" | "walletPoints" | "minecraftUuid" | "minecraftName">;
 
 function authSecret() {
-  return new TextEncoder().encode(process.env.AUTH_SECRET || DEFAULT_SECRET);
+  const secret = process.env.AUTH_SECRET || DEFAULT_SECRET;
+
+  if (process.env.NODE_ENV === "production" && (!process.env.AUTH_SECRET || secret === DEFAULT_SECRET)) {
+    throw new Error("AUTH_SECRET must be set to a strong unique value before deploying MinePulse.");
+  }
+
+  if (secret.length < 32) {
+    throw new Error("AUTH_SECRET must be at least 32 characters.");
+  }
+
+  return new TextEncoder().encode(secret);
 }
 
 export async function hashPassword(password: string) {

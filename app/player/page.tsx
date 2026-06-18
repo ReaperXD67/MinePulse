@@ -134,7 +134,7 @@ export default async function PlayerPage() {
               <div className="shop-card" key={entry.id}>
                 <div>
                   <strong>{entry.note}</strong>
-                  <p>{entry.server?.name || "Platform"} · {entry.createdAt.toLocaleString()}</p>
+                  <p>{entry.server?.name || "Platform"} - {entry.createdAt.toLocaleString()}</p>
                 </div>
                 <span className="badge">{entry.amountPoints > 0 ? "+" : ""}{points(entry.amountPoints)}</span>
               </div>

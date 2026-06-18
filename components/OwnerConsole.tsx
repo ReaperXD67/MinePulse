@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Coins, Gem, PackagePlus, Save, Server, Trash2 } from "lucide-react";
-import { money, points } from "@/lib/format";
+import { money, points, shortDate } from "@/lib/format";
 
 type OwnerServer = {
   id: string;
@@ -80,7 +80,8 @@ export function OwnerConsole({
 
   async function createServer(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const ok = await post("/api/owner/servers", {
       name: form.get("name"),
       host: form.get("host"),
@@ -95,7 +96,7 @@ export function OwnerConsole({
     });
 
     if (ok) {
-      event.currentTarget.reset();
+      formElement.reset();
     }
   }
 
@@ -118,7 +119,8 @@ export function OwnerConsole({
 
   async function addItem(event: React.FormEvent<HTMLFormElement>, serverId: string) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const ok = await post("/api/owner/items", {
       serverId,
       name: form.get("name"),
@@ -127,7 +129,7 @@ export function OwnerConsole({
       command: form.get("command")
     });
     if (ok) {
-      event.currentTarget.reset();
+      formElement.reset();
     }
   }
 
@@ -208,11 +210,11 @@ export function OwnerConsole({
             <div>
               <h2>{server.name}</h2>
               <p className="mono">
-                {server.host}:{server.port} · pool {points(server.pointPool)}
+                {server.host}:{server.port} - pool {points(server.pointPool)}
               </p>
             </div>
             <span className="badge">
-              {server.premiumPlan} {server.premiumUntil ? `until ${new Date(server.premiumUntil).toLocaleDateString()}` : ""}
+              {server.premiumPlan} {server.premiumUntil ? `until ${shortDate(server.premiumUntil)}` : ""}
             </span>
           </div>
 
@@ -276,7 +278,7 @@ export function OwnerConsole({
                     disabled={busy}
                     onClick={() => post(`/api/owner/servers/${server.id}/topup`, { packageId: pack.id })}
                   >
-                    <Coins size={16} /> {pack.label} · {money(pack.priceCents)}
+                    <Coins size={16} /> {pack.label} - {money(pack.priceCents)}
                   </button>
                 ))}
               </div>
@@ -288,7 +290,7 @@ export function OwnerConsole({
                     disabled={busy}
                     onClick={() => post(`/api/owner/servers/${server.id}/premium`, { tierId: tier.id })}
                   >
-                    <Gem size={16} /> {tier.name} · {money(tier.priceCents)}
+                    <Gem size={16} /> {tier.name} - {money(tier.priceCents)}
                   </button>
                 ))}
               </div>

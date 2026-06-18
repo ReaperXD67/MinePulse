@@ -71,3 +71,10 @@ plugin-secret: "from owner panel"
 ```
 
 For local testing with the Next dev server, keep `api-base-url: "http://localhost:3000"`.
+
+## Deploy Notes
+
+- Copy `.env.example` to `.env` locally, and set the same variables in your host.
+- `AUTH_SECRET` must be a strong unique value of at least 32 characters. Production will refuse to boot with the demo secret.
+- For real production payments, connect Stripe or PayPal where the current owner top-up and premium routes write simulated billing records.
+- SQLite is fine for local MVP testing. Use Postgres before handling real money or large traffic.
