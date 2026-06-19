@@ -9,3 +9,6 @@ prisma/*.db-journal
 .env
 
 /lib/generated/prisma
+
+# Maven build output
+minecraft-plugin/target/
