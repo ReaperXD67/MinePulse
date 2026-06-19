@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Coins, Gamepad2, LayoutDashboard, LogOut, Store, UserRound, WalletCards } from "lucide-react";
 import "./globals.css";
+import { TopbarShell } from "@/components/TopbarShell";
 import { currentUser } from "@/lib/auth";
 import { UserRole } from "@/lib/generated/prisma/client";
 import { points } from "@/lib/format";
@@ -24,7 +25,7 @@ export default async function RootLayout({
     <html lang="en">
       <body>
         <div className="page-shell">
-          <header className="topbar">
+          <TopbarShell>
             <div className="topbar-inner">
               <Link href="/" className="brand">
                 <span className="brand-mark" aria-hidden="true">
@@ -78,7 +79,7 @@ export default async function RootLayout({
                 </Link>
               )}
             </div>
-          </header>
+          </TopbarShell>
           {children}
         </div>
       </body>
