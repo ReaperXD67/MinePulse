@@ -32,6 +32,7 @@ type ServerRow = {
   pointPool: number;
   premiumPlan: string;
   premiumUntil: string | null;
+  trustStatus: string;
 };
 
 export function AdminConsole({
@@ -100,6 +101,7 @@ export function AdminConsole({
     send(`/api/admin/servers/${serverId}`, {
       adjustPoints: form.get("adjustPoints") || "0",
       status: form.get("status"),
+      trustStatus: form.get("trustStatus"),
       premiumPlan: form.get("premiumPlan"),
       premiumDays: form.get("premiumDays") || undefined
     });
@@ -205,6 +207,12 @@ export function AdminConsole({
                     <option value="REMOVED">Removed</option>
                   </select>
                 </div>
+                <select className="select" name="trustStatus" defaultValue={server.trustStatus} aria-label="Trust status">
+                  <option value="VERIFIED">Verified</option>
+                  <option value="WATCHLIST">Watchlist</option>
+                  <option value="SUSPENDED">Suspended</option>
+                  <option value="BLACKLISTED">Blacklisted</option>
+                </select>
                 <div className="form-grid two">
                   <select className="select" name="premiumPlan" defaultValue={server.premiumPlan} aria-label="Premium plan">
                     <option value="NONE">None</option>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Coins, Gamepad2, LayoutDashboard, LogOut, Store, UserRound, WalletCards } from "lucide-react";
+import { Coins, Gamepad2, LogOut, Settings2, Store, UserRound, WalletCards } from "lucide-react";
 import "./globals.css";
 import { TopbarShell } from "@/components/TopbarShell";
 import { currentUser } from "@/lib/auth";
@@ -18,8 +18,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const user = await currentUser();
-  const consoleHref =
-    user?.role === UserRole.ADMIN ? "/admin" : user?.role === UserRole.OWNER ? "/owner" : user ? "/player" : "/";
 
   return (
     <html lang="en">
@@ -48,12 +46,14 @@ export default async function RootLayout({
                 </Link>
                 {user ? (
                   <>
-                    <Link href="/player" title="Wallet">
-                      <WalletCards size={16} /> Wallet
+                    <Link href="/account" title="Account">
+                      <WalletCards size={16} /> Account
                     </Link>
-                    <Link href={consoleHref} title="Console">
-                      <LayoutDashboard size={16} /> Console
-                    </Link>
+                    {user.role === UserRole.ADMIN ? (
+                      <Link href="/admin" title="Control center">
+                        <Settings2 size={16} /> Control
+                      </Link>
+                    ) : null}
                   </>
                 ) : null}
               </nav>

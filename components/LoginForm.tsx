@@ -5,9 +5,9 @@ import { useState } from "react";
 import { KeyRound, LogIn } from "lucide-react";
 
 const demoAccounts = [
-  ["Admin", "admin@minepulse.local", "admin123"],
-  ["Owner", "owner@minepulse.local", "owner123"],
-  ["Player", "player@minepulse.local", "player123"]
+  ["Control", "admin@minepulse.local", "admin123"],
+  ["Skyforge", "owner@minepulse.local", "owner123"],
+  ["PixelRunner", "player@minepulse.local", "player123"]
 ] as const;
 
 export function LoginForm() {
@@ -48,7 +48,7 @@ export function LoginForm() {
         </p>
         <h2>Enter the network</h2>
         <p className="lead">
-          Use one of the seeded roles to test moderation, server-owner spending, and player wallets.
+          Use a seeded identity to test the unified account, server publishing, purchases, and moderation.
         </p>
       </div>
 

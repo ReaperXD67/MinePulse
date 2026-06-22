@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Coins, Heart, MessageSquare, RefreshCw, ShoppingBag, Star, Zap } from "lucide-react";
+import { ArrowUpRight, Coins, Heart, MessageSquare, RadioTower, ShieldCheck, Star, Zap } from "lucide-react";
 import { compact, daysLeft, points } from "@/lib/format";
 
 export type MarketplaceServer = {
   id: string;
+  slug: string;
   name: string;
   host: string;
   port: number;
@@ -20,178 +22,75 @@ export type MarketplaceServer = {
   maxPaidPlayers: number;
   premiumPlan: "NONE" | "GOLD" | "DIAMOND";
   premiumUntil: string | null;
+  trustStatus: "VERIFIED" | "WATCHLIST" | "SUSPENDED" | "BLACKLISTED";
+  bridgeState: "online" | "stale" | "offline";
   likes: number;
   favorites: number;
   comments: number;
   liked: boolean;
   favorited: boolean;
-  items: Array<{
-    id: string;
-    name: string;
-    description: string;
-    pricePoints: number;
-  }>;
+  items: Array<{ id: string; name: string; description: string; pricePoints: number }>;
 };
 
 export function ServerCard({ server }: { server: MarketplaceServer }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
-  const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function interact(type: "like" | "favorite" | "comment") {
+  async function interact(type: "like" | "favorite") {
     setBusy(true);
     setMessage("");
     const response = await fetch("/api/marketplace/interact", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ serverId: server.id, type, body: comment })
+      body: JSON.stringify({ serverId: server.id, type })
     });
     const payload = await response.json().catch(() => ({}));
     setBusy(false);
-
-    if (!response.ok) {
-      setMessage(payload.error || "Action failed");
-      return;
+    setMessage(response.ok ? payload.message || "Saved" : payload.error || "Log in to interact");
+    if (response.ok) {
+      router.refresh();
     }
-
-    if (type === "comment") {
-      setComment("");
-    }
-    setMessage(payload.message || "Saved");
-    router.refresh();
   }
 
-  async function buy(itemId: string) {
-    setBusy(true);
-    setMessage("");
-    const response = await fetch("/api/player/purchase", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itemId })
-    });
-    const payload = await response.json().catch(() => ({}));
-    setBusy(false);
-
-    if (!response.ok) {
-      setMessage(payload.error || "Purchase failed");
-      return;
-    }
-
-    setMessage("Purchase queued for in-game delivery");
-    router.refresh();
-  }
-
-  const premiumClass =
-    server.premiumPlan === "DIAMOND" ? "diamond" : server.premiumPlan === "GOLD" ? "gold" : "";
+  const premiumClass = server.premiumPlan === "DIAMOND" ? "diamond" : server.premiumPlan === "GOLD" ? "gold" : "";
+  const teaser = server.items[0];
 
   return (
     <article className="server-card">
-      <div
-        className="server-card-image"
-        style={{ "--image": `url(${server.bannerImage})` } as React.CSSProperties}
-      />
+      <Link className="server-card-image" href={`/servers/${server.slug}`} style={{ "--image": `url(${server.bannerImage})` } as React.CSSProperties} aria-label={`View ${server.name}`}>
+        <div className="card-signal-row">
+          <span className={`status-pill trust-${server.trustStatus.toLowerCase()}`}><ShieldCheck size={12} /> {server.trustStatus}</span>
+          <span className={`status-pill bridge-${server.bridgeState}`}><RadioTower size={12} /> {server.bridgeState}</span>
+        </div>
+      </Link>
       <div className="server-card-body">
         <div className="server-title-row">
-          <div>
-            <h3>{server.name}</h3>
-            <div className="server-host">
-              {server.host}:{server.port}
-            </div>
-          </div>
-          {server.premiumPlan !== "NONE" ? (
-            <span className={`badge ${premiumClass}`}>
-              <Zap size={13} /> {server.premiumPlan} - {daysLeft(server.premiumUntil)}
-            </span>
-          ) : (
-            <span className="badge">Random</span>
-          )}
+          <div><Link href={`/servers/${server.slug}`}><h3>{server.name}</h3></Link><div className="server-host">{server.host}:{server.port}</div></div>
+          {server.premiumPlan !== "NONE" ? <span className={`badge ${premiumClass}`}><Zap size={13} /> {server.premiumPlan} · {daysLeft(server.premiumUntil)}</span> : null}
         </div>
 
         <p className="server-description">{server.description}</p>
-
-        <div className="tag-row">
-          <span className="tag">{server.version}</span>
-          <span className="tag">{server.region}</span>
-          {server.tags.map((tag) => (
-            <span className="tag" key={tag}>
-              {tag}
-            </span>
-          ))}
-        </div>
+        <div className="tag-row"><span className="tag">{server.version}</span><span className="tag">{server.region}</span>{server.tags.slice(0, 3).map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div>
 
         <div className="metric-grid">
-          <div className="mini-metric">
-            <span className="metric-label">Pool</span>
-            <strong>{compact(server.pointPool)}</strong>
-          </div>
-          <div className="mini-metric">
-            <span className="metric-label">Reward</span>
-            <strong>{server.rewardRatePerSecond}/s</strong>
-          </div>
-          <div className="mini-metric">
-            <span className="metric-label">Paid cap</span>
-            <strong>{server.maxPaidPlayers}</strong>
-          </div>
+          <div className="mini-metric"><span className="metric-label">Campaign</span><strong>{compact(server.pointPool)}</strong></div>
+          <div className="mini-metric"><span className="metric-label">Earn</span><strong>{server.rewardRatePerSecond}/s</strong></div>
+          <div className="mini-metric"><span className="metric-label">Paid cap</span><strong>{server.maxPaidPlayers}</strong></div>
         </div>
 
-        <div className="shop-list">
-          {server.items.map((item) => (
-            <div className="shop-card" key={item.id}>
-              <div>
-                <h4>{item.name}</h4>
-                <p>
-                  {item.description} - {points(item.pricePoints)} pts
-                </p>
-              </div>
-              <button
-                className="icon-button"
-                title={`Buy ${item.name}`}
-                aria-label={`Buy ${item.name}`}
-                disabled={busy}
-                onClick={() => buy(item.id)}
-              >
-                <ShoppingBag size={16} />
-              </button>
-            </div>
-          ))}
-        </div>
+        {teaser ? <div className="store-teaser"><div><span>Store preview</span><strong>{teaser.name}</strong><small>{teaser.description}</small></div><b>{points(teaser.pricePoints)} pts</b></div> : <div className="store-teaser empty-teaser">No store items published</div>}
 
-        <div className="server-actions">
-          <button className="ghost-button" disabled={busy} onClick={() => interact("like")}>
-            <Heart size={16} fill={server.liked ? "currentColor" : "none"} />
-            {server.likes}
-          </button>
-          <button className="ghost-button" disabled={busy} onClick={() => interact("favorite")}>
-            <Star size={16} fill={server.favorited ? "currentColor" : "none"} />
-            {server.favorites}
-          </button>
-          <span className="badge">
-            <MessageSquare size={13} /> {server.comments}
-          </span>
-          <span className="badge">
-            <Coins size={13} /> Earn {server.rewardRatePerSecond}/s
-          </span>
+        <div className="server-card-footer">
+          <div className="server-actions">
+            <button className="icon-stat-button" aria-label={`Like ${server.name}`} title="Like" disabled={busy} onClick={() => interact("like")}><Heart size={15} fill={server.liked ? "currentColor" : "none"} /><span>{server.likes}</span></button>
+            <button className="icon-stat-button" aria-label={`Favorite ${server.name}`} title="Favorite" disabled={busy} onClick={() => interact("favorite")}><Star size={15} fill={server.favorited ? "currentColor" : "none"} /><span>{server.favorites}</span></button>
+            <span className="icon-stat-button passive"><MessageSquare size={15} /><span>{server.comments}</span></span>
+            <span className="icon-stat-button passive"><Coins size={15} /><span>{server.rewardRatePerSecond}/s</span></span>
+          </div>
+          <Link className="server-view-link" href={`/servers/${server.slug}`}>View profile <ArrowUpRight size={16} /></Link>
         </div>
-
-        <div className="comment-box">
-          <input
-            value={comment}
-            onChange={(event) => setComment(event.target.value)}
-            placeholder="Comment after verified play"
-            maxLength={240}
-          />
-          <button
-            className="icon-button"
-            title="Post comment"
-            aria-label="Post comment"
-            disabled={busy || comment.trim().length < 3}
-            onClick={() => interact("comment")}
-          >
-            <RefreshCw size={15} />
-          </button>
-        </div>
-        <p className="toast-line">{message}</p>
+        <p className="toast-line" aria-live="polite">{message}</p>
       </div>
     </article>
   );

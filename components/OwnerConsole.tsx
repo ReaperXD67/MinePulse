@@ -1,24 +1,55 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Coins, Gem, PackagePlus, Save, Server, Trash2 } from "lucide-react";
+import {
+  Coins,
+  Copy,
+  ExternalLink,
+  Gem,
+  LifeBuoy,
+  PackagePlus,
+  RadioTower,
+  Save,
+  Server,
+  ShieldCheck,
+  TicketCheck,
+  Trash2
+} from "lucide-react";
 import { money, points, shortDate } from "@/lib/format";
 
 type OwnerServer = {
   id: string;
+  slug: string;
   name: string;
   host: string;
   port: number;
+  version: string;
+  region: string;
+  tags: string;
   description: string;
+  longDescription: string;
+  rules: string;
+  galleryImages: string;
+  websiteUrl: string | null;
+  discordUrl: string | null;
+  supportUrl: string | null;
   status: string;
+  trustStatus: string;
+  riskScore: number;
   pointPool: number;
   rewardRatePerSecond: number;
   maxPaidPlayers: number;
   minPlaySecondsForComment: number;
   premiumPlan: string;
   premiumUntil: string | null;
+  lastHeartbeatAt: string | null;
+  lastPluginVersion: string | null;
   pluginSecret: string;
+  reportCount: number;
+  favoriteCount: number;
+  likeCount: number;
   items: Array<{
     id: string;
     name: string;
@@ -27,22 +58,18 @@ type OwnerServer = {
     command: string;
     status: string;
   }>;
+  supportTickets: Array<{
+    id: string;
+    requester: string;
+    subject: string;
+    body: string;
+    status: string;
+    ownerNote: string;
+  }>;
 };
 
-type PointPackage = {
-  id: string;
-  label: string;
-  points: number;
-  priceCents: number;
-};
-
-type PremiumTier = {
-  id: string;
-  name: string;
-  priceCents: number;
-  durationDays: number;
-  priority: number;
-};
+type PointPackage = { id: string; label: string; points: number; priceCents: number };
+type PremiumTier = { id: string; name: string; priceCents: number; durationDays: number; priority: number };
 
 export function OwnerConsole({
   servers,
@@ -56,8 +83,9 @@ export function OwnerConsole({
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [promoCodes, setPromoCodes] = useState<Record<string, string>>({});
 
-  async function post(url: string, body: unknown, method = "POST") {
+  async function send(url: string, body: unknown, method = "POST") {
     setBusy(true);
     setMessage("");
     const response = await fetch(url, {
@@ -82,7 +110,7 @@ export function OwnerConsole({
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
-    const ok = await post("/api/owner/servers", {
+    const ok = await send("/api/owner/servers", {
       name: form.get("name"),
       host: form.get("host"),
       port: form.get("port"),
@@ -90,6 +118,12 @@ export function OwnerConsole({
       region: form.get("region"),
       tags: form.get("tags"),
       description: form.get("description"),
+      longDescription: form.get("longDescription"),
+      rules: form.get("rules"),
+      galleryImages: form.get("galleryImages"),
+      websiteUrl: form.get("websiteUrl"),
+      discordUrl: form.get("discordUrl"),
+      supportUrl: form.get("supportUrl"),
       rewardRatePerSecond: form.get("rewardRatePerSecond"),
       maxPaidPlayers: form.get("maxPaidPlayers"),
       minPlaySecondsForComment: form.get("minPlaySecondsForComment")
@@ -103,25 +137,32 @@ export function OwnerConsole({
   async function updateServer(event: React.FormEvent<HTMLFormElement>, serverId: string) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    await post(
-      `/api/owner/servers/${serverId}`,
-      {
-        name: form.get("name"),
-        description: form.get("description"),
-        rewardRatePerSecond: form.get("rewardRatePerSecond"),
-        maxPaidPlayers: form.get("maxPaidPlayers"),
-        minPlaySecondsForComment: form.get("minPlaySecondsForComment"),
-        status: form.get("status")
-      },
-      "PATCH"
-    );
+    await send(`/api/owner/servers/${serverId}`, {
+      name: form.get("name"),
+      host: form.get("host"),
+      port: form.get("port"),
+      version: form.get("version"),
+      region: form.get("region"),
+      tags: form.get("tags"),
+      description: form.get("description"),
+      longDescription: form.get("longDescription"),
+      rules: form.get("rules"),
+      galleryImages: form.get("galleryImages"),
+      websiteUrl: form.get("websiteUrl"),
+      discordUrl: form.get("discordUrl"),
+      supportUrl: form.get("supportUrl"),
+      rewardRatePerSecond: form.get("rewardRatePerSecond"),
+      maxPaidPlayers: form.get("maxPaidPlayers"),
+      minPlaySecondsForComment: form.get("minPlaySecondsForComment"),
+      status: form.get("status")
+    }, "PATCH");
   }
 
   async function addItem(event: React.FormEvent<HTMLFormElement>, serverId: string) {
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
-    const ok = await post("/api/owner/items", {
+    const ok = await send("/api/owner/items", {
       serverId,
       name: form.get("name"),
       description: form.get("description"),
@@ -133,235 +174,211 @@ export function OwnerConsole({
     }
   }
 
-  return (
-    <div className="dashboard">
-      <p className="toast-line">{message}</p>
+  async function updateTicket(event: React.FormEvent<HTMLFormElement>, ticketId: string) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await send(`/api/owner/support/${ticketId}`, {
+      status: form.get("status"),
+      ownerNote: form.get("ownerNote")
+    }, "PATCH");
+  }
 
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <h2>Add server</h2>
-            <p>New servers start hidden from the public list until they have a funded point pool.</p>
-          </div>
-        </div>
-        <form className="form-grid" onSubmit={createServer}>
+  async function copy(value: string, label: string) {
+    await navigator.clipboard.writeText(value);
+    setMessage(`${label} copied`);
+  }
+
+  return (
+    <div className="creator-studio">
+      <p className="global-message" aria-live="polite">{message}</p>
+
+      <details className="panel disclosure-panel" open={!servers.length}>
+        <summary>
+          <span><Server size={18} /><strong>List a new server</strong></span>
+          <small>Every member can create a listing</small>
+        </summary>
+        <form className="form-grid form-section" onSubmit={createServer}>
           <div className="form-grid two">
-            <div className="form-row">
-              <label>Name</label>
-              <input className="field" name="name" placeholder="Crystal SMP" required />
-            </div>
-            <div className="form-row">
-              <label>Host</label>
-              <input className="field" name="host" placeholder="play.example.com" required />
-            </div>
+            <div className="form-row"><label htmlFor="new-server-name">Name</label><input className="field" id="new-server-name" name="name" placeholder="Crystal SMP" required /></div>
+            <div className="form-row"><label htmlFor="new-server-host">Host</label><input className="field" id="new-server-host" name="host" placeholder="play.example.com" required /></div>
           </div>
+          <div className="form-grid four">
+            <div className="form-row"><label>Port</label><input className="field" name="port" type="number" defaultValue="25565" /></div>
+            <div className="form-row"><label>Version</label><input className="field" name="version" defaultValue="1.21.x" /></div>
+            <div className="form-row"><label>Region</label><input className="field" name="region" defaultValue="EU" /></div>
+            <div className="form-row"><label>Tags</label><input className="field" name="tags" defaultValue="Survival,Economy,SMP" /></div>
+          </div>
+          <div className="form-row"><label>Listing summary</label><textarea className="textarea" name="description" defaultValue="A player-first server with fair rewards and a cosmetic point shop." required /></div>
+          <div className="form-row"><label>Full profile story</label><textarea className="textarea tall" name="longDescription" placeholder="What makes the community, gameplay, and economy special?" /></div>
           <div className="form-grid two">
-            <div className="form-row">
-              <label>Port</label>
-              <input className="field" name="port" type="number" defaultValue="25565" />
-            </div>
-            <div className="form-row">
-              <label>Version</label>
-              <input className="field" name="version" defaultValue="1.21.x" />
-            </div>
+            <div className="form-row"><label>Rules, one per line</label><textarea className="textarea" name="rules" /></div>
+            <div className="form-row"><label>Gallery image URLs, comma separated</label><textarea className="textarea" name="galleryImages" /></div>
           </div>
-          <div className="form-grid two">
-            <div className="form-row">
-              <label>Region</label>
-              <input className="field" name="region" defaultValue="EU" />
-            </div>
-            <div className="form-row">
-              <label>Tags</label>
-              <input className="field" name="tags" defaultValue="Survival,Economy,SMP" />
-            </div>
+          <div className="form-grid three">
+            <div className="form-row"><label>Website URL</label><input className="field" name="websiteUrl" type="url" /></div>
+            <div className="form-row"><label>Discord URL</label><input className="field" name="discordUrl" type="url" /></div>
+            <div className="form-row"><label>Support URL</label><input className="field" name="supportUrl" type="url" /></div>
           </div>
-          <div className="form-row">
-            <label>Description</label>
-            <textarea
-              className="textarea"
-              name="description"
-              defaultValue="A player-first server with fair rewards and a cosmetic point shop."
-              required
-            />
+          <div className="form-grid three">
+            <div className="form-row"><label>Reward per second</label><input className="field" name="rewardRatePerSecond" type="number" defaultValue="1" /></div>
+            <div className="form-row"><label>Paid player cap</label><input className="field" name="maxPaidPlayers" type="number" defaultValue="20" /></div>
+            <div className="form-row"><label>Seconds before reviews</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue="1800" /></div>
           </div>
-          <div className="form-grid two">
-            <div className="form-row">
-              <label>Reward per second</label>
-              <input className="field" name="rewardRatePerSecond" type="number" defaultValue="1" />
-            </div>
-            <div className="form-row">
-              <label>Paid player cap</label>
-              <input className="field" name="maxPaidPlayers" type="number" defaultValue="20" />
-            </div>
-          </div>
-          <div className="form-row">
-            <label>Seconds before comments</label>
-            <input className="field" name="minPlaySecondsForComment" type="number" defaultValue="1800" />
-          </div>
-          <button className="solid-button" disabled={busy} type="submit">
-            <Server size={16} /> Create server
-          </button>
+          <button className="solid-button" disabled={busy} type="submit"><Server size={16} /> Publish draft</button>
         </form>
-      </section>
+      </details>
+
+      {!servers.length ? (
+        <div className="empty-state rich-empty"><RadioTower size={28} /><strong>No servers yet</strong><span>Publish a listing, connect the plugin, then fund its campaign to enter the marketplace.</span></div>
+      ) : null}
 
       {servers.map((server) => (
-        <section className="panel" key={server.id}>
-          <div className="panel-header">
+        <article className="management-card" key={server.id}>
+          <header className="management-card-header">
             <div>
-              <h2>{server.name}</h2>
-              <p className="mono">
-                {server.host}:{server.port} - pool {points(server.pointPool)}
-              </p>
-            </div>
-            <span className="badge">
-              {server.premiumPlan} {server.premiumUntil ? `until ${shortDate(server.premiumUntil)}` : ""}
-            </span>
-          </div>
-
-          <div className="dashboard-grid">
-            <form className="form-grid" onSubmit={(event) => updateServer(event, server.id)}>
-              <div className="form-row">
-                <label>Name</label>
-                <input className="field" name="name" defaultValue={server.name} />
-              </div>
-              <div className="form-row">
-                <label>Description</label>
-                <textarea className="textarea" name="description" defaultValue={server.description} />
-              </div>
-              <div className="form-grid two">
-                <div className="form-row">
-                  <label>Reward/s</label>
-                  <input className="field" name="rewardRatePerSecond" type="number" defaultValue={server.rewardRatePerSecond} />
-                </div>
-                <div className="form-row">
-                  <label>Paid cap</label>
-                  <input className="field" name="maxPaidPlayers" type="number" defaultValue={server.maxPaidPlayers} />
-                </div>
-              </div>
-              <div className="form-grid two">
-                <div className="form-row">
-                  <label>Comment seconds</label>
-                  <input
-                    className="field"
-                    name="minPlaySecondsForComment"
-                    type="number"
-                    defaultValue={server.minPlaySecondsForComment}
-                  />
-                </div>
-                <div className="form-row">
-                  <label>Status</label>
-                  <select className="select" name="status" defaultValue={server.status}>
-                    <option value="ACTIVE">Active</option>
-                    <option value="PAUSED">Paused</option>
-                  </select>
-                </div>
-              </div>
-              <button className="solid-button" disabled={busy} type="submit">
-                <Save size={16} /> Save server
-              </button>
-            </form>
-
-            <div className="split-list">
-              <div className="mini-metric">
-                <span className="metric-label">Plugin server id</span>
-                <strong className="mono">{server.id}</strong>
-              </div>
-              <div className="mini-metric">
-                <span className="metric-label">Plugin secret</span>
-                <strong className="mono">{server.pluginSecret}</strong>
-              </div>
               <div className="inline-actions">
-                {pointPackages.map((pack) => (
-                  <button
-                    className="ghost-button"
-                    key={pack.id}
-                    disabled={busy}
-                    onClick={() => post(`/api/owner/servers/${server.id}/topup`, { packageId: pack.id })}
-                  >
-                    <Coins size={16} /> {pack.label} - {money(pack.priceCents)}
-                  </button>
-                ))}
+                <span className={`status-pill trust-${server.trustStatus.toLowerCase()}`}><ShieldCheck size={13} /> {server.trustStatus}</span>
+                <span className="status-pill">{server.status}</span>
               </div>
-              <div className="inline-actions">
-                {premiumTiers.map((tier) => (
-                  <button
-                    className="ghost-button"
-                    key={tier.id}
-                    disabled={busy}
-                    onClick={() => post(`/api/owner/servers/${server.id}/premium`, { tierId: tier.id })}
-                  >
-                    <Gem size={16} /> {tier.name} - {money(tier.priceCents)}
-                  </button>
-                ))}
-              </div>
-              <button className="ghost-button danger-button" disabled={busy} onClick={() => post(`/api/owner/servers/${server.id}`, {}, "DELETE")}>
-                <Trash2 size={16} /> Remove server
-              </button>
+              <h3>{server.name}</h3>
+              <p className="mono">{server.host}:{server.port}</p>
+            </div>
+            <div className="management-stats">
+              <div><span>Campaign credits</span><strong>{points(server.pointPool)}</strong></div>
+              <div><span>Reward rate</span><strong>{server.rewardRatePerSecond}/s</strong></div>
+              <div><span>Reports</span><strong>{server.reportCount}</strong></div>
+            </div>
+            <Link className="ghost-button" href={`/servers/${server.slug}`}><ExternalLink size={15} /> View profile</Link>
+          </header>
+
+          <div className="management-grid">
+            <details className="subpanel-disclosure" open>
+              <summary><span><Save size={16} /> Profile and reward rules</span></summary>
+              <form className="form-grid form-section" onSubmit={(event) => updateServer(event, server.id)}>
+                <div className="form-grid two">
+                  <div className="form-row"><label>Name</label><input className="field" name="name" defaultValue={server.name} /></div>
+                  <div className="form-row"><label>Host</label><input className="field" name="host" defaultValue={server.host} /></div>
+                </div>
+                <div className="form-grid four">
+                  <div className="form-row"><label>Port</label><input className="field" name="port" type="number" defaultValue={server.port} /></div>
+                  <div className="form-row"><label>Version</label><input className="field" name="version" defaultValue={server.version} /></div>
+                  <div className="form-row"><label>Region</label><input className="field" name="region" defaultValue={server.region} /></div>
+                  <div className="form-row"><label>Status</label><select className="select" name="status" defaultValue={server.status}><option value="ACTIVE">Active</option><option value="PAUSED">Paused</option></select></div>
+                </div>
+                <div className="form-row"><label>Tags</label><input className="field" name="tags" defaultValue={server.tags} /></div>
+                <div className="form-row"><label>Listing summary</label><textarea className="textarea" name="description" defaultValue={server.description} /></div>
+                <div className="form-row"><label>Full profile story</label><textarea className="textarea tall" name="longDescription" defaultValue={server.longDescription} /></div>
+                <div className="form-grid two">
+                  <div className="form-row"><label>Rules</label><textarea className="textarea" name="rules" defaultValue={server.rules} /></div>
+                  <div className="form-row"><label>Gallery URLs</label><textarea className="textarea" name="galleryImages" defaultValue={server.galleryImages} /></div>
+                </div>
+                <div className="form-grid three">
+                  <div className="form-row"><label>Website</label><input className="field" name="websiteUrl" type="url" defaultValue={server.websiteUrl || ""} /></div>
+                  <div className="form-row"><label>Discord</label><input className="field" name="discordUrl" type="url" defaultValue={server.discordUrl || ""} /></div>
+                  <div className="form-row"><label>Support</label><input className="field" name="supportUrl" type="url" defaultValue={server.supportUrl || ""} /></div>
+                </div>
+                <div className="form-grid three">
+                  <div className="form-row"><label>Reward/s</label><input className="field" name="rewardRatePerSecond" type="number" defaultValue={server.rewardRatePerSecond} /></div>
+                  <div className="form-row"><label>Paid cap</label><input className="field" name="maxPaidPlayers" type="number" defaultValue={server.maxPaidPlayers} /></div>
+                  <div className="form-row"><label>Review seconds</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue={server.minPlaySecondsForComment} /></div>
+                </div>
+                <button className="solid-button" disabled={busy} type="submit"><Save size={16} /> Save profile</button>
+              </form>
+            </details>
+
+            <div className="management-side-stack">
+              <section className="subpanel">
+                <div className="panel-header compact-heading"><div><p className="eyebrow"><Coins size={14} /> Campaign</p><h4>Fund player rewards</h4></div></div>
+                <p className="supporting-copy">Purchased credits only pay verified playtime. Use <strong>BOOST10</strong> once per server for a 10% bonus.</p>
+                <input
+                  className="field mono"
+                  aria-label={`Promo code for ${server.name}`}
+                  placeholder="Promo code"
+                  value={promoCodes[server.id] || ""}
+                  onChange={(event) => setPromoCodes((current) => ({ ...current, [server.id]: event.target.value.toUpperCase() }))}
+                />
+                <div className="funding-options">
+                  {pointPackages.map((pack) => (
+                    <button
+                      className="funding-option"
+                      key={pack.id}
+                      type="button"
+                      data-package-label={pack.label}
+                      aria-label={`Fund ${server.name} with ${pack.label}`}
+                      disabled={busy}
+                      onClick={() => send(`/api/owner/servers/${server.id}/topup`, { packageId: pack.id, promoCode: promoCodes[server.id] || undefined })}
+                    >
+                      <span>{pack.label}</span><strong>{points(pack.points)}</strong><small>{money(pack.priceCents)}</small>
+                    </button>
+                  ))}
+                </div>
+                <div className="premium-options">
+                  {premiumTiers.map((tier) => (
+                    <button className="ghost-button" key={tier.id} type="button" disabled={busy} onClick={() => send(`/api/owner/servers/${server.id}/premium`, { tierId: tier.id })}>
+                      <Gem size={15} /> {tier.name} · {money(tier.priceCents)}
+                    </button>
+                  ))}
+                </div>
+                {server.premiumUntil ? <p className="toast-line">{server.premiumPlan} active until {shortDate(server.premiumUntil)}</p> : null}
+              </section>
+
+              <section className="subpanel">
+                <div className="panel-header compact-heading"><div><p className="eyebrow"><RadioTower size={14} /> Bridge</p><h4>Plugin connection</h4></div></div>
+                <div className="credential-row"><div><span>Server ID</span><code>{server.id}</code></div><button className="icon-button" type="button" title="Copy server ID" onClick={() => copy(server.id, "Server ID")}><Copy size={15} /></button></div>
+                <div className="credential-row"><div><span>Plugin secret</span><code>{server.pluginSecret}</code></div><button className="icon-button" type="button" title="Copy plugin secret" onClick={() => copy(server.pluginSecret, "Plugin secret")}><Copy size={15} /></button></div>
+                <div className="integrity-grid">
+                  <div><span>Last signed heartbeat</span><strong>{server.lastHeartbeatAt ? shortDate(server.lastHeartbeatAt) : "Not connected"}</strong></div>
+                  <div><span>Plugin version</span><strong>{server.lastPluginVersion || "-"}</strong></div>
+                  <div><span>Risk score</span><strong>{server.riskScore}</strong></div>
+                </div>
+              </section>
             </div>
           </div>
 
-          <div className="section-bar">
-            <div>
-              <h3>Shop items</h3>
-              <p>Commands use placeholders like {"{player}"} and {"{uuid}"}.</p>
+          <details className="subpanel-disclosure store-manager">
+            <summary><span><PackagePlus size={16} /> Store items <span className="badge">{server.items.length}</span></span></summary>
+            <div className="form-section">
+              <div className="table-shell">
+                <table className="table">
+                  <thead><tr><th>Item</th><th>Earned points</th><th>Delivery command</th><th>Status</th><th /></tr></thead>
+                  <tbody>
+                    {server.items.map((item) => (
+                      <tr key={item.id}>
+                        <td><strong>{item.name}</strong><p>{item.description}</p></td>
+                        <td>{points(item.pricePoints)}</td><td className="mono command-cell">{item.command}</td><td>{item.status}</td>
+                        <td><button className="icon-button" type="button" title="Hide item" onClick={() => send(`/api/owner/items/${item.id}`, {}, "DELETE")}><Trash2 size={15} /></button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <form className="form-grid add-item-form" onSubmit={(event) => addItem(event, server.id)}>
+                <div className="form-grid two"><div className="form-row"><label>Item name</label><input className="field" name="name" placeholder="VIP Rank · 7 days" required /></div><div className="form-row"><label>Earned-point price</label><input className="field" name="pricePoints" type="number" placeholder="7200" required /></div></div>
+                <div className="form-row"><label>Description</label><input className="field" name="description" placeholder="Cosmetic rank with queue priority" required /></div>
+                <div className="form-row"><label>Console command</label><input className="field mono" name="command" placeholder="lp user {player} parent addtemp vip 7d" required /></div>
+                <button className="ghost-button" disabled={busy} type="submit"><PackagePlus size={16} /> Add store item</button>
+              </form>
             </div>
-          </div>
-          <div className="table-shell">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Price</th>
-                  <th>Command</th>
-                  <th>Status</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {server.items.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <strong>{item.name}</strong>
-                      <p className="toast-line">{item.description}</p>
-                    </td>
-                    <td>{points(item.pricePoints)}</td>
-                    <td className="mono">{item.command}</td>
-                    <td>{item.status}</td>
-                    <td>
-                      <button className="icon-button" title="Hide item" onClick={() => post(`/api/owner/items/${item.id}`, {}, "DELETE")}>
-                        <Trash2 size={15} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          </details>
 
-          <form className="form-grid" style={{ marginTop: 14 }} onSubmit={(event) => addItem(event, server.id)}>
-            <div className="form-grid two">
-              <div className="form-row">
-                <label>Item name</label>
-                <input className="field" name="name" placeholder="VIP Rank - 7 days" />
-              </div>
-              <div className="form-row">
-                <label>Price points</label>
-                <input className="field" name="pricePoints" type="number" placeholder="7200" />
-              </div>
+          <details className="subpanel-disclosure">
+            <summary><span><LifeBuoy size={16} /> Support inbox <span className="badge">{server.supportTickets.length}</span></span></summary>
+            <div className="ticket-grid form-section">
+              {server.supportTickets.map((ticket) => (
+                <form className="ticket-card" key={ticket.id} onSubmit={(event) => updateTicket(event, ticket.id)}>
+                  <div><span className={`status-pill status-${ticket.status.toLowerCase()}`}>{ticket.status.replace("_", " ")}</span><h4>{ticket.subject}</h4><p>{ticket.body}</p><small>From {ticket.requester}</small></div>
+                  <div className="form-grid"><select className="select" name="status" defaultValue={ticket.status}><option value="OPEN">Open</option><option value="IN_PROGRESS">In progress</option><option value="CLOSED">Closed</option></select><textarea className="textarea" name="ownerNote" defaultValue={ticket.ownerNote} placeholder="Reply or resolution note" /><button className="ghost-button" disabled={busy}><TicketCheck size={15} /> Update ticket</button></div>
+                </form>
+              ))}
+              {!server.supportTickets.length ? <div className="empty-state compact-empty">No support requests for this server.</div> : null}
             </div>
-            <div className="form-row">
-              <label>Description</label>
-              <input className="field" name="description" placeholder="Cosmetic rank with queue priority" />
-            </div>
-            <div className="form-row">
-              <label>Command</label>
-              <input className="field mono" name="command" placeholder="lp user {player} parent addtemp vip 7d" />
-            </div>
-            <button className="ghost-button" disabled={busy} type="submit">
-              <PackagePlus size={16} /> Add item
-            </button>
-          </form>
-        </section>
+          </details>
+
+          <footer className="management-card-footer">
+            <span>{server.likeCount} likes · {server.favoriteCount} favorites</span>
+            <button className="ghost-button danger-button" type="button" disabled={busy} onClick={() => send(`/api/owner/servers/${server.id}`, {}, "DELETE")}><Trash2 size={15} /> Remove listing</button>
+          </footer>
+        </article>
       ))}
     </div>
   );

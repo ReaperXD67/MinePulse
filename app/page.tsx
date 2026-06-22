@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
 import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { currentUser } from "@/lib/auth";
-import { UserRole } from "@/lib/generated/prisma/client";
 import { compact, money, points } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { shuffle } from "@/lib/random";
@@ -18,6 +17,7 @@ export default async function MarketplacePage() {
     prisma.server.findMany({
       where: {
         status: "ACTIVE",
+        trustStatus: { in: ["VERIFIED", "WATCHLIST"] },
         pointPool: { gt: 0 }
       },
       include: {
@@ -49,6 +49,7 @@ export default async function MarketplacePage() {
 
   const visibleServers = servers.map<MarketplaceServer>((server) => ({
     id: server.id,
+    slug: server.slug,
     name: server.name,
     host: server.host,
     port: server.port,
@@ -62,6 +63,14 @@ export default async function MarketplacePage() {
     maxPaidPlayers: server.maxPaidPlayers,
     premiumPlan: server.premiumPlan,
     premiumUntil: server.premiumUntil?.toISOString() ?? null,
+    trustStatus: server.trustStatus,
+    bridgeState: !server.lastHeartbeatAt
+      ? "offline"
+      : now.getTime() - server.lastHeartbeatAt.getTime() <= 120000
+        ? "online"
+        : now.getTime() - server.lastHeartbeatAt.getTime() <= 900000
+          ? "stale"
+          : "offline",
     likes: server._count.likes,
     favorites: server._count.favorites,
     comments: server._count.comments,
@@ -88,7 +97,7 @@ export default async function MarketplacePage() {
   const [usersCount, pools, purchaseCount, playtime] = platform;
   const cheapestPackage = pointPackages[0];
   const topPremium = premiumTiers[0];
-  const canManageServers = user?.role === UserRole.OWNER || user?.role === UserRole.ADMIN;
+  const canManageServers = Boolean(user);
 
   return (
     <main>
@@ -109,12 +118,12 @@ export default async function MarketplacePage() {
               <Link className="solid-button" href="#servers">
                 <Crosshair size={16} /> Browse servers
               </Link>
-              <Link className="ghost-button" href="/player">
+              <Link className="ghost-button" href="/account">
                 <WalletCards size={16} /> Open wallet
               </Link>
               {canManageServers ? (
-                <Link className="ghost-button" href="/owner">
-                  <Server size={16} /> Server console
+                <Link className="ghost-button" href="/account#servers">
+                  <Server size={16} /> Creator studio
                 </Link>
               ) : (
                 <Link className="ghost-button" href="/login">
@@ -130,7 +139,7 @@ export default async function MarketplacePage() {
               <strong>{points(pools._sum.pointPool ?? 0)}</strong>
             </div>
             <div className="hud-tile" style={{ "--accent": "var(--cyan)" } as React.CSSProperties}>
-              <span>Players and owners</span>
+              <span>Members</span>
               <strong>{usersCount}</strong>
             </div>
             <div className="hud-tile" style={{ "--accent": "var(--gold)" } as React.CSSProperties}>
@@ -187,7 +196,7 @@ export default async function MarketplacePage() {
           <div className="panel-header">
             <div>
               <h2>Owner pricing</h2>
-              <p>Server owners buy point pools with real money, then choose the per-second reward rate.</p>
+              <p>Members fund campaign credits with real money, then choose how quickly verified players earn them.</p>
             </div>
           </div>
           <div className="metrics-row">

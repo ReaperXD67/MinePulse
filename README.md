@@ -2,14 +2,21 @@
 
 MinePulse is a production-style MVP for a Minecraft server marketplace where verified playtime earns platform points.
 
-Players earn points on funded servers, then spend those points on ranks, crates, cosmetics, or any owner-configured item. Server owners buy point pools with real money, choose reward rates per second, cap paid players, and buy Gold or Diamond premium placement. Admins can control prices, point pools, premium state, server visibility, and platform statistics.
+Members earn points on funded servers, then spend those earned points on ranks, crates, cosmetics, or any server-configured item. The same account can also publish servers, buy campaign credits with real money, choose reward rates per second, cap paid players, and buy Gold or Diamond placement. Admins control pricing, bonus promo codes, reports, punishments, campaign pools, premium state, server visibility, and platform statistics.
+
+## Two Separate Currencies
+
+- **Earned points** live in a member wallet. They are created only by verified playtime and can only buy server store items.
+- **Campaign credits** live in a server reward pool. They are bought with real money and can only pay verified player rewards.
+
+Buying a store item never refills a server campaign. Promo codes such as `BOOST10` add bonus campaign credits without discounting the purchase price.
 
 ## Stack
 
 - Next.js App Router
 - Prisma 7 with SQLite for local development
-- Cookie JWT auth with role-based access
-- Paper/Spigot plugin skeleton in `minecraft-plugin/`
+- Cookie JWT authentication with admin protection and unified member accounts
+- Paper plugin in `minecraft-plugin/`
 - Local generated PNG artwork in `public/voxel-network.png`
 
 ## Run Locally
@@ -29,22 +36,24 @@ Open `http://localhost:3000`.
 
 Seeded accounts:
 
-| Role | Email | Password |
+| Demo | Email | Password |
 | --- | --- | --- |
-| Admin | `admin@minepulse.local` | `admin123` |
-| Owner | `owner@minepulse.local` | `owner123` |
-| Player | `player@minepulse.local` | `player123` |
+| Control center | `admin@minepulse.local` | `admin123` |
+| Skyforge member | `owner@minepulse.local` | `owner123` |
+| PixelRunner member | `player@minepulse.local` | `player123` |
 
 ## Key Flows
 
-- `/` shows the randomized marketplace. Premium servers shuffle first. Regular servers shuffle below. Servers with empty point pools are hidden.
-- `/player` shows wallet, purchases, point ledger, favorites, and verified play sessions.
-- `/owner` lets server owners create servers, tune reward rules, buy points, buy premium, and configure item commands.
-- `/admin` lets admins edit point package prices, Gold/Diamond pricing, server status, premium overrides, point pools, and platform statistics.
+- `/` shows the randomized marketplace. Premium servers shuffle first. Regular servers shuffle below. Empty campaigns are hidden.
+- `/account` combines the member wallet, public profile, purchases, play sessions, favorites, server publishing, campaign funding, store management, plugin credentials, and support inbox.
+- `/servers/[slug]` is the full server profile with screenshots, owner story, rules, store, verified reviews, support, reports, and trust telemetry.
+- `/members/[id]` shows a public member profile and published servers.
+- `/admin` manages economy pricing, Gold/Diamond tiers, promo bonuses, reports, punishments, server trust, campaign credits, and statistics.
+- `/player` and `/owner` redirect to the unified account for backward compatibility.
 
 ## Plugin API
 
-The owner panel shows a `server-id` and `plugin-secret`. Put those into `minecraft-plugin/src/main/resources/config.yml`.
+The creator studio shows a `server-id` and `plugin-secret`. Put those into the plugin's generated `config.yml`.
 
 Important endpoints:
 
@@ -52,14 +61,16 @@ Important endpoints:
 - `POST /api/plugin/purchases/pull` returns pending commands for a server.
 - `POST /api/plugin/purchases/ack` confirms delivery or refunds failed purchases.
 
-The plugin tracks movement, inventory/chat/command activity, AFK timeout, IP hashing on the server side, and a periodic `/mpcode` challenge.
+Version 0.2.0 accumulates movement and interaction telemetry between heartbeats, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, and can require a periodic `/mpcode` challenge. MinePulse calculates wallet rewards on the website; the plugin never directly edits balances.
 
 ## Plugin Build
+
+See [minecraft-plugin/README.md](minecraft-plugin/README.md) for the full Paper installation, connection, firewall, security, and troubleshooting guide.
 
 From `minecraft-plugin/`:
 
 ```bash
-mvn package
+mvn clean package
 ```
 
 Copy the shaded jar from `minecraft-plugin/target/` into your Paper server `plugins/` folder, start once to generate config, then set:
@@ -70,7 +81,7 @@ server-id: "from owner panel"
 plugin-secret: "from owner panel"
 ```
 
-For local testing with the Next dev server, keep `api-base-url: "http://localhost:3000"`.
+For local testing where Paper and the website run on the same machine, keep `api-base-url: "http://localhost:3000"`. If Paper runs elsewhere, `localhost` is wrong; use the HTTPS URL reachable from that Minecraft server.
 
 ## Deploy Notes
 

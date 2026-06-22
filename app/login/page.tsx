@@ -6,9 +6,9 @@ export default function LoginPage() {
       <section className="auth-panel">
         <div className="auth-art">
           <p className="eyebrow">MinePulse access</p>
-          <h1>One economy for every server worth playing.</h1>
+          <h1>One identity across every world you build.</h1>
           <p className="lead">
-            Admins tune prices, owners fund reward pools, and players turn time into in-game value.
+            Play, earn, publish a server, fund rewards, and support communities from one member account.
           </p>
         </div>
         <LoginForm />
