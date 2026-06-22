@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { UserRole } from "@/lib/generated/prisma/client";
-import { requireUser } from "@/lib/auth";
+import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
 
@@ -17,7 +17,7 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const user = await requireUser([UserRole.OWNER, UserRole.ADMIN]);
+    const user = await requireMember();
     const input = schema.parse(await request.json());
     const server = await prisma.server.findUnique({ where: { id: input.serverId } });
 

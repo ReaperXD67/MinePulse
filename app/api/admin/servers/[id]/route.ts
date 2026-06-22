@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 const schema = z.object({
   adjustPoints: z.coerce.number().int().min(-1000000000).max(1000000000).optional(),
   status: z.enum(["ACTIVE", "PAUSED", "REMOVED"]).optional(),
+  trustStatus: z.enum(["VERIFIED", "WATCHLIST", "SUSPENDED", "BLACKLISTED"]).optional(),
   premiumPlan: z.enum(["NONE", "GOLD", "DIAMOND"]).optional(),
   premiumDays: z.coerce.number().int().min(0).max(365).optional()
 });
@@ -40,6 +41,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         data: {
           pointPool,
           status: input.status ? (input.status as ServerStatus) : server.status,
+          trustStatus: input.trustStatus ?? server.trustStatus,
           premiumPlan,
           premiumUntil
         }

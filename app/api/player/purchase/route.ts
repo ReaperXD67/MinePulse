@@ -40,11 +40,6 @@ export async function POST(request: Request) {
         data: { walletPoints: { decrement: item.pricePoints } }
       });
 
-      await tx.server.update({
-        where: { id: item.serverId },
-        data: { pointPool: { increment: item.pricePoints } }
-      });
-
       await tx.pointLedger.create({
         data: {
           userId: buyer.id,

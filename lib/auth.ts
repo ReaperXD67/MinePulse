@@ -15,7 +15,18 @@ type SessionPayload = {
   role: UserRole;
 };
 
-export type SessionUser = Pick<User, "id" | "email" | "username" | "role" | "walletPoints" | "minecraftUuid" | "minecraftName">;
+export type SessionUser = Pick<
+  User,
+  | "id"
+  | "email"
+  | "username"
+  | "role"
+  | "walletPoints"
+  | "minecraftUuid"
+  | "minecraftName"
+  | "bio"
+  | "avatarUrl"
+>;
 
 function authSecret() {
   const secret = process.env.AUTH_SECRET || DEFAULT_SECRET;
@@ -83,7 +94,9 @@ export async function currentUser(): Promise<SessionUser | null> {
       role: true,
       walletPoints: true,
       minecraftUuid: true,
-      minecraftName: true
+      minecraftName: true,
+      bio: true,
+      avatarUrl: true
     }
   });
 }
@@ -100,6 +113,10 @@ export async function requireUser(roles?: UserRole[]) {
   }
 
   return user;
+}
+
+export async function requireMember() {
+  return requireUser([UserRole.PLAYER, UserRole.OWNER, UserRole.ADMIN]);
 }
 
 export function setSessionCookie(response: NextResponse, token: string) {

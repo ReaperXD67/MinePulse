@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { BillingKind, LedgerType, UserRole } from "@/lib/generated/prisma/client";
-import { requireUser } from "@/lib/auth";
+import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
-  packageId: z.string().min(1)
+  packageId: z.string().min(1),
+  promoCode: z.string().trim().max(40).optional()
 });
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireUser([UserRole.OWNER, UserRole.ADMIN]);
+    const user = await requireMember();
     const { id } = await context.params;
     const input = schema.parse(await request.json());
     const [server, pointPackage] = await Promise.all([
@@ -29,33 +30,101 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Point package not available" }, { status: 404 });
     }
 
-    await prisma.$transaction([
-      prisma.server.update({
+    const promoCodeValue = input.promoCode?.trim().toUpperCase();
+    const promo = promoCodeValue
+      ? await prisma.promoCode.findUnique({ where: { code: promoCodeValue } })
+      : null;
+
+    if (promoCodeValue && !promo) {
+      return NextResponse.json({ error: "Promo code is not valid" }, { status: 400 });
+    }
+
+    if (
+      promo &&
+      (!promo.active ||
+        (promo.expiresAt && promo.expiresAt <= new Date()) ||
+        (promo.maxRedemptions !== null && promo.redemptionCount >= promo.maxRedemptions))
+    ) {
+      return NextResponse.json({ error: "Promo code is no longer available" }, { status: 400 });
+    }
+
+    if (promo) {
+      const used = await prisma.promoRedemption.findUnique({
+        where: {
+          promoCodeId_userId_serverId: {
+            promoCodeId: promo.id,
+            userId: user.id,
+            serverId: server.id
+          }
+        }
+      });
+
+      if (used) {
+        return NextResponse.json({ error: "Promo code was already used for this server" }, { status: 409 });
+      }
+    }
+
+    const bonusPoints = promo ? Math.floor((pointPackage.points * promo.bonusPercent) / 100) : 0;
+    const fundedPoints = pointPackage.points + bonusPoints;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.server.update({
         where: { id: server.id },
-        data: { pointPool: { increment: pointPackage.points } }
-      }),
-      prisma.billingLedger.create({
+        data: { pointPool: { increment: fundedPoints } }
+      });
+      await tx.billingLedger.create({
         data: {
           ownerId: server.ownerId,
           serverId: server.id,
           kind: BillingKind.POINTS,
-          amountPoints: pointPackage.points,
+          amountPoints: fundedPoints,
+          bonusPoints,
           moneyCents: pointPackage.priceCents,
           planCode: pointPackage.code,
-          note: `Bought ${pointPackage.label}`
+          promoCodeId: promo?.id,
+          note: promo
+            ? `Bought ${pointPackage.label} with ${promo.code} (+${promo.bonusPercent}%)`
+            : `Bought ${pointPackage.label}`
         }
-      }),
-      prisma.pointLedger.create({
+      });
+      await tx.pointLedger.create({
         data: {
           serverId: server.id,
           type: LedgerType.SERVER_TOPUP,
           amountPoints: pointPackage.points,
           note: `Owner topped up ${server.name}`
         }
-      })
-    ]);
+      });
 
-    return NextResponse.json({ message: "Point pool topped up" });
+      if (promo) {
+        await tx.promoRedemption.create({
+          data: {
+            promoCodeId: promo.id,
+            userId: user.id,
+            serverId: server.id,
+            bonusPoints
+          }
+        });
+        await tx.promoCode.update({
+          where: { id: promo.id },
+          data: { redemptionCount: { increment: 1 } }
+        });
+        await tx.pointLedger.create({
+          data: {
+            serverId: server.id,
+            type: LedgerType.PROMO_BONUS,
+            amountPoints: bonusPoints,
+            note: `${promo.code} added ${promo.bonusPercent}% bonus campaign credits`
+          }
+        });
+      }
+    });
+
+    return NextResponse.json({
+      fundedPoints,
+      bonusPoints,
+      message: bonusPoints > 0 ? `Campaign funded with ${bonusPoints} bonus credits` : "Campaign funded"
+    });
   } catch (error) {
     return routeError(error);
   }

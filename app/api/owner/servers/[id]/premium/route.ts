@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { BillingKind, LedgerType, UserRole } from "@/lib/generated/prisma/client";
-import { requireUser } from "@/lib/auth";
+import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
 
@@ -13,7 +13,7 @@ const schema = z.object({
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireUser([UserRole.OWNER, UserRole.ADMIN]);
+    const user = await requireMember();
     const { id } = await context.params;
     const input = schema.parse(await request.json());
     const [server, tier] = await Promise.all([

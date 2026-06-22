@@ -12,3 +12,4 @@ prisma/*.db-journal
 
 # Maven build output
 minecraft-plugin/target/
+*.tsbuildinfo

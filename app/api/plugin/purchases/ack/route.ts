@@ -54,11 +54,6 @@ export async function POST(request: Request) {
         data: { walletPoints: { increment: purchase.item.pricePoints } }
       });
 
-      await tx.server.update({
-        where: { id: purchase.serverId },
-        data: { pointPool: Math.max(0, purchase.server.pointPool - purchase.item.pricePoints) }
-      });
-
       await tx.pointLedger.create({
         data: {
           userId: purchase.buyerId,

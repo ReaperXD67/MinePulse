@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { UserRole } from "@/lib/generated/prisma/client";
-import { requireUser } from "@/lib/auth";
+import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { makePluginSecret, slugify } from "@/lib/random";
 import { routeError } from "@/lib/api";
@@ -16,6 +15,12 @@ const schema = z.object({
   region: z.string().trim().min(2).max(30),
   tags: z.string().trim().min(2).max(120),
   description: z.string().trim().min(20).max(420),
+  longDescription: z.string().trim().max(3000).default(""),
+  rules: z.string().trim().max(2000).default(""),
+  galleryImages: z.string().trim().max(2000).default(""),
+  websiteUrl: z.string().trim().url().or(z.literal("")).optional(),
+  discordUrl: z.string().trim().url().or(z.literal("")).optional(),
+  supportUrl: z.string().trim().url().or(z.literal("")).optional(),
   rewardRatePerSecond: z.coerce.number().int().min(0).max(100),
   maxPaidPlayers: z.coerce.number().int().min(1).max(500),
   minPlaySecondsForComment: z.coerce.number().int().min(60).max(86400)
@@ -36,7 +41,7 @@ async function uniqueSlug(name: string) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireUser([UserRole.OWNER, UserRole.ADMIN]);
+    const user = await requireMember();
     const input = schema.parse(await request.json());
     const server = await prisma.server.create({
       data: {

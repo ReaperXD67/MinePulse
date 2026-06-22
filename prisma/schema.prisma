@@ -43,11 +43,50 @@ enum SessionStatus {
   FLAGGED
 }
 
+enum TrustStatus {
+  VERIFIED
+  WATCHLIST
+  SUSPENDED
+  BLACKLISTED
+}
+
+enum ReportReason {
+  NO_REWARD
+  PLUGIN_TAMPERING
+  BOTS_OR_FAKE_PLAYERS
+  SCAM_OR_FALSE_INFO
+  ABUSIVE_CONTENT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum SupportStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum EnforcementType {
+  WARNING
+  PAUSE
+  BLACKLIST
+  CREDIT_REMOVAL
+  RESTORE
+}
+
 enum LedgerType {
   PLAYER_REWARD
   PLAYER_SPEND
   SERVER_TOPUP
   SERVER_PREMIUM
+  PROMO_BONUS
+  SERVER_PENALTY
   ADMIN_ADJUSTMENT
   PURCHASE_REFUND
 }
@@ -67,17 +106,23 @@ model User {
   passwordHash  String?
   role          UserRole @default(PLAYER)
   walletPoints  Int      @default(0)
+  bio           String   @default("")
+  avatarUrl     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  ownedServers Server[]        @relation("OwnerServers")
-  sessions     ServerSession[]
-  purchases    Purchase[]      @relation("BuyerPurchases")
-  likes        ServerLike[]
-  favorites    Favorite[]
-  comments     Comment[]
-  ledgers      PointLedger[]
-  billings     BillingLedger[] @relation("OwnerBillings")
+  ownedServers       Server[]            @relation("OwnerServers")
+  sessions           ServerSession[]
+  purchases          Purchase[]          @relation("BuyerPurchases")
+  likes              ServerLike[]
+  favorites          Favorite[]
+  comments           Comment[]
+  ledgers            PointLedger[]
+  billings           BillingLedger[]     @relation("OwnerBillings")
+  reports            ServerReport[]
+  supportTickets     SupportTicket[]
+  promoRedemptions   PromoRedemption[]
+  enforcementActions EnforcementAction[] @relation("AdminEnforcement")
 }
 
 model Server {
@@ -89,10 +134,18 @@ model Server {
   port                     Int             @default(25565)
   version                  String
   description              String
+  longDescription          String          @default("")
+  rules                    String          @default("")
   region                   String
   tags                     String
   bannerImage              String?
+  galleryImages            String          @default("")
+  websiteUrl               String?
+  discordUrl               String?
+  supportUrl               String?
   status                   ServerStatus    @default(ACTIVE)
+  trustStatus              TrustStatus     @default(VERIFIED)
+  riskScore                Int             @default(0)
   pointPool                Int             @default(0)
   rewardRatePerSecond      Int             @default(1)
   maxPaidPlayers           Int             @default(20)
@@ -101,20 +154,28 @@ model Server {
   premiumUntil             DateTime?
   pluginSecret             String
   botProtectionLevel       Int             @default(2)
+  lastHeartbeatAt          DateTime?
+  lastPluginVersion        String?
+  integrityFailures        Int             @default(0)
   createdAt                DateTime        @default(now())
   updatedAt                DateTime        @updatedAt
 
-  owner     User            @relation("OwnerServers", fields: [ownerId], references: [id], onDelete: Cascade)
-  items     StoreItem[]
-  purchases Purchase[]
-  likes     ServerLike[]
-  favorites Favorite[]
-  comments  Comment[]
-  sessions  ServerSession[]
-  ledgers   PointLedger[]
-  billings  BillingLedger[]
+  owner              User                @relation("OwnerServers", fields: [ownerId], references: [id], onDelete: Cascade)
+  items              StoreItem[]
+  purchases          Purchase[]
+  likes              ServerLike[]
+  favorites          Favorite[]
+  comments           Comment[]
+  sessions           ServerSession[]
+  ledgers            PointLedger[]
+  billings           BillingLedger[]
+  reports            ServerReport[]
+  supportTickets     SupportTicket[]
+  promoRedemptions   PromoRedemption[]
+  enforcementActions EnforcementAction[]
 
   @@index([status, premiumUntil])
+  @@index([trustStatus, status])
   @@index([ownerId])
 }
 
@@ -154,19 +215,22 @@ model Purchase {
 }
 
 model ServerSession {
-  id              String        @id @default(cuid())
-  serverId        String
-  userId          String
-  minecraftName   String
-  ipHash          String
-  startedAt       DateTime      @default(now())
-  lastHeartbeatAt DateTime      @default(now())
-  endedAt         DateTime?
-  activeSeconds   Int           @default(0)
-  afkSeconds      Int           @default(0)
-  rewardedPoints  Int           @default(0)
-  suspiciousScore Int           @default(0)
-  status          SessionStatus @default(ACTIVE)
+  id                String        @id @default(cuid())
+  serverId          String
+  userId            String
+  minecraftName     String
+  ipHash            String
+  startedAt         DateTime      @default(now())
+  lastHeartbeatAt   DateTime      @default(now())
+  endedAt           DateTime?
+  activeSeconds     Int           @default(0)
+  afkSeconds        Int           @default(0)
+  rewardedPoints    Int           @default(0)
+  suspiciousScore   Int           @default(0)
+  activityEvents    Int           @default(0)
+  lastNonce         String?
+  integrityVerified Boolean       @default(false)
+  status            SessionStatus @default(ACTIVE)
 
   server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -237,15 +301,102 @@ model BillingLedger {
   kind         BillingKind
   amountPoints Int         @default(0)
   moneyCents   Int         @default(0)
+  bonusPoints  Int         @default(0)
   planCode     String?
+  promoCodeId  String?
   note         String
   createdAt    DateTime    @default(now())
 
-  owner  User    @relation("OwnerBillings", fields: [ownerId], references: [id], onDelete: Cascade)
-  server Server? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  owner     User       @relation("OwnerBillings", fields: [ownerId], references: [id], onDelete: Cascade)
+  server    Server?    @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  promoCode PromoCode? @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
 
   @@index([kind, createdAt])
   @@index([ownerId, createdAt])
+}
+
+model PromoCode {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  bonusPercent    Int       @default(10)
+  active          Boolean   @default(true)
+  maxRedemptions  Int?
+  redemptionCount Int       @default(0)
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  redemptions PromoRedemption[]
+  billings    BillingLedger[]
+}
+
+model PromoRedemption {
+  id          String   @id @default(cuid())
+  promoCodeId String
+  userId      String
+  serverId    String
+  bonusPoints Int
+  createdAt   DateTime @default(now())
+
+  promoCode PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server    Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([promoCodeId, userId, serverId])
+  @@index([serverId, createdAt])
+}
+
+model ServerReport {
+  id          String       @id @default(cuid())
+  serverId    String
+  reporterId  String
+  reason      ReportReason
+  details     String
+  evidenceUrl String?
+  status      ReportStatus @default(OPEN)
+  adminNote   String       @default("")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  reporter User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, status, createdAt])
+  @@index([reporterId, createdAt])
+}
+
+model SupportTicket {
+  id          String        @id @default(cuid())
+  serverId    String
+  requesterId String
+  subject     String
+  body        String
+  status      SupportStatus @default(OPEN)
+  ownerNote   String        @default("")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  server    Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  requester User   @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, status, createdAt])
+  @@index([requesterId, createdAt])
+}
+
+model EnforcementAction {
+  id            String          @id @default(cuid())
+  serverId      String
+  adminId       String
+  type          EnforcementType
+  pointsRemoved Int             @default(0)
+  reason        String
+  createdAt     DateTime        @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  admin  User   @relation("AdminEnforcement", fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, createdAt])
+  @@index([adminId, createdAt])
 }
 
 model PointPackage {

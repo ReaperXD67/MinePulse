@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { LedgerType, SessionStatus, UserRole } from "@/lib/generated/prisma/client";
-import { challengeDue, clampHeartbeatSeconds, hashIp } from "@/lib/plugin-security";
+import {
+  challengeDue,
+  clampHeartbeatSeconds,
+  hashIp,
+  heartbeatTimestampIsFresh,
+  verifyHeartbeatSignature
+} from "@/lib/plugin-security";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
 
@@ -9,28 +15,33 @@ export const runtime = "nodejs";
 
 const schema = z.object({
   serverId: z.string().min(1),
-  secret: z.string().min(8),
+  timestamp: z.coerce.number().int().positive(),
+  nonce: z.string().trim().min(12).max(120),
+  signature: z.string().regex(/^[a-f0-9]{64}$/i),
   minecraftUuid: z.string().trim().min(8).max(80),
   minecraftName: z.string().trim().min(2).max(32),
   ip: z.string().trim().max(80).optional(),
   afk: z.boolean().default(false),
-  movementDelta: z.coerce.number().min(0).max(10000).default(0),
+  movementScore: z.coerce.number().int().min(0).max(1000000).default(0),
+  activityEvents: z.coerce.number().int().min(0).max(10000).default(0),
   challengePassed: z.boolean().optional(),
-  reportedSeconds: z.coerce.number().min(0).max(60).optional()
+  reportedSeconds: z.coerce.number().int().min(0).max(60).default(20),
+  pluginVersion: z.string().trim().min(3).max(30)
 });
 
 export async function POST(request: Request) {
   try {
     const input = schema.parse(await request.json());
-    const server = await prisma.server.findFirst({
+    const server = await prisma.server.findUnique({
       where: {
-        id: input.serverId,
-        pluginSecret: input.secret,
-        status: "ACTIVE"
+        id: input.serverId
       },
       select: {
         id: true,
         name: true,
+        pluginSecret: true,
+        status: true,
+        trustStatus: true,
         rewardRatePerSecond: true,
         pointPool: true,
         maxPaidPlayers: true,
@@ -38,8 +49,22 @@ export async function POST(request: Request) {
       }
     });
 
-    if (!server) {
+    if (
+      !server ||
+      server.status !== "ACTIVE" ||
+      server.trustStatus === "SUSPENDED" ||
+      server.trustStatus === "BLACKLISTED"
+    ) {
       return NextResponse.json({ error: "Invalid server credentials" }, { status: 401 });
+    }
+
+    if (!heartbeatTimestampIsFresh(input.timestamp)) {
+      return NextResponse.json({ error: "Heartbeat timestamp is stale" }, { status: 401 });
+    }
+
+    const { signature, ip, ...signedInput } = input;
+    if (!verifyHeartbeatSignature(signedInput, signature, server.pluginSecret)) {
+      return NextResponse.json({ error: "Heartbeat signature is invalid" }, { status: 401 });
     }
 
     const player = await prisma.user.upsert({
@@ -68,7 +93,8 @@ export async function POST(request: Request) {
           rewardRatePerSecond: true,
           pointPool: true,
           maxPaidPlayers: true,
-          botProtectionLevel: true
+          botProtectionLevel: true,
+          trustStatus: true
         }
       });
 
@@ -99,12 +125,16 @@ export async function POST(request: Request) {
             serverId: freshServer.id,
             userId: player.id,
             minecraftName: input.minecraftName,
-            ipHash: hashIp(input.ip)
+            ipHash: hashIp(ip)
           }
         });
       }
 
-      const rawElapsed = input.reportedSeconds ?? (now.getTime() - session.lastHeartbeatAt.getTime()) / 1000;
+      if (session.lastNonce === input.nonce) {
+        throw new Response("Heartbeat replay rejected", { status: 409 });
+      }
+
+      const rawElapsed = input.reportedSeconds || (now.getTime() - session.lastHeartbeatAt.getTime()) / 1000;
       const elapsed = clampHeartbeatSeconds(rawElapsed);
       const paidActivePlayers = await tx.serverSession.count({
         where: {
@@ -114,10 +144,11 @@ export async function POST(request: Request) {
         }
       });
 
-      const strictMovement = freshServer.botProtectionLevel >= 2 ? input.movementDelta >= 0.1 : true;
+      const strictMovement = freshServer.botProtectionLevel >= 2 ? input.movementScore >= 40 : true;
+      const activeInteraction = input.activityEvents > 0;
       const challengeOk = input.challengePassed !== false;
       const withinPaidCap = paidActivePlayers <= freshServer.maxPaidPlayers;
-      const verifiedActive = elapsed > 0 && !input.afk && strictMovement && challengeOk;
+      const verifiedActive = elapsed > 0 && !input.afk && (strictMovement || activeInteraction) && challengeOk;
       const rewardable =
         verifiedActive && withinPaidCap && freshServer.pointPool > 0 && freshServer.rewardRatePerSecond > 0;
 
@@ -126,7 +157,9 @@ export async function POST(request: Request) {
         : 0;
 
       const suspiciousBump =
-        input.afk || !strictMovement || !challengeOk ? Math.max(1, freshServer.botProtectionLevel) : 0;
+        input.afk || (!strictMovement && !activeInteraction) || !challengeOk
+          ? Math.max(1, freshServer.botProtectionLevel)
+          : 0;
 
       const updatedSession = await tx.serverSession.update({
         where: { id: session.id },
@@ -136,7 +169,18 @@ export async function POST(request: Request) {
           activeSeconds: { increment: verifiedActive ? elapsed : 0 },
           afkSeconds: { increment: input.afk ? elapsed : 0 },
           rewardedPoints: { increment: earned },
-          suspiciousScore: { increment: suspiciousBump }
+          suspiciousScore: { increment: suspiciousBump },
+          activityEvents: { increment: input.activityEvents },
+          lastNonce: input.nonce,
+          integrityVerified: true
+        }
+      });
+
+      await tx.server.update({
+        where: { id: freshServer.id },
+        data: {
+          lastHeartbeatAt: now,
+          lastPluginVersion: input.pluginVersion
         }
       });
 
@@ -174,6 +218,7 @@ export async function POST(request: Request) {
         suspiciousScore: updatedSession.suspiciousScore,
         paidActivePlayers,
         rewardable,
+        integrityVerified: true,
         requiresChallenge: challengeDue(updatedSession.activeSeconds)
       };
     });

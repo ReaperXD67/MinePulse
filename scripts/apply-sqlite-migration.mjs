@@ -12,19 +12,48 @@ if (!match) {
 }
 
 const dbPath = path.resolve(root, match[1]);
-const migrationPath = path.join(root, "prisma", "migrations", "20260617000000_init", "migration.sql");
-const migration = fs.readFileSync(migrationPath, "utf8");
+const migrationsPath = path.join(root, "prisma", "migrations");
+const migrationDirectories = fs
+  .readdirSync(migrationsPath, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort();
 const SQL = await initSqlJs();
 const db = fs.existsSync(dbPath) ? new SQL.Database(fs.readFileSync(dbPath)) : new SQL.Database();
 const hasUserTable = db.exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'User';");
 
-if (hasUserTable.length === 0) {
+db.run(`
+  CREATE TABLE IF NOT EXISTS "_MinePulseMigration" (
+    "name" TEXT NOT NULL PRIMARY KEY,
+    "appliedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+if (hasUserTable.length > 0) {
+  const initial = migrationDirectories[0];
+  const trackedInitial = db.exec(`SELECT "name" FROM "_MinePulseMigration" WHERE "name" = '${initial}';`);
+  if (trackedInitial.length === 0) {
+    db.run(`INSERT INTO "_MinePulseMigration" ("name") VALUES ('${initial}');`);
+    console.log(`Marked existing schema as ${initial}`);
+  }
+}
+
+for (const migrationName of migrationDirectories) {
+  const applied = db.exec(
+    `SELECT "name" FROM "_MinePulseMigration" WHERE "name" = '${migrationName}';`
+  );
+
+  if (applied.length > 0) {
+    continue;
+  }
+
+  const migrationPath = path.join(migrationsPath, migrationName, "migration.sql");
+  const migration = fs.readFileSync(migrationPath, "utf8");
   db.run("PRAGMA foreign_keys = OFF;");
   db.run(migration);
   db.run("PRAGMA foreign_keys = ON;");
-  console.log(`Applied ${migrationPath} to ${dbPath}`);
-} else {
-  console.log("Database already has MinePulse tables; skipping migration apply.");
+  db.run(`INSERT INTO "_MinePulseMigration" ("name") VALUES ('${migrationName}');`);
+  console.log(`Applied ${migrationName} to ${dbPath}`);
 }
 
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });

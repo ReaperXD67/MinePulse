@@ -16,6 +16,10 @@ const adapter = new PrismaBetterSqlite3({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  await prisma.enforcementAction.deleteMany();
+  await prisma.serverReport.deleteMany();
+  await prisma.supportTicket.deleteMany();
+  await prisma.promoRedemption.deleteMany();
   await prisma.comment.deleteMany();
   await prisma.serverLike.deleteMany();
   await prisma.favorite.deleteMany();
@@ -25,6 +29,7 @@ async function main() {
   await prisma.pointLedger.deleteMany();
   await prisma.billingLedger.deleteMany();
   await prisma.server.deleteMany();
+  await prisma.promoCode.deleteMany();
   await prisma.pointPackage.deleteMany();
   await prisma.premiumTier.deleteMany();
   await prisma.user.deleteMany();
@@ -39,7 +44,8 @@ async function main() {
       username: "Aman Admin",
       passwordHash,
       role: UserRole.ADMIN,
-      walletPoints: 25000
+      walletPoints: 25000,
+      bio: "MinePulse platform administrator and economy moderator."
     }
   });
 
@@ -48,7 +54,8 @@ async function main() {
       email: "owner@minepulse.local",
       username: "Skyforge Owner",
       passwordHash: ownerHash,
-      role: UserRole.OWNER
+      role: UserRole.OWNER,
+      bio: "Economy server builder focused on fair progression and long-running communities."
     }
   });
 
@@ -60,7 +67,8 @@ async function main() {
       minecraftName: "PixelRunner",
       passwordHash: playerHash,
       role: UserRole.PLAYER,
-      walletPoints: 18500
+      walletPoints: 18500,
+      bio: "Survival player, event hunter, and new server creator."
     }
   });
 
@@ -93,6 +101,15 @@ async function main() {
     ]
   });
 
+  await prisma.promoCode.create({
+    data: {
+      code: "BOOST10",
+      bonusPercent: 10,
+      active: true,
+      maxRedemptions: 1000
+    }
+  });
+
   const now = new Date();
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const twoDaysFromNow = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
@@ -108,6 +125,8 @@ async function main() {
         region: "EU",
         tags: "Survival,Economy,Jobs",
         description: "A reward-heavy economy world with shops, crates, auctions, and player towns.",
+        longDescription: "Build a town, master a job, and trade through a player-led economy. Skyforge publishes every reward rule and keeps its MinePulse bridge online for transparent payouts.",
+        rules: "No hacked clients\nNo reward farming with alternate accounts\nKeep chat welcoming\nReport payout issues through MinePulse support",
         pointPool: 640000,
         rewardRatePerSecond: 1,
         maxPaidPlayers: 24,
@@ -115,7 +134,13 @@ async function main() {
         premiumPlan: PremiumPlanCode.DIAMOND,
         premiumUntil: weekFromNow,
         pluginSecret: "demo-secret-skyforge",
-        bannerImage: "/voxel-network.png"
+        bannerImage: "/voxel-network.png",
+        galleryImages: "/voxel-network.png,/voxel-network.png,/voxel-network.png",
+        websiteUrl: "https://example.com/skyforge",
+        discordUrl: "https://discord.com",
+        supportUrl: "https://example.com/skyforge/support",
+        lastHeartbeatAt: now,
+        lastPluginVersion: "0.2.0"
       }
     }),
     prisma.server.create({
@@ -128,6 +153,8 @@ async function main() {
         region: "US",
         tags: "SMP,Claims,Events",
         description: "Cozy SMP with weekend boss arenas and a careful no-pay-to-win shop.",
+        longDescription: "Ember SMP runs a seasonal survival world with community builds, claim protection, weekend bosses, and cosmetic-only rewards.",
+        rules: "No griefing\nNo automation used only to farm MinePulse rewards\nRespect claimed builds",
         pointPool: 215000,
         rewardRatePerSecond: 2,
         maxPaidPlayers: 12,
@@ -135,12 +162,16 @@ async function main() {
         premiumPlan: PremiumPlanCode.GOLD,
         premiumUntil: twoDaysFromNow,
         pluginSecret: "demo-secret-ember",
-        bannerImage: "/voxel-network.png"
+        bannerImage: "/voxel-network.png",
+        galleryImages: "/voxel-network.png,/voxel-network.png",
+        discordUrl: "https://discord.com",
+        lastHeartbeatAt: new Date(now.getTime() - 8 * 60 * 1000),
+        lastPluginVersion: "0.2.0"
       }
     }),
     prisma.server.create({
       data: {
-        ownerId: owner.id,
+        ownerId: player.id,
         slug: "voidcraft-hardcore",
         name: "Voidcraft Hardcore",
         host: "voidcraft.local",
@@ -148,13 +179,16 @@ async function main() {
         region: "ASIA",
         tags: "Hardcore,Quests,PvE",
         description: "Seasonal hardcore progression where long sessions unlock rare cosmetics.",
+        longDescription: "PixelRunner is building a player-led hardcore realm with short seasons, transparent reward caps, and permanent cosmetic history.",
+        rules: "One account per player\nNo combat logging\nNo AFK reward machines",
         pointPool: 0,
         rewardRatePerSecond: 1,
         maxPaidPlayers: 10,
         minPlaySecondsForComment: 3600,
         status: ServerStatus.ACTIVE,
         pluginSecret: "demo-secret-voidcraft",
-        bannerImage: "/voxel-network.png"
+        bannerImage: "/voxel-network.png",
+        galleryImages: "/voxel-network.png"
       }
     })
   ]);
@@ -206,6 +240,9 @@ async function main() {
       ipHash: "seeded-demo-hash",
       activeSeconds: 7200,
       rewardedPoints: 7200,
+      activityEvents: 42,
+      lastNonce: "seeded-heartbeat-nonce",
+      integrityVerified: true,
       status: "CLOSED",
       endedAt: new Date(now.getTime() - 60 * 60 * 1000)
     }
@@ -239,6 +276,26 @@ async function main() {
       moneyCents: 2999,
       planCode: "POINTS_1M",
       note: "Demo billing record"
+    }
+  });
+
+  await prisma.serverReport.create({
+    data: {
+      serverId: servers[1].id,
+      reporterId: player.id,
+      reason: "NO_REWARD",
+      details: "A verified session stopped earning while the server still showed a funded reward pool.",
+      status: "OPEN"
+    }
+  });
+
+  await prisma.supportTicket.create({
+    data: {
+      serverId: servers[0].id,
+      requesterId: player.id,
+      subject: "Rank delivery question",
+      body: "My purchase is queued. Can you confirm when the server bridge will deliver it?",
+      status: "OPEN"
     }
   });
 

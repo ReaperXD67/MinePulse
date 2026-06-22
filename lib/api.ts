@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
-export function routeError(error: unknown) {
+export async function routeError(error: unknown) {
   if (error instanceof Response) {
-    return error;
+    const message = (await error.text()).trim() || "Request failed";
+    return NextResponse.json({ error: message }, { status: error.status || 500 });
   }
 
   if (error instanceof ZodError) {

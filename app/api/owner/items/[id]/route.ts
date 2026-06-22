@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { StoreItemStatus, UserRole } from "@/lib/generated/prisma/client";
-import { requireUser } from "@/lib/auth";
+import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
 
@@ -16,7 +16,7 @@ const schema = z.object({
 });
 
 async function authorize(itemId: string) {
-  const user = await requireUser([UserRole.OWNER, UserRole.ADMIN]);
+  const user = await requireMember();
   const item = await prisma.storeItem.findUnique({ where: { id: itemId }, include: { server: true } });
 
   if (!item || (user.role !== UserRole.ADMIN && item.server.ownerId !== user.id)) {
