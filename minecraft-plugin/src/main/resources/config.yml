@@ -13,4 +13,5 @@ challenge:
   required: true
 
 movement:
+  # Distance squared is accumulated and signed between heartbeats.
   minimum-distance-squared: 0.04
