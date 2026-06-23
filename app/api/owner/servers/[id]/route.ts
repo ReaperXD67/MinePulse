@@ -24,8 +24,31 @@ const schema = z.object({
   rewardRatePerSecond: z.coerce.number().int().min(0).max(100).optional(),
   maxPaidPlayers: z.coerce.number().int().min(1).max(500).optional(),
   minPlaySecondsForComment: z.coerce.number().int().min(60).max(86400).optional(),
+  heartbeatIntervalSeconds: z.coerce.number().int().min(10).max(60).optional(),
+  purchasePollSeconds: z.coerce.number().int().min(10).max(120).optional(),
+  afkTimeoutSeconds: z.coerce.number().int().min(60).max(1800).optional(),
+  challengeEnabled: z.boolean().optional(),
+  challengeIntervalSeconds: z.coerce.number().int().min(60).max(3600).optional(),
+  challengeAnswerWindowSeconds: z.coerce.number().int().min(30).max(300).optional(),
+  challengeRequired: z.boolean().optional(),
+  minimumMovementDistance: z.coerce.number().min(0.05).max(3).optional(),
+  minimumActivityEvents: z.coerce.number().int().min(0).max(20).optional(),
+  botProtectionLevel: z.coerce.number().int().min(1).max(3).optional(),
   status: z.enum(["ACTIVE", "PAUSED"]).optional()
 });
+
+const policyFields = new Set([
+  "heartbeatIntervalSeconds",
+  "purchasePollSeconds",
+  "afkTimeoutSeconds",
+  "challengeEnabled",
+  "challengeIntervalSeconds",
+  "challengeAnswerWindowSeconds",
+  "challengeRequired",
+  "minimumMovementDistance",
+  "minimumActivityEvents",
+  "botProtectionLevel"
+]);
 
 async function authorize(serverId: string) {
   const user = await requireMember();
@@ -43,9 +66,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const { id } = await context.params;
     await authorize(id);
     const input = schema.parse(await request.json());
+    const policyChanged = Object.keys(input).some((key) => policyFields.has(key));
     const updated = await prisma.server.update({
       where: { id },
-      data: input
+      data: {
+        ...input,
+        ...(policyChanged ? { pluginConfigRevision: { increment: 1 } } : {})
+      }
     });
 
     return NextResponse.json({ serverId: updated.id, message: "Server updated" });

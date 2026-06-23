@@ -10,6 +10,8 @@ export type SignedHeartbeat = {
   movementScore: number;
   activityEvents: number;
   challengePassed?: boolean;
+  challengeId?: string;
+  challengeAnswer?: string;
   reportedSeconds: number;
   pluginVersion: string;
 };
@@ -29,8 +31,32 @@ export function clampHeartbeatSeconds(rawSeconds: number) {
   return Math.min(Math.floor(rawSeconds), 30);
 }
 
-export function challengeDue(activeSeconds: number) {
-  return activeSeconds > 0 && activeSeconds % 300 < 30;
+function challengeAnswerHash(challengeId: string, answer: string) {
+  return crypto
+    .createHmac("sha256", process.env.AUTH_SECRET || "minepulse")
+    .update(`${challengeId}:${answer.trim()}`)
+    .digest("hex");
+}
+
+export function createMathChallenge(answerWindowSeconds: number, now = new Date()) {
+  const left = crypto.randomInt(2, 10);
+  const right = crypto.randomInt(2, 10);
+  const challengeId = crypto.randomUUID();
+  const answer = String(left + right);
+
+  return {
+    challengeId,
+    question: `How much is ${left} + ${right}? Use /answer <value>`,
+    answerHash: challengeAnswerHash(challengeId, answer),
+    requiredAt: now,
+    expiresAt: new Date(now.getTime() + answerWindowSeconds * 1000)
+  };
+}
+
+export function verifyMathChallenge(challengeId: string, answer: string, expectedHash: string) {
+  const received = Buffer.from(challengeAnswerHash(challengeId, answer), "hex");
+  const expected = Buffer.from(expectedHash, "hex");
+  return received.length === expected.length && crypto.timingSafeEqual(received, expected);
 }
 
 export function heartbeatSignaturePayload(input: SignedHeartbeat) {
@@ -44,6 +70,8 @@ export function heartbeatSignaturePayload(input: SignedHeartbeat) {
     input.movementScore,
     input.activityEvents,
     input.challengePassed === undefined ? "none" : input.challengePassed,
+    input.challengeId || "none",
+    input.challengeAnswer || "none",
     input.reportedSeconds,
     input.pluginVersion
   ].join("\n");

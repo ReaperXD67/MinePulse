@@ -140,7 +140,7 @@ async function main() {
         discordUrl: "https://discord.com",
         supportUrl: "https://example.com/skyforge/support",
         lastHeartbeatAt: now,
-        lastPluginVersion: "0.2.0"
+        lastPluginVersion: "0.3.0"
       }
     }),
     prisma.server.create({
@@ -166,7 +166,7 @@ async function main() {
         galleryImages: "/voxel-network.png,/voxel-network.png",
         discordUrl: "https://discord.com",
         lastHeartbeatAt: new Date(now.getTime() - 8 * 60 * 1000),
-        lastPluginVersion: "0.2.0"
+        lastPluginVersion: "0.3.0"
       }
     }),
     prisma.server.create({

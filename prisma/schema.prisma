@@ -126,39 +126,50 @@ model User {
 }
 
 model Server {
-  id                       String          @id @default(cuid())
-  ownerId                  String
-  slug                     String          @unique
-  name                     String
-  host                     String
-  port                     Int             @default(25565)
-  version                  String
-  description              String
-  longDescription          String          @default("")
-  rules                    String          @default("")
-  region                   String
-  tags                     String
-  bannerImage              String?
-  galleryImages            String          @default("")
-  websiteUrl               String?
-  discordUrl               String?
-  supportUrl               String?
-  status                   ServerStatus    @default(ACTIVE)
-  trustStatus              TrustStatus     @default(VERIFIED)
-  riskScore                Int             @default(0)
-  pointPool                Int             @default(0)
-  rewardRatePerSecond      Int             @default(1)
-  maxPaidPlayers           Int             @default(20)
-  minPlaySecondsForComment Int             @default(1800)
-  premiumPlan              PremiumPlanCode @default(NONE)
-  premiumUntil             DateTime?
-  pluginSecret             String
-  botProtectionLevel       Int             @default(2)
-  lastHeartbeatAt          DateTime?
-  lastPluginVersion        String?
-  integrityFailures        Int             @default(0)
-  createdAt                DateTime        @default(now())
-  updatedAt                DateTime        @updatedAt
+  id                           String          @id @default(cuid())
+  ownerId                      String
+  slug                         String          @unique
+  name                         String
+  host                         String
+  port                         Int             @default(25565)
+  version                      String
+  description                  String
+  longDescription              String          @default("")
+  rules                        String          @default("")
+  region                       String
+  tags                         String
+  bannerImage                  String?
+  galleryImages                String          @default("")
+  websiteUrl                   String?
+  discordUrl                   String?
+  supportUrl                   String?
+  status                       ServerStatus    @default(ACTIVE)
+  trustStatus                  TrustStatus     @default(VERIFIED)
+  riskScore                    Int             @default(0)
+  pointPool                    Int             @default(0)
+  rewardRatePerSecond          Int             @default(1)
+  maxPaidPlayers               Int             @default(20)
+  minPlaySecondsForComment     Int             @default(1800)
+  premiumPlan                  PremiumPlanCode @default(NONE)
+  premiumUntil                 DateTime?
+  pluginSecret                 String
+  botProtectionLevel           Int             @default(2)
+  pluginConfigRevision         Int             @default(1)
+  heartbeatIntervalSeconds     Int             @default(20)
+  purchasePollSeconds          Int             @default(15)
+  afkTimeoutSeconds            Int             @default(300)
+  challengeEnabled             Boolean         @default(true)
+  challengeIntervalSeconds     Int             @default(300)
+  challengeAnswerWindowSeconds Int             @default(90)
+  challengeRequired            Boolean         @default(true)
+  minimumMovementDistance      Float           @default(0.2)
+  minimumActivityEvents        Int             @default(1)
+  lastHeartbeatAt              DateTime?
+  lastConfigSyncAt             DateTime?
+  lastPluginVersion            String?
+  integrityFailures            Int             @default(0)
+  createdAt                    DateTime        @default(now())
+  updatedAt                    DateTime        @updatedAt
 
   owner              User                @relation("OwnerServers", fields: [ownerId], references: [id], onDelete: Cascade)
   items              StoreItem[]
@@ -215,22 +226,28 @@ model Purchase {
 }
 
 model ServerSession {
-  id                String        @id @default(cuid())
-  serverId          String
-  userId            String
-  minecraftName     String
-  ipHash            String
-  startedAt         DateTime      @default(now())
-  lastHeartbeatAt   DateTime      @default(now())
-  endedAt           DateTime?
-  activeSeconds     Int           @default(0)
-  afkSeconds        Int           @default(0)
-  rewardedPoints    Int           @default(0)
-  suspiciousScore   Int           @default(0)
-  activityEvents    Int           @default(0)
-  lastNonce         String?
-  integrityVerified Boolean       @default(false)
-  status            SessionStatus @default(ACTIVE)
+  id                  String        @id @default(cuid())
+  serverId            String
+  userId              String
+  minecraftName       String
+  ipHash              String
+  startedAt           DateTime      @default(now())
+  lastHeartbeatAt     DateTime      @default(now())
+  endedAt             DateTime?
+  activeSeconds       Int           @default(0)
+  afkSeconds          Int           @default(0)
+  rewardedPoints      Int           @default(0)
+  suspiciousScore     Int           @default(0)
+  activityEvents      Int           @default(0)
+  lastNonce           String?
+  integrityVerified   Boolean       @default(false)
+  challengeId         String?
+  challengeQuestion   String?
+  challengeAnswerHash String?
+  challengeRequiredAt DateTime?
+  challengeExpiresAt  DateTime?
+  challengePassedAt   DateTime?
+  status              SessionStatus @default(ACTIVE)
 
   server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
