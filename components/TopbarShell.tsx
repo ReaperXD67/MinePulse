@@ -52,6 +52,11 @@ export function TopbarShell({ children }: { children: ReactNode }) {
   return (
     <header className={`topbar ${armed ? "topbar-armed" : ""} ${hidden ? "topbar-hidden" : ""}`}>
       {children}
+      <button className="command-handle" type="button" aria-label="Show navigation" onClick={() => setHidden(false)}>
+        <span />
+        <span />
+        <span />
+      </button>
     </header>
   );
 }

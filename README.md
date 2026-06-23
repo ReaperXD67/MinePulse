@@ -48,6 +48,7 @@ Seeded accounts:
 - `/account` combines the member wallet, public profile, purchases, play sessions, favorites, server publishing, campaign funding, store management, plugin credentials, and support inbox.
 - `/servers/[slug]` is the full server profile with screenshots, owner story, rules, store, verified reviews, support, reports, and trust telemetry.
 - `/members/[id]` shows a public member profile and published servers.
+- `/plugin` is the bridge download, installation, command, anti-AFK, and official support center.
 - `/admin` manages economy pricing, Gold/Diamond tiers, promo bonuses, reports, punishments, server trust, campaign credits, and statistics.
 - `/player` and `/owner` redirect to the unified account for backward compatibility.
 
@@ -61,7 +62,7 @@ Important endpoints:
 - `POST /api/plugin/purchases/pull` returns pending commands for a server.
 - `POST /api/plugin/purchases/ack` confirms delivery or refunds failed purchases.
 
-Version 0.2.0 accumulates movement and interaction telemetry between heartbeats, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, and can require a periodic `/mpcode` challenge. MinePulse calculates wallet rewards on the website; the plugin never directly edits balances.
+Version 0.3.0 syncs protection policy from Creator Studio, accumulates movement and interaction telemetry, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, and uses website-generated arithmetic `/answer` challenges. MinePulse calculates wallet rewards on the website; the plugin never directly edits balances.
 
 ## Plugin Build
 
@@ -73,7 +74,7 @@ From `minecraft-plugin/`:
 mvn clean package
 ```
 
-Copy the shaded jar from `minecraft-plugin/target/` into your Paper server `plugins/` folder, start once to generate config, then set:
+Download the ready jar from `/plugin`, or copy the shaded jar from `minecraft-plugin/target/` into your Paper server `plugins/` folder. Start once to generate config, then set only the connection credentials:
 
 ```yaml
 api-base-url: "https://your-domain.com"

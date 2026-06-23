@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
+  Activity,
   Coins,
   Copy,
+  Download,
   ExternalLink,
   Gem,
   LifeBuoy,
@@ -15,6 +17,7 @@ import {
   Server,
   ShieldCheck,
   TicketCheck,
+  Timer,
   Trash2
 } from "lucide-react";
 import { money, points, shortDate } from "@/lib/format";
@@ -47,6 +50,18 @@ type OwnerServer = {
   lastHeartbeatAt: string | null;
   lastPluginVersion: string | null;
   pluginSecret: string;
+  pluginConfigRevision: number;
+  heartbeatIntervalSeconds: number;
+  purchasePollSeconds: number;
+  afkTimeoutSeconds: number;
+  challengeEnabled: boolean;
+  challengeIntervalSeconds: number;
+  challengeAnswerWindowSeconds: number;
+  challengeRequired: boolean;
+  minimumMovementDistance: number;
+  minimumActivityEvents: number;
+  botProtectionLevel: number;
+  lastConfigSyncAt: string | null;
   reportCount: number;
   favoriteCount: number;
   likeCount: number;
@@ -172,6 +187,23 @@ export function OwnerConsole({
     if (ok) {
       formElement.reset();
     }
+  }
+
+  async function updatePluginPolicy(event: React.FormEvent<HTMLFormElement>, serverId: string) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await send(`/api/owner/servers/${serverId}`, {
+      heartbeatIntervalSeconds: form.get("heartbeatIntervalSeconds"),
+      purchasePollSeconds: form.get("purchasePollSeconds"),
+      afkTimeoutSeconds: form.get("afkTimeoutSeconds"),
+      challengeEnabled: form.get("challengeEnabled") === "on",
+      challengeIntervalSeconds: form.get("challengeIntervalSeconds"),
+      challengeAnswerWindowSeconds: form.get("challengeAnswerWindowSeconds"),
+      challengeRequired: form.get("challengeRequired") === "on",
+      minimumMovementDistance: form.get("minimumMovementDistance"),
+      minimumActivityEvents: form.get("minimumActivityEvents"),
+      botProtectionLevel: form.get("botProtectionLevel")
+    }, "PATCH");
   }
 
   async function updateTicket(event: React.FormEvent<HTMLFormElement>, ticketId: string) {
@@ -324,13 +356,36 @@ export function OwnerConsole({
 
               <section className="subpanel">
                 <div className="panel-header compact-heading"><div><p className="eyebrow"><RadioTower size={14} /> Bridge</p><h4>Plugin connection</h4></div></div>
+                <div className="bridge-actions">
+                  <Link className="solid-button" href="/plugin"><Download size={15} /> Install plugin</Link>
+                  <span className="status-pill"><Activity size={13} /> Policy r{server.pluginConfigRevision}</span>
+                </div>
                 <div className="credential-row"><div><span>Server ID</span><code>{server.id}</code></div><button className="icon-button" type="button" title="Copy server ID" onClick={() => copy(server.id, "Server ID")}><Copy size={15} /></button></div>
                 <div className="credential-row"><div><span>Plugin secret</span><code>{server.pluginSecret}</code></div><button className="icon-button" type="button" title="Copy plugin secret" onClick={() => copy(server.pluginSecret, "Plugin secret")}><Copy size={15} /></button></div>
                 <div className="integrity-grid">
                   <div><span>Last signed heartbeat</span><strong>{server.lastHeartbeatAt ? shortDate(server.lastHeartbeatAt) : "Not connected"}</strong></div>
+                  <div><span>Last policy sync</span><strong>{server.lastConfigSyncAt ? shortDate(server.lastConfigSyncAt) : "Waiting for plugin"}</strong></div>
                   <div><span>Plugin version</span><strong>{server.lastPluginVersion || "-"}</strong></div>
                   <div><span>Risk score</span><strong>{server.riskScore}</strong></div>
                 </div>
+                <form className="plugin-policy-form" onSubmit={(event) => updatePluginPolicy(event, server.id)}>
+                  <div className="policy-form-heading"><Timer size={16} /><div><strong>Live anti-AFK policy</strong><span>Saved here and synced by the bridge.</span></div></div>
+                  <div className="form-grid two">
+                    <div className="form-row"><label>AFK after seconds</label><input className="field" name="afkTimeoutSeconds" type="number" min="60" max="1800" defaultValue={server.afkTimeoutSeconds} /></div>
+                    <div className="form-row"><label>Challenge every seconds</label><input className="field" name="challengeIntervalSeconds" type="number" min="60" max="3600" defaultValue={server.challengeIntervalSeconds} /></div>
+                    <div className="form-row"><label>Answer window seconds</label><input className="field" name="challengeAnswerWindowSeconds" type="number" min="30" max="300" defaultValue={server.challengeAnswerWindowSeconds} /></div>
+                    <div className="form-row"><label>Heartbeat seconds</label><input className="field" name="heartbeatIntervalSeconds" type="number" min="10" max="60" defaultValue={server.heartbeatIntervalSeconds} /></div>
+                    <div className="form-row"><label>Purchase poll seconds</label><input className="field" name="purchasePollSeconds" type="number" min="10" max="120" defaultValue={server.purchasePollSeconds} /></div>
+                    <div className="form-row"><label>Movement distance</label><input className="field" name="minimumMovementDistance" type="number" min="0.05" max="3" step="0.05" defaultValue={server.minimumMovementDistance} /></div>
+                    <div className="form-row"><label>Interactions per heartbeat</label><input className="field" name="minimumActivityEvents" type="number" min="0" max="20" defaultValue={server.minimumActivityEvents} /></div>
+                    <div className="form-row"><label>Protection level</label><select className="select" name="botProtectionLevel" defaultValue={server.botProtectionLevel}><option value="1">Balanced</option><option value="2">Strict</option><option value="3">Maximum</option></select></div>
+                  </div>
+                  <div className="policy-toggles">
+                    <label className="toggle-row"><input name="challengeEnabled" type="checkbox" defaultChecked={server.challengeEnabled} /> Arithmetic checks enabled</label>
+                    <label className="toggle-row"><input name="challengeRequired" type="checkbox" defaultChecked={server.challengeRequired} /> Pause rewards until answered</label>
+                  </div>
+                  <button className="ghost-button" disabled={busy} type="submit"><ShieldCheck size={15} /> Sync protection policy</button>
+                </form>
               </section>
             </div>
           </div>

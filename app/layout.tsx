@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Coins, Gamepad2, LogOut, Settings2, Store, UserRound, WalletCards } from "lucide-react";
+import { Coins, Gamepad2, LogOut, MessageCircle, PlugZap, Settings2, Store, UserRound, WalletCards } from "lucide-react";
 import "./globals.css";
 import { TopbarShell } from "@/components/TopbarShell";
 import { currentUser } from "@/lib/auth";
@@ -18,14 +18,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const user = await currentUser();
+  const discordUrl = process.env.NEXT_PUBLIC_DISCORD_URL || "/plugin#support";
 
   return (
     <html lang="en">
       <body>
         <div className="page-shell">
           <TopbarShell>
-            <div className="topbar-inner">
-              <Link href="/" className="brand">
+            <div className="signal-rail">
+              <Link href="/" className="brand nav-brand-node" aria-label="MinePulse home">
                 <span className="brand-mark" aria-hidden="true">
                   <span />
                   <span />
@@ -37,29 +38,35 @@ export default async function RootLayout({
                   <span />
                   <span />
                 </span>
-                <span>MinePulse</span>
+                <span className="brand-word"><strong>Mine</strong><strong>Pulse</strong></span>
               </Link>
 
-              <nav className="nav" aria-label="Primary navigation">
-                <Link href="/">
-                  <Store size={16} /> Servers
+              <nav className="nav nav-command-deck" aria-label="Primary navigation">
+                <Link href="/" aria-label="Servers" title="Servers">
+                  <span className="nav-index">01</span><Store size={17} /> <span>Servers</span>
+                </Link>
+                <Link href="/plugin" aria-label="MinePulse Bridge" title="MinePulse Bridge">
+                  <span className="nav-index">02</span><PlugZap size={17} /> <span>Bridge</span>
                 </Link>
                 {user ? (
                   <>
-                    <Link href="/account" title="Account">
-                      <WalletCards size={16} /> Account
+                    <Link href="/account" aria-label="Account" title="Account">
+                      <span className="nav-index">03</span><WalletCards size={17} /> <span>Account</span>
                     </Link>
                     {user.role === UserRole.ADMIN ? (
-                      <Link href="/admin" title="Control center">
-                        <Settings2 size={16} /> Control
+                      <Link href="/admin" aria-label="Control center" title="Control center">
+                        <span className="nav-index">04</span><Settings2 size={17} /> <span>Control</span>
                       </Link>
                     ) : null}
                   </>
                 ) : null}
+                <a href={discordUrl} target={discordUrl.startsWith("http") ? "_blank" : undefined} rel={discordUrl.startsWith("http") ? "noreferrer" : undefined} aria-label="Official Discord support" title="Official Discord support">
+                  <MessageCircle size={17} /><span className="nav-discord-label">Discord</span>
+                </a>
               </nav>
 
               {user ? (
-                <div className="user-chip">
+                <div className="user-chip nav-account-node">
                   <Gamepad2 size={18} />
                   <div>
                     <strong>{user.username}</strong>
@@ -74,7 +81,7 @@ export default async function RootLayout({
                   </form>
                 </div>
               ) : (
-                <Link className="solid-button login-cta" href="/login">
+                <Link className="solid-button login-cta nav-account-node" href="/login">
                   <UserRound size={16} /> Login
                 </Link>
               )}
