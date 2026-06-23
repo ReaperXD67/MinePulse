@@ -1,13 +1,23 @@
 name: MinePulseBridge
 main: com.minepulse.bridge.MinePulseBridgePlugin
-version: 0.2.0
+version: 0.3.0
 api-version: "1.20"
 author: MinePulse
 description: Verified playtime rewards and purchase delivery bridge for MinePulse.
 commands:
+  answer:
+    description: Answer a website-verified MinePulse activity check.
+    usage: /answer <value>
   mpcode:
-    description: Confirm the MinePulse anti-AFK challenge.
-    usage: /mpcode <code>
+    description: Backward-compatible alias for /answer.
+    usage: /mpcode <value>
+  points:
+    description: Show your MinePulse wallet and verified session rewards.
+  pool:
+    description: Show this server's MinePulse campaign pool and reward rate.
+  minepulse:
+    description: Show MinePulse statistics or command help.
+    usage: /minepulse [pool|help]
 permissions:
   minepulse.admin:
     description: Allows administrative MinePulse diagnostics.
