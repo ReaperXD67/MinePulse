@@ -1,4 +1,4 @@
-import { Coins, Crosshair, RadioTower, RefreshCw, Server, ShieldCheck, Sparkles, WalletCards } from "lucide-react";
+import { Coins, Crosshair, RadioTower, RefreshCw, Server, ShieldCheck, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
 import { VoxelHeroScene } from "@/components/VoxelHeroScene";
@@ -107,12 +107,11 @@ export default async function MarketplacePage() {
         <div className="container arena-layer">
           <div className="headline-copy">
             <p className="eyebrow">
-              <ShieldCheck size={15} /> Verified playtime economy
+              <ShieldCheck size={15} /> Minecraft time, converted
             </p>
-            <h1>Play servers. Earn points. Spend rewards anywhere.</h1>
+            <h1>Minecraft playtime, rewarded.</h1>
             <p className="lead">
-              MinePulse turns real Minecraft playtime into a cross-server economy. Owners fund rewards
-              to grow communities; players earn without buying ranks with cash.
+              Enter funded worlds, play for real, and carry what you earn across the network. No cash ranks required.
             </p>
             <div className="command-strip">
               <Link className="solid-button" href="#servers">
@@ -133,47 +132,31 @@ export default async function MarketplacePage() {
             </div>
           </div>
 
-          <aside className="hero-hud" aria-label="Platform snapshot">
-            <div className="hud-tile" style={{ "--accent": "var(--lime)" } as React.CSSProperties}>
-              <span>Reward pools</span>
-              <strong>{points(pools._sum.pointPool ?? 0)}</strong>
-            </div>
-            <div className="hud-tile" style={{ "--accent": "var(--cyan)" } as React.CSSProperties}>
-              <span>Members</span>
-              <strong>{usersCount}</strong>
-            </div>
-            <div className="hud-tile" style={{ "--accent": "var(--gold)" } as React.CSSProperties}>
-              <span>Queued perks</span>
-              <strong>{purchaseCount}</strong>
-            </div>
-            <div className="hud-tile" style={{ "--accent": "var(--rose)" } as React.CSSProperties}>
-              <span>Verified play</span>
-              <strong>{compact(playtime._sum.activeSeconds ?? 0)}s</strong>
+          <aside className="network-beacon" aria-label="Live network signal">
+            <div className="beacon-orbit" aria-hidden="true"><i /><i /><i /><strong>LIVE</strong></div>
+            <div className="beacon-readout">
+              <p>Network telemetry</p>
+              <div><span>Campaign signal</span><strong>{points(pools._sum.pointPool ?? 0)}</strong></div>
+              <div><span>Linked members</span><strong>{usersCount}</strong></div>
+              <div><span>Verified play</span><strong>{compact(playtime._sum.activeSeconds ?? 0)}s</strong></div>
+              <div><span>Queued perks</span><strong>{purchaseCount}</strong></div>
             </div>
           </aside>
         </div>
       </section>
 
-      <section className="container market-pulse" aria-label="Trust signals">
-        <div className="pulse-item">
-          <Sparkles size={18} />
-          <span>Premium boosts shuffle first, never burying normal servers forever.</span>
-        </div>
-        <div className="pulse-item">
-          <Coins size={18} />
-          <span>When a server pool hits zero, it disappears until the owner funds it again.</span>
-        </div>
-        <div className="pulse-item">
-          <ShieldCheck size={18} />
-          <span>Plugin heartbeats reward movement, activity, and challenge-passed sessions only.</span>
-        </div>
+      <section className="container network-rules" aria-label="Network rules">
+        <div><b>01</b><span>Premium worlds shuffle first. Every other funded world still gets a fair draw.</span></div>
+        <div><b>02</b><span>Empty campaign pools leave the atlas until the owner funds them again.</span></div>
+        <div><b>03</b><span>Signed bridge activity, movement, and challenges decide every reward.</span></div>
       </section>
 
       <section className="container" id="servers">
         <div className="section-bar">
           <div>
-            <h2>Live server list</h2>
-            <p>Premium servers shuffle first. Regular listings reshuffle every refresh. Empty pools are hidden.</p>
+            <p className="eyebrow"><RadioTower size={14} /> Live directory</p>
+            <h2>Worlds transmitting now</h2>
+            <p>No filters and no permanent first place. Refresh to deal the funded worlds again.</p>
           </div>
           <Link className="ghost-button" href="/">
             <RefreshCw size={16} /> Refresh list
