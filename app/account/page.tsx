@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Coins, ExternalLink, Heart, RadioTower, ReceiptText, Server, ShieldCheck, Timer } from "lucide-react";
 import { OwnerConsole } from "@/components/OwnerConsole";
 import { ProfileForm } from "@/components/ProfileForm";
+import { MinecraftLinkPanel } from "@/components/MinecraftLinkPanel";
 import { currentUser } from "@/lib/auth";
 import { minutesLabel, money, points, shortDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -194,6 +195,7 @@ export default async function AccountPage() {
           bio={profile?.bio || ""}
           avatarUrl={profile?.avatarUrl || null}
         />
+        <MinecraftLinkPanel minecraftName={profile?.minecraftName || null} isLinked={Boolean(profile?.minecraftUuid)} />
       </section>
 
       <section id="servers" className="section-heading-block">

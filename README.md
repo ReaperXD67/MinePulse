@@ -42,6 +42,32 @@ Seeded accounts:
 | Skyforge member | `owner@minepulse.local` | `owner123` |
 | PixelRunner member | `player@minepulse.local` | `player123` |
 
+## Test With Minecraft
+
+Docker Desktop can launch a real Paper 1.21.4 server with the downloadable MinePulse Bridge already mounted:
+
+```bash
+npm run db:seed
+npm run dev
+npm run game:test:up
+npm run game:test:status
+```
+
+Wait until `MinePulseBridge` appears in green, then connect Minecraft Java Edition 1.21.4 to `localhost:25565`. The test server uses offline mode only for local development.
+
+1. Sign in to the website as PixelRunner and open **Account -> Minecraft identity**.
+2. Create a ten-minute link code.
+3. In Minecraft, run `/minepulse link <code>`.
+4. Use `/points`, `/pool`, and `/minepulse help` while testing.
+5. After five verified minutes, answer the activity prompt with `/answer <value>`.
+
+To watch Paper and bridge logs or remove the test server:
+
+```bash
+npm run game:test:logs
+npm run game:test:down
+```
+
 ## Key Flows
 
 - `/` shows the randomized marketplace. Premium servers shuffle first. Regular servers shuffle below. Empty campaigns are hidden.
@@ -62,7 +88,7 @@ Important endpoints:
 - `POST /api/plugin/purchases/pull` returns pending commands for a server.
 - `POST /api/plugin/purchases/ack` confirms delivery or refunds failed purchases.
 
-Version 0.3.0 syncs protection policy from Creator Studio, accumulates movement and interaction telemetry, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, and uses website-generated arithmetic `/answer` challenges. MinePulse calculates wallet rewards on the website; the plugin never directly edits balances.
+Version 0.3.1 syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, accumulates movement and interaction telemetry, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, and uses website-generated arithmetic `/answer` challenges. MinePulse calculates wallet rewards on the website; the plugin never directly edits balances.
 
 ## Plugin Build
 

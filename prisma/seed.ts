@@ -16,6 +16,7 @@ const adapter = new PrismaBetterSqlite3({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  await prisma.minecraftLinkCode.deleteMany();
   await prisma.enforcementAction.deleteMany();
   await prisma.serverReport.deleteMany();
   await prisma.supportTicket.deleteMany();
@@ -63,7 +64,6 @@ async function main() {
     data: {
       email: "player@minepulse.local",
       username: "PixelRunner",
-      minecraftUuid: "00000000-0000-0000-0000-000000000042",
       minecraftName: "PixelRunner",
       passwordHash: playerHash,
       role: UserRole.PLAYER,
@@ -117,6 +117,7 @@ async function main() {
   const servers = await Promise.all([
     prisma.server.create({
       data: {
+        id: "demo-server-skyforge",
         ownerId: owner.id,
         slug: "skyforge-economy",
         name: "Skyforge Economy",
@@ -140,11 +141,12 @@ async function main() {
         discordUrl: "https://discord.com",
         supportUrl: "https://example.com/skyforge/support",
         lastHeartbeatAt: now,
-        lastPluginVersion: "0.3.0"
+        lastPluginVersion: "0.3.1"
       }
     }),
     prisma.server.create({
       data: {
+        id: "demo-server-ember",
         ownerId: owner.id,
         slug: "ember-smp",
         name: "Ember SMP",
@@ -166,11 +168,12 @@ async function main() {
         galleryImages: "/voxel-network.png,/voxel-network.png",
         discordUrl: "https://discord.com",
         lastHeartbeatAt: new Date(now.getTime() - 8 * 60 * 1000),
-        lastPluginVersion: "0.3.0"
+        lastPluginVersion: "0.3.1"
       }
     }),
     prisma.server.create({
       data: {
+        id: "demo-server-voidcraft",
         ownerId: player.id,
         slug: "voidcraft-hardcore",
         name: "Voidcraft Hardcore",

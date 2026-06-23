@@ -27,6 +27,7 @@ const commands = [
   { command: "/points", detail: "Wallet, verified playtime, and rewards earned on the current server." },
   { command: "/pool", detail: "The server campaign balance and current reward rate." },
   { command: "/answer <value>", detail: "Submit the website-generated arithmetic activity check." },
+  { command: "/minepulse link <code>", detail: "Connect this Minecraft identity to the account that owns the wallet." },
   { command: "/minepulse help", detail: "Show the available bridge commands in game." }
 ];
 
@@ -38,11 +39,11 @@ export default function PluginPage() {
       <section className="plugin-hero" style={{ backgroundImage: "url('/voxel-network.png')" }}>
         <div className="plugin-hero-shade" />
         <div className="container plugin-hero-content">
-          <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.3.0</span><i>Paper 1.20-1.21</i></div>
+          <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.3.1</span><i>Paper 1.20-1.21</i></div>
           <h1>MinePulse Bridge</h1>
           <p>Connect real Minecraft activity to the reward economy. The website owns policy and balances; the plugin verifies play, delivers purchases, and stays deliberately small.</p>
           <div className="inline-actions plugin-hero-actions">
-            <a className="solid-button download-button" href="/downloads/MinePulseBridge-0.3.0.jar" download>
+            <a className="solid-button download-button" href="/downloads/MinePulseBridge-0.3.1.jar" download>
               <ArrowDownToLine size={17} /> Download jar
             </a>
             <Link className="ghost-button" href="/account#servers"><ServerCog size={17} /> Open server setup</Link>

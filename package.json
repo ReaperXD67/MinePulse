@@ -12,7 +12,11 @@
     "db:migrate": "prisma migrate dev",
     "db:apply": "node scripts/apply-sqlite-migration.mjs",
     "db:seed": "prisma db seed",
-    "assets:generate": "node scripts/generate-assets.mjs"
+    "assets:generate": "node scripts/generate-assets.mjs",
+    "game:test:up": "docker compose -f docker-compose.game-test.yml up -d",
+    "game:test:logs": "docker compose -f docker-compose.game-test.yml logs -f paper",
+    "game:test:status": "docker exec minepulse-paper-test rcon-cli plugins",
+    "game:test:down": "docker compose -f docker-compose.game-test.yml down -v"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

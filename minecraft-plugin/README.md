@@ -1,4 +1,4 @@
-# MinePulse Bridge 0.3.0
+# MinePulse Bridge 0.3.1
 
 The Paper plugin connects real Minecraft activity to MinePulse. It sends signed telemetry, receives website-managed protection policy, shows activity challenges, reports player statistics, and delivers store purchases as console commands.
 
@@ -11,7 +11,7 @@ The Paper plugin connects real Minecraft activity to MinePulse. It sends signed 
 
 ## Install
 
-1. Download `MinePulseBridge-0.3.0.jar` from `/plugin` on the website.
+1. Download `MinePulseBridge-0.3.1.jar` from `/plugin` on the website.
 2. Copy it into the Paper server's `plugins/` directory.
 3. Start Paper once, then stop it after `plugins/MinePulseBridge/config.yml` is created.
 4. In MinePulse, open **Account -> Your servers -> Plugin connection**.
@@ -24,6 +24,8 @@ plugin-secret: "keep-this-private"
 ```
 
 6. Start Paper. The console should report that the website policy synced.
+
+Docker deployments can provide the same three values as `MINEPULSE_API_BASE_URL`, `MINEPULSE_SERVER_ID`, and `MINEPULSE_PLUGIN_SECRET` environment variables. Environment variables take precedence over `config.yml`.
 
 For same-machine development, `api-base-url` can be `http://localhost:3000`. On a different host, `localhost` is wrong; use the public HTTPS URL reachable from the Minecraft server.
 
@@ -49,6 +51,7 @@ Only connection credentials remain local because the plugin needs them before it
 - `/points` shows the player's platform wallet, current server rewards, and verified playtime.
 - `/pool` shows the server campaign pool and reward rate.
 - `/minepulse help` lists commands.
+- `/minepulse link <code>` connects the in-game UUID to a signed-in website account using a ten-minute code.
 - `/mpcode <value>` remains as a backwards-compatible alias for `/answer`.
 
 ## Verification Flow

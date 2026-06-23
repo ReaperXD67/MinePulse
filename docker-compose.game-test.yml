@@ -1,0 +1,36 @@
+services:
+  paper:
+    image: itzg/minecraft-server:java21
+    container_name: minepulse-paper-test
+    ports:
+      - "25565:25565"
+      - "127.0.0.1:25575:25575"
+    environment:
+      EULA: "TRUE"
+      TYPE: "PAPER"
+      VERSION: "1.21.4"
+      ONLINE_MODE: "FALSE"
+      ENABLE_RCON: "TRUE"
+      RCON_PASSWORD: "minepulse-local-test"
+      MINEPULSE_API_BASE_URL: "http://host.docker.internal:3000"
+      MINEPULSE_SERVER_ID: "demo-server-skyforge"
+      MINEPULSE_PLUGIN_SECRET: "demo-secret-skyforge"
+      MEMORY: "2G"
+      JVM_OPTS: "-Djava.net.preferIPv4Stack=true"
+      MAX_PLAYERS: "10"
+      DIFFICULTY: "peaceful"
+      MOTD: "MinePulse local bridge test"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - minepulse-paper-data:/data
+      - ./public/downloads/MinePulseBridge-0.3.1.jar:/plugins/MinePulseBridge.jar:ro
+    healthcheck:
+      test: ["CMD", "mc-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 45s
+
+volumes:
+  minepulse-paper-data:

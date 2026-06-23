@@ -123,6 +123,19 @@ model User {
   supportTickets     SupportTicket[]
   promoRedemptions   PromoRedemption[]
   enforcementActions EnforcementAction[] @relation("AdminEnforcement")
+  minecraftLinkCodes MinecraftLinkCode[]
+}
+
+model MinecraftLinkCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model Server {

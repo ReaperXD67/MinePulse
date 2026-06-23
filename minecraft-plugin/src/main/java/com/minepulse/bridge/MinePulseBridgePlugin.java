@@ -53,10 +53,13 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   @Override
   public void onEnable() {
     saveDefaultConfig();
-    http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
-    apiBaseUrl = trimTrailingSlash(getConfig().getString("api-base-url", "http://localhost:3000"));
-    serverId = getConfig().getString("server-id", "");
-    pluginSecret = getConfig().getString("plugin-secret", "");
+    http = HttpClient.newBuilder()
+      .connectTimeout(Duration.ofSeconds(8))
+      .version(HttpClient.Version.HTTP_1_1)
+      .build();
+    apiBaseUrl = trimTrailingSlash(connectionValue("MINEPULSE_API_BASE_URL", "api-base-url", "http://localhost:3000"));
+    serverId = connectionValue("MINEPULSE_SERVER_ID", "server-id", "");
+    pluginSecret = connectionValue("MINEPULSE_PLUGIN_SECRET", "plugin-secret", "");
 
     Bukkit.getPluginManager().registerEvents(this, this);
     registerCommand("answer");
@@ -162,6 +165,15 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       return true;
     }
 
+    if (name.equals("minepulse") && args.length > 0 && args[0].equalsIgnoreCase("link")) {
+      if (args.length < 2) {
+        player.sendMessage(prefix() + ChatColor.YELLOW + "Use /minepulse link <code> from your MinePulse account.");
+      } else {
+        linkAccount(player, args[1]);
+      }
+      return true;
+    }
+
     boolean poolOnly = name.equals("pool") || (name.equals("minepulse") && args.length > 0 && args[0].equalsIgnoreCase("pool"));
     fetchPlayerStats(player, poolOnly);
     return true;
@@ -197,6 +209,23 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     player.sendMessage(prefix() + ChatColor.WHITE + "/points" + ChatColor.GRAY + " - wallet and session rewards");
     player.sendMessage(prefix() + ChatColor.WHITE + "/pool" + ChatColor.GRAY + " - this server's campaign balance");
     player.sendMessage(prefix() + ChatColor.WHITE + "/answer <value>" + ChatColor.GRAY + " - answer an activity check");
+    player.sendMessage(prefix() + ChatColor.WHITE + "/minepulse link <code>" + ChatColor.GRAY + " - connect your website account");
+  }
+
+  private void linkAccount(Player player, String code) {
+    JsonObject payload = credentials();
+    payload.addProperty("code", code);
+    payload.addProperty("minecraftUuid", player.getUniqueId().toString());
+    payload.addProperty("minecraftName", player.getName());
+    Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+      try {
+        JsonObject response = post("/api/plugin/link", payload);
+        String message = response.has("message") ? response.get("message").getAsString() : "Minecraft account linked.";
+        Bukkit.getScheduler().runTask(this, () -> player.sendMessage(prefix() + ChatColor.GREEN + message));
+      } catch (Exception error) {
+        Bukkit.getScheduler().runTask(this, () -> player.sendMessage(prefix() + ChatColor.RED + "Link failed: " + error.getMessage()));
+      }
+    });
   }
 
   private void sendHeartbeats() {
@@ -449,6 +478,14 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       return "http://localhost:3000";
     }
     return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
+  }
+
+  private String connectionValue(String environmentName, String configPath, String fallback) {
+    String environmentValue = System.getenv(environmentName);
+    if (environmentValue != null && !environmentValue.isBlank()) {
+      return environmentValue.trim();
+    }
+    return getConfig().getString(configPath, fallback);
   }
 
   private String prefix() {
