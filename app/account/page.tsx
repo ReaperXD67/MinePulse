@@ -4,6 +4,7 @@ import { Coins, ExternalLink, Heart, RadioTower, ReceiptText, Server, ShieldChec
 import { OwnerConsole } from "@/components/OwnerConsole";
 import { ProfileForm } from "@/components/ProfileForm";
 import { MinecraftLinkPanel } from "@/components/MinecraftLinkPanel";
+import { FriendPanel } from "@/components/FriendPanel";
 import { currentUser } from "@/lib/auth";
 import { minutesLabel, money, points, shortDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -16,7 +17,7 @@ export default async function AccountPage() {
     redirect("/login");
   }
 
-  const [profile, purchases, sessions, favorites, ledger, servers, pointPackages, premiumTiers, billing, tickets] =
+  const [profile, purchases, sessions, favorites, ledger, servers, pointPackages, premiumTiers, billing, tickets, friendships] =
     await Promise.all([
       prisma.user.findUnique({ where: { id: user.id } }),
       prisma.purchase.findMany({
@@ -64,11 +65,47 @@ export default async function AccountPage() {
         include: { server: true },
         orderBy: { updatedAt: "desc" },
         take: 8
+      }),
+      prisma.friendship.findMany({
+        where: { userId: user.id },
+        include: {
+          friend: {
+            select: {
+              id: true,
+              username: true,
+              minecraftName: true,
+              avatarUrl: true,
+              sessions: {
+                include: { server: { select: { name: true, slug: true } } },
+                orderBy: { lastHeartbeatAt: "desc" },
+                take: 1
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: "desc" }
       })
     ]);
 
   const totalPlay = sessions.reduce((sum, session) => sum + session.activeSeconds, 0);
   const campaignCredits = servers.reduce((sum, server) => sum + server.pointPool, 0);
+  const friendRows = friendships.map((link) => {
+    const latest = link.friend.sessions[0];
+    const online = Boolean(
+      latest?.status === "ACTIVE" && Date.now() - latest.lastHeartbeatAt.getTime() <= 120000
+    );
+
+    return {
+      id: link.friend.id,
+      username: link.friend.username,
+      minecraftName: link.friend.minecraftName,
+      avatarUrl: link.friend.avatarUrl,
+      online,
+      lastSeenAt: latest?.lastHeartbeatAt.toISOString() ?? null,
+      serverName: latest?.server.name ?? null,
+      serverSlug: latest?.server.slug ?? null
+    };
+  });
   const initials = (profile?.username || user.username)
     .split(" ")
     .map((part) => part[0])
@@ -94,6 +131,7 @@ export default async function AccountPage() {
         </div>
         <nav className="account-nav" aria-label="Account sections">
           <a href="#overview">Overview</a>
+          <a href="#friends">Friends</a>
           <a href="#servers">Servers</a>
           <a href="#support">Support</a>
         </nav>
@@ -192,10 +230,15 @@ export default async function AccountPage() {
         <ProfileForm
           username={profile?.username || user.username}
           minecraftName={profile?.minecraftName || null}
+          friendsPrivate={profile?.friendsPrivate ?? false}
           bio={profile?.bio || ""}
           avatarUrl={profile?.avatarUrl || null}
         />
         <MinecraftLinkPanel minecraftName={profile?.minecraftName || null} isLinked={Boolean(profile?.minecraftUuid)} />
+      </section>
+
+      <section id="friends">
+        <FriendPanel friends={friendRows} />
       </section>
 
       <section id="servers" className="section-heading-block">
@@ -253,6 +296,7 @@ export default async function AccountPage() {
             description: item.description,
             pricePoints: item.pricePoints,
             command: item.command,
+            requiresOnline: item.requiresOnline,
             status: item.status
           })),
           supportTickets: server.supportTickets.map((ticket) => ({

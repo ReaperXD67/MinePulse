@@ -28,11 +28,15 @@ export async function POST(request: Request) {
     const result = await prisma.$transaction(async (tx) => {
       const buyer = await tx.user.findUnique({
         where: { id: user.id },
-        select: { id: true, walletPoints: true, minecraftName: true, username: true }
+        select: { id: true, walletPoints: true, minecraftUuid: true, minecraftName: true, username: true }
       });
 
       if (!buyer || buyer.walletPoints < item.pricePoints) {
         throw new Response("Not enough points", { status: 400 });
+      }
+
+      if (!buyer.minecraftUuid) {
+        throw new Response("Link your Minecraft account before buying server items", { status: 400 });
       }
 
       const updatedBuyer = await tx.user.update({
@@ -56,7 +60,8 @@ export async function POST(request: Request) {
           buyerId: buyer.id,
           serverId: item.serverId,
           itemId: item.id,
-          commandSnapshot: item.command
+          commandSnapshot: item.command,
+          requiresOnline: item.requiresOnline
         }
       });
     });

@@ -1,10 +1,10 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
   CartesianGrid,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
@@ -12,10 +12,31 @@ import {
 import type { ChartPoint } from "@/lib/stats";
 
 export function StatsChart({ data }: { data: ChartPoint[] }) {
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const element = shellRef.current;
+    if (!element) {
+      return;
+    }
+
+    function updateWidth() {
+      setWidth(Math.max(260, Math.floor(element?.clientWidth || 0)));
+    }
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const chartWidth = Math.max(260, width);
+
   return (
-    <div className="chart-box">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+    <div className="chart-box" ref={shellRef}>
+      {width > 0 ? (
+        <AreaChart data={data} width={chartWidth} height={260} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id="rewardFill" x1="0" x2="0" y1="0" y2="1">
               <stop offset="5%" stopColor="#9bff5b" stopOpacity={0.45} />
@@ -53,7 +74,9 @@ export function StatsChart({ data }: { data: ChartPoint[] }) {
             fill="url(#spendFill)"
           />
         </AreaChart>
-      </ResponsiveContainer>
+      ) : (
+        <div className="chart-loading" aria-hidden="true" />
+      )}
     </div>
   );
 }

@@ -42,6 +42,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   private final Map<UUID, Integer> movementScoreSinceHeartbeat = new ConcurrentHashMap<>();
   private final Map<UUID, Integer> activityEventsSinceHeartbeat = new ConcurrentHashMap<>();
   private final Map<UUID, Challenge> challenges = new ConcurrentHashMap<>();
+  private final Map<UUID, Long> lastLinkNoticeAt = new ConcurrentHashMap<>();
   private HttpClient http;
   private String apiBaseUrl;
   private String serverId;
@@ -65,6 +66,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     registerCommand("answer");
     registerCommand("points");
     registerCommand("pool");
+    registerCommand("receive");
     registerCommand("minepulse");
     registerCommand("mpcode");
 
@@ -112,6 +114,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     movementScoreSinceHeartbeat.remove(id);
     activityEventsSinceHeartbeat.remove(id);
     challenges.remove(id);
+    lastLinkNoticeAt.remove(id);
   }
 
   @EventHandler
@@ -174,6 +177,11 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       return true;
     }
 
+    if (name.equals("receive") || (name.equals("minepulse") && args.length > 0 && args[0].equalsIgnoreCase("receive"))) {
+      receivePurchases(player);
+      return true;
+    }
+
     boolean poolOnly = name.equals("pool") || (name.equals("minepulse") && args.length > 0 && args[0].equalsIgnoreCase("pool"));
     fetchPlayerStats(player, poolOnly);
     return true;
@@ -210,6 +218,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     player.sendMessage(prefix() + ChatColor.WHITE + "/pool" + ChatColor.GRAY + " - this server's campaign balance");
     player.sendMessage(prefix() + ChatColor.WHITE + "/answer <value>" + ChatColor.GRAY + " - answer an activity check");
     player.sendMessage(prefix() + ChatColor.WHITE + "/minepulse link <code>" + ChatColor.GRAY + " - connect your website account");
+    player.sendMessage(prefix() + ChatColor.WHITE + "/receive" + ChatColor.GRAY + " - retry queued MinePulse store deliveries");
   }
 
   private void linkAccount(Player player, String code) {
@@ -278,6 +287,19 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   private void applyHeartbeatResponse(UUID playerId, JsonObject response) {
     Player player = Bukkit.getPlayer(playerId);
     if (player == null) {
+      return;
+    }
+
+    if (response.has("linked") && !response.get("linked").getAsBoolean()) {
+      long current = now();
+      long lastNotice = lastLinkNoticeAt.getOrDefault(playerId, 0L);
+      if (current - lastNotice >= 60) {
+        lastLinkNoticeAt.put(playerId, current);
+        String message = response.has("message")
+          ? response.get("message").getAsString()
+          : "Link your MinePulse account before rewards can start.";
+        player.sendMessage(prefix() + ChatColor.YELLOW + message);
+      }
       return;
     }
 
@@ -351,10 +373,15 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     if (player == null) {
       return;
     }
+    if (response.has("linked") && !response.get("linked").getAsBoolean()) {
+      player.sendMessage(prefix() + ChatColor.YELLOW + "Link your MinePulse account before rewards and wallet stats can start.");
+      player.sendMessage(ChatColor.GRAY + "Open MinePulse account settings, create a code, then run /minepulse link <code>.");
+      return;
+    }
     JsonObject server = response.getAsJsonObject("server");
     player.sendMessage(prefix() + ChatColor.WHITE + server.get("name").getAsString());
     player.sendMessage(ChatColor.GRAY + "Campaign pool: " + ChatColor.AQUA + formatNumber(server.get("pointPool").getAsLong())
-      + ChatColor.DARK_GRAY + " | " + ChatColor.GRAY + "Rate: " + ChatColor.GREEN + server.get("rewardRatePerSecond").getAsInt() + "/s");
+      + ChatColor.DARK_GRAY + " | " + ChatColor.GRAY + "Rate: " + ChatColor.GREEN + formatRate(server.get("rewardRatePerSecond").getAsDouble()) + "/s");
     if (!poolOnly) {
       JsonObject session = response.getAsJsonObject("session");
       player.sendMessage(ChatColor.GRAY + "Wallet: " + ChatColor.GOLD + formatNumber(response.get("walletPoints").getAsLong())
@@ -371,33 +398,94 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     payload.addProperty("limit", 25);
 
     try {
-      JsonObject response = post("/api/plugin/purchases/pull", payload);
-      JsonArray purchases = response.getAsJsonArray("purchases");
-      if (purchases == null) {
-        return;
-      }
-      for (int i = 0; i < purchases.size(); i++) {
-        deliverPurchase(purchases.get(i).getAsJsonObject());
-      }
+      deliverPulledPurchases(post("/api/plugin/purchases/pull", payload), null);
     } catch (Exception error) {
       getLogger().warning("Purchase polling failed: " + error.getMessage());
+    }
+  }
+
+  private void receivePurchases(Player player) {
+    JsonObject payload = credentials();
+    payload.addProperty("limit", 25);
+    payload.addProperty("minecraftUuid", player.getUniqueId().toString());
+    Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+      try {
+        JsonObject response = post("/api/plugin/purchases/pull", payload);
+        deliverPulledPurchases(response, player.getUniqueId());
+      } catch (Exception error) {
+        Bukkit.getScheduler().runTask(this, () -> player.sendMessage(prefix() + ChatColor.RED + "Could not check queued deliveries right now."));
+      }
+    });
+  }
+
+  private void deliverPulledPurchases(JsonObject response, UUID requestedBy) {
+    JsonArray purchases = response.getAsJsonArray("purchases");
+    if (purchases == null || purchases.size() == 0) {
+      if (requestedBy != null) {
+        Bukkit.getScheduler().runTask(this, () -> {
+          Player player = Bukkit.getPlayer(requestedBy);
+          if (player != null) {
+            player.sendMessage(prefix() + ChatColor.GRAY + "No queued MinePulse deliveries for you on this server.");
+          }
+        });
+      }
+      return;
+    }
+    for (int i = 0; i < purchases.size(); i++) {
+      deliverPurchase(purchases.get(i).getAsJsonObject());
     }
   }
 
   private void deliverPurchase(JsonObject purchase) {
     String purchaseId = purchase.get("id").getAsString();
     String command = purchase.get("command").getAsString();
+    String item = purchase.has("item") ? purchase.get("item").getAsString() : "MinePulse item";
+    String playerName = purchase.has("player") ? purchase.get("player").getAsString() : "";
+    String uuid = purchase.has("uuid") && !purchase.get("uuid").isJsonNull() ? purchase.get("uuid").getAsString() : "";
+    boolean requiresOnline = !purchase.has("requiresOnline") || purchase.get("requiresOnline").getAsBoolean();
     Bukkit.getScheduler().runTask(this, () -> {
-      boolean delivered = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
-      Bukkit.getScheduler().runTaskAsynchronously(this, () -> acknowledge(purchaseId, delivered));
+      Player target = null;
+      if (!uuid.isBlank()) {
+        try {
+          target = Bukkit.getPlayer(UUID.fromString(uuid));
+        } catch (IllegalArgumentException ignored) {
+          target = null;
+        }
+      }
+      if (target == null && !playerName.isBlank()) {
+        target = Bukkit.getPlayerExact(playerName);
+      }
+
+      if (requiresOnline && target == null) {
+        return;
+      }
+
+      boolean delivered;
+      String message;
+      try {
+        delivered = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+        message = delivered ? "Command executed" : "Command dispatcher returned false";
+      } catch (Exception error) {
+        delivered = false;
+        message = error.getMessage();
+      }
+
+      if (target != null) {
+        target.sendMessage(prefix() + (delivered ? ChatColor.GREEN : ChatColor.RED)
+          + (delivered ? "Delivered " : "Could not deliver ") + item + ".");
+      }
+
+      boolean finalDelivered = delivered;
+      String finalMessage = message;
+      Bukkit.getScheduler().runTaskAsynchronously(this, () -> acknowledge(purchaseId, finalDelivered, finalMessage));
     });
   }
 
-  private void acknowledge(String purchaseId, boolean delivered) {
+  private void acknowledge(String purchaseId, boolean delivered, String message) {
     JsonObject payload = credentials();
     payload.addProperty("purchaseId", purchaseId);
     payload.addProperty("status", delivered ? "DELIVERED" : "FAILED");
-    payload.addProperty("message", delivered ? "Command executed" : "Command dispatcher returned false");
+    payload.addProperty("message", message);
     try {
       post("/api/plugin/purchases/ack", payload);
     } catch (Exception error) {
@@ -494,6 +582,13 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
   private String formatNumber(long value) {
     return String.format(Locale.US, "%,d", value);
+  }
+
+  private String formatRate(double value) {
+    if (Math.rint(value) == value) {
+      return String.format(Locale.US, "%.0f", value);
+    }
+    return String.format(Locale.US, "%.1f", value);
   }
 
   private String duration(long seconds) {

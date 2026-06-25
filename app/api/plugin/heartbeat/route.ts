@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { LedgerType, SessionStatus, UserRole } from "@/lib/generated/prisma/client";
+import { LedgerType, SessionStatus } from "@/lib/generated/prisma/client";
 import {
   clampHeartbeatSeconds,
   createMathChallenge,
@@ -77,22 +77,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Heartbeat signature is invalid" }, { status: 401 });
     }
 
-    const player = await prisma.user.upsert({
+    const player = await prisma.user.findUnique({
       where: { minecraftUuid: input.minecraftUuid },
-      update: {
-        minecraftName: input.minecraftName,
-        username: input.minecraftName
-      },
-      create: {
-        email: `${input.minecraftUuid.toLowerCase()}@players.minepulse.local`,
-        username: input.minecraftName,
-        minecraftUuid: input.minecraftUuid,
-        minecraftName: input.minecraftName,
-        role: UserRole.PLAYER
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        walletPoints: true
       }
     });
 
+    const isUnclaimedShadowProfile = Boolean(
+      player && !player.passwordHash && player.email.endsWith("@players.minepulse.local")
+    );
+
+    if (!player || isUnclaimedShadowProfile) {
+      return NextResponse.json({
+        ok: true,
+        linked: false,
+        serverId: server.id,
+        earned: 0,
+        balanceAfter: 0,
+        remainingPool: server.pointPool,
+        activeSeconds: 0,
+        afkSeconds: 0,
+        suspiciousScore: 0,
+        paidActivePlayers: 0,
+        rewardable: false,
+        integrityVerified: true,
+        requiresChallenge: false,
+        challengeAccepted: false,
+        challenge: null,
+        message: "Link your MinePulse account with /minepulse link <code> before rewards can start."
+      });
+    }
+
+    await prisma.user.update({
+      where: { id: player.id },
+      data: { minecraftName: input.minecraftName }
+    });
+
     const now = new Date();
+    const hourStart = new Date(now);
+    hourStart.setMinutes(0, 0, 0);
     const cutoff = new Date(now.getTime() - 60 * 1000);
     const result = await prisma.$transaction(async (tx) => {
       const freshServer = await tx.server.findUnique({
@@ -230,9 +257,11 @@ export async function POST(request: Request) {
       const rewardable =
         verifiedActive && withinPaidCap && freshServer.pointPool > 0 && freshServer.rewardRatePerSecond > 0;
 
-      const earned = rewardable
-        ? Math.min(freshServer.pointPool, elapsed * freshServer.rewardRatePerSecond)
-        : 0;
+      const preciseEarned = rewardable
+        ? Math.min(freshServer.pointPool, session.rewardCarryPoints + elapsed * freshServer.rewardRatePerSecond)
+        : session.rewardCarryPoints;
+      const earned = rewardable ? Math.floor(preciseEarned) : 0;
+      const rewardCarryPoints = rewardable ? Math.max(0, preciseEarned - earned) : session.rewardCarryPoints;
 
       const suspiciousBump =
         input.afk || (!strictMovement && !activeInteraction) || !challengeOk
@@ -247,6 +276,7 @@ export async function POST(request: Request) {
           activeSeconds: { increment: verifiedActive ? elapsed : 0 },
           afkSeconds: { increment: input.afk ? elapsed : 0 },
           rewardedPoints: { increment: earned },
+          rewardCarryPoints,
           suspiciousScore: { increment: suspiciousBump },
           activityEvents: { increment: input.activityEvents },
           lastNonce: input.nonce,
@@ -267,6 +297,36 @@ export async function POST(request: Request) {
           lastPluginVersion: input.pluginVersion
         }
       });
+
+      const hourlyStat = await tx.serverHourlyStat.findUnique({
+        where: {
+          serverId_hourStart: {
+            serverId: freshServer.id,
+            hourStart
+          }
+        }
+      });
+
+      if (hourlyStat) {
+        await tx.serverHourlyStat.update({
+          where: { id: hourlyStat.id },
+          data: {
+            sampleCount: { increment: 1 },
+            onlinePlayerTotal: { increment: paidActivePlayers },
+            peakOnline: Math.max(hourlyStat.peakOnline, paidActivePlayers)
+          }
+        });
+      } else {
+        await tx.serverHourlyStat.create({
+          data: {
+            serverId: freshServer.id,
+            hourStart,
+            sampleCount: 1,
+            onlinePlayerTotal: paidActivePlayers,
+            peakOnline: paidActivePlayers
+          }
+        });
+      }
 
       let balanceAfter = player.walletPoints;
       if (earned > 0) {
@@ -318,6 +378,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
+      linked: true,
       serverId: server.id,
       playerId: player.id,
       ...result

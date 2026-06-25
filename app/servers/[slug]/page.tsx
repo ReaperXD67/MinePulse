@@ -36,6 +36,10 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
         orderBy: { createdAt: "desc" },
         take: 20
       },
+      hourlyStats: {
+        orderBy: { hourStart: "desc" },
+        take: 12
+      },
       likes: { where: { userId: user?.id || "__guest__" } },
       favorites: { where: { userId: user?.id || "__guest__" } },
       _count: { select: { likes: true, favorites: true, comments: true, reports: true, sessions: true } }
@@ -118,7 +122,13 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
               favorited={Boolean(server.favorites.length)}
               likes={server._count.likes}
               favorites={server._count.favorites}
-              items={server.items.map((item) => ({ id: item.id, name: item.name, description: item.description, pricePoints: item.pricePoints }))}
+              items={server.items.map((item) => ({
+                id: item.id,
+                name: item.name,
+                description: item.description,
+                pricePoints: item.pricePoints,
+                requiresOnline: item.requiresOnline
+              }))}
             />
           </section>
 
@@ -153,6 +163,23 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
               <div><ShieldAlert size={17} /><span><strong>Open reports</strong><small>{server._count.reports} submitted</small></span></div>
             </div>
             <p className="supporting-copy">MinePulse calculates rewards server-side. Reports and signed heartbeat history help moderators detect missing or suspicious activity.</p>
+          </section>
+
+          <section className="panel">
+            <div className="panel-header compact-heading"><div><p className="eyebrow"><Users size={14} /> Activity</p><h3>Hourly averages</h3></div></div>
+            <div className="hourly-stat-list">
+              {server.hourlyStats.map((stat) => {
+                const average = stat.sampleCount ? Math.round(stat.onlinePlayerTotal / stat.sampleCount) : 0;
+                return (
+                  <div key={stat.id}>
+                    <span>{shortDate(stat.hourStart)}</span>
+                    <strong>{average} avg</strong>
+                    <small>{stat.peakOnline} peak</small>
+                  </div>
+                );
+              })}
+              {!server.hourlyStats.length ? <div className="empty-state compact-empty">Hourly samples appear after plugin heartbeats.</div> : null}
+            </div>
           </section>
 
           <section className="panel rules-panel">

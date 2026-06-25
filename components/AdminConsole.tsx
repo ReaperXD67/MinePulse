@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Crown, Save, ServerCog } from "lucide-react";
+import { Crown, Gift, Save, ServerCog } from "lucide-react";
 import { money, points, shortDate } from "@/lib/format";
 
 type PackageRow = {
@@ -35,14 +35,24 @@ type ServerRow = {
   trustStatus: string;
 };
 
+type UserRow = {
+  id: string;
+  username: string;
+  email: string;
+  minecraftName: string | null;
+  walletPoints: number;
+};
+
 export function AdminConsole({
   pointPackages,
   premiumTiers,
-  servers
+  servers,
+  users
 }: {
   pointPackages: PackageRow[];
   premiumTiers: TierRow[];
   servers: ServerRow[];
+  users: UserRow[];
 }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
@@ -107,8 +117,45 @@ export function AdminConsole({
     });
   }
 
+  function grantPoints(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    send(
+      "/api/admin/users/grant",
+      {
+        userId: form.get("userId"),
+        amountPoints: form.get("amountPoints"),
+        description: form.get("description")
+      },
+      "POST"
+    );
+  }
+
   return (
     <div className="dashboard-grid">
+      <section className="panel admin-grant-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Manual wallet grant</h2>
+            <p>Give earned points to an account with a ledger description, for events or support fixes.</p>
+          </div>
+        </div>
+        <form className="form-grid grant-form" onSubmit={grantPoints}>
+          <select className="select" name="userId" required aria-label="Account">
+            {users.map((account) => (
+              <option value={account.id} key={account.id}>
+                {account.username} - {account.minecraftName || account.email} - {points(account.walletPoints)}
+              </option>
+            ))}
+          </select>
+          <div className="form-grid two">
+            <input className="field" name="amountPoints" type="number" defaultValue="1000" required aria-label="Points to grant" />
+            <input className="field" name="description" placeholder="Won weekend event" minLength={4} maxLength={240} required />
+          </div>
+          <button className="solid-button" disabled={busy} type="submit"><Gift size={16} /> Grant points</button>
+        </form>
+      </section>
+
       <section className="panel">
         <div className="panel-header">
           <div>

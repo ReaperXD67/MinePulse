@@ -17,6 +17,8 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   await prisma.minecraftLinkCode.deleteMany();
+  await prisma.friendship.deleteMany();
+  await prisma.serverHourlyStat.deleteMany();
   await prisma.enforcementAction.deleteMany();
   await prisma.serverReport.deleteMany();
   await prisma.supportTicket.deleteMany();
@@ -68,6 +70,7 @@ async function main() {
       passwordHash: playerHash,
       role: UserRole.PLAYER,
       walletPoints: 18500,
+      friendsPrivate: false,
       bio: "Survival player, event hunter, and new server creator."
     }
   });
@@ -129,7 +132,7 @@ async function main() {
         longDescription: "Build a town, master a job, and trade through a player-led economy. Skyforge publishes every reward rule and keeps its MinePulse bridge online for transparent payouts.",
         rules: "No hacked clients\nNo reward farming with alternate accounts\nKeep chat welcoming\nReport payout issues through MinePulse support",
         pointPool: 640000,
-        rewardRatePerSecond: 1,
+        rewardRatePerSecond: 1.5,
         maxPaidPlayers: 24,
         minPlaySecondsForComment: 1800,
         premiumPlan: PremiumPlanCode.DIAMOND,
@@ -141,7 +144,7 @@ async function main() {
         discordUrl: "https://discord.com",
         supportUrl: "https://example.com/skyforge/support",
         lastHeartbeatAt: now,
-        lastPluginVersion: "0.3.1"
+        lastPluginVersion: "0.4.0"
       }
     }),
     prisma.server.create({
@@ -168,7 +171,7 @@ async function main() {
         galleryImages: "/voxel-network.png,/voxel-network.png",
         discordUrl: "https://discord.com",
         lastHeartbeatAt: new Date(now.getTime() - 8 * 60 * 1000),
-        lastPluginVersion: "0.3.1"
+        lastPluginVersion: "0.4.0"
       }
     }),
     prisma.server.create({
@@ -204,6 +207,7 @@ async function main() {
         description: "Chat color, /hat, two homes, and queue priority.",
         pricePoints: 7200,
         command: "lp user {player} parent addtemp vip 7d",
+        requiresOnline: true,
         status: StoreItemStatus.ACTIVE
       },
       {
@@ -212,6 +216,7 @@ async function main() {
         description: "Five premium crate keys for the Skyforge crate.",
         pricePoints: 3800,
         command: "crate key give {player} sky 5",
+        requiresOnline: true,
         status: StoreItemStatus.ACTIVE
       },
       {
@@ -220,9 +225,17 @@ async function main() {
         description: "Cosmetic particle trail for one season.",
         pricePoints: 5200,
         command: "trails grant {player} ember",
+        requiresOnline: true,
         status: StoreItemStatus.ACTIVE
       }
     ]
+  });
+
+  await prisma.friendship.create({
+    data: {
+      userId: player.id,
+      friendId: owner.id
+    }
   });
 
   await prisma.serverLike.create({ data: { serverId: servers[0].id, userId: player.id } });
@@ -243,12 +256,34 @@ async function main() {
       ipHash: "seeded-demo-hash",
       activeSeconds: 7200,
       rewardedPoints: 7200,
+      rewardCarryPoints: 0,
       activityEvents: 42,
       lastNonce: "seeded-heartbeat-nonce",
       integrityVerified: true,
       status: "CLOSED",
       endedAt: new Date(now.getTime() - 60 * 60 * 1000)
     }
+  });
+
+  const hourStart = new Date(now);
+  hourStart.setMinutes(0, 0, 0);
+  await prisma.serverHourlyStat.createMany({
+    data: [
+      {
+        serverId: servers[0].id,
+        hourStart,
+        sampleCount: 12,
+        onlinePlayerTotal: 180,
+        peakOnline: 21
+      },
+      {
+        serverId: servers[1].id,
+        hourStart,
+        sampleCount: 12,
+        onlinePlayerTotal: 88,
+        peakOnline: 11
+      }
+    ]
   });
 
   await prisma.pointLedger.createMany({

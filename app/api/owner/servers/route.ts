@@ -21,7 +21,11 @@ const schema = z.object({
   websiteUrl: z.string().trim().url().or(z.literal("")).optional(),
   discordUrl: z.string().trim().url().or(z.literal("")).optional(),
   supportUrl: z.string().trim().url().or(z.literal("")).optional(),
-  rewardRatePerSecond: z.coerce.number().int().min(0).max(100),
+  rewardRatePerSecond: z.coerce
+    .number()
+    .min(1)
+    .max(100)
+    .refine((value) => Number.isInteger(value * 2), "Reward rate must use 0.5 point steps"),
   maxPaidPlayers: z.coerce.number().int().min(1).max(500),
   minPlaySecondsForComment: z.coerce.number().int().min(60).max(86400)
 });

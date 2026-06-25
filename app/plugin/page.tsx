@@ -26,6 +26,7 @@ export const metadata: Metadata = {
 const commands = [
   { command: "/points", detail: "Wallet, verified playtime, and rewards earned on the current server." },
   { command: "/pool", detail: "The server campaign balance and current reward rate." },
+  { command: "/receive", detail: "Retry queued store deliveries after joining the server." },
   { command: "/answer <value>", detail: "Submit the website-generated arithmetic activity check." },
   { command: "/minepulse link <code>", detail: "Connect this Minecraft identity to the account that owns the wallet." },
   { command: "/minepulse help", detail: "Show the available bridge commands in game." }
@@ -39,11 +40,11 @@ export default function PluginPage() {
       <section className="plugin-hero" style={{ backgroundImage: "url('/voxel-network.png')" }}>
         <div className="plugin-hero-shade" />
         <div className="container plugin-hero-content">
-          <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.3.1</span><i>Paper 1.20-1.21</i></div>
+          <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.4.0</span><i>Paper 1.20-1.21</i></div>
           <h1>MinePulse Bridge</h1>
           <p>Connect real Minecraft activity to the reward economy. The website owns policy and balances; the plugin verifies play, delivers purchases, and stays deliberately small.</p>
           <div className="inline-actions plugin-hero-actions">
-            <a className="solid-button download-button" href="/downloads/MinePulseBridge-0.3.1.jar" download>
+            <a className="solid-button download-button" href="/downloads/MinePulseBridge-0.4.0.jar" download>
               <ArrowDownToLine size={17} /> Download jar
             </a>
             <Link className="ghost-button" href="/account#servers"><ServerCog size={17} /> Open server setup</Link>
@@ -63,7 +64,7 @@ export default function PluginPage() {
             <div><b>01</b><PlugZap size={20} /><strong>Install</strong><span>Place the jar in Paper&apos;s plugins folder.</span></div>
             <div><b>02</b><Fingerprint size={20} /><strong>Connect</strong><span>Add URL, server ID, and secret once.</span></div>
             <div><b>03</b><ServerCog size={20} /><strong>Configure</strong><span>Manage AFK and challenge policy on the website.</span></div>
-            <div><b>04</b><CircleDollarSign size={20} /><strong>Reward</strong><span>MinePulse verifies and pays from the campaign pool.</span></div>
+            <div><b>04</b><CircleDollarSign size={20} /><strong>Reward</strong><span>Linked players earn; store purchases deliver when they are online.</span></div>
           </div>
         </div>
       </section>
@@ -84,7 +85,7 @@ export default function PluginPage() {
             <pre><code>{`api-base-url: "https://your-minepulse.com"
 server-id: "from-creator-studio"
 plugin-secret: "keep-this-private"`}</code></pre>
-            <footer><CheckCircle2 size={15} /> Policy syncs from MinePulse after startup</footer>
+            <footer><CheckCircle2 size={15} /> Policy, AFK rules, reward rate, and delivery polling sync from MinePulse</footer>
           </div>
         </div>
       </section>

@@ -7,11 +7,13 @@ import { Save, UserRound } from "lucide-react";
 export function ProfileForm({
   username,
   minecraftName,
+  friendsPrivate,
   bio,
   avatarUrl
 }: {
   username: string;
   minecraftName: string | null;
+  friendsPrivate: boolean;
   bio: string;
   avatarUrl: string | null;
 }) {
@@ -30,6 +32,7 @@ export function ProfileForm({
       body: JSON.stringify({
         username: form.get("username"),
         minecraftName: form.get("minecraftName"),
+        friendsPrivate: form.get("friendsPrivate") === "on",
         bio: form.get("bio"),
         avatarUrl: form.get("avatarUrl")
       })
@@ -68,6 +71,13 @@ export function ProfileForm({
         <label htmlFor="profile-bio">Bio</label>
         <textarea className="textarea" id="profile-bio" name="bio" defaultValue={bio} maxLength={360} />
       </div>
+      <label className="toggle-row privacy-toggle">
+        <input name="friendsPrivate" type="checkbox" defaultChecked={friendsPrivate} />
+        <span>
+          <strong>Friend privacy</strong>
+          <small>When enabled, other members cannot add you by nickname.</small>
+        </span>
+      </label>
       <div className="form-footer">
         <p className="toast-line" aria-live="polite">{message}</p>
         <button className="solid-button" disabled={busy} type="submit">

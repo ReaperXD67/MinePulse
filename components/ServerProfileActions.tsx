@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Flag, Heart, LifeBuoy, MessageSquare, Send, ShoppingBag, Star } from "lucide-react";
 import { points } from "@/lib/format";
 
-type ProfileItem = { id: string; name: string; description: string; pricePoints: number };
+type ProfileItem = { id: string; name: string; description: string; pricePoints: number; requiresOnline: boolean };
 
 export function ServerProfileActions({
   serverId,
@@ -58,7 +58,7 @@ export function ServerProfileActions({
         <div className="store-grid">
           {items.map((item) => (
             <div className="store-profile-card" key={item.id}>
-              <div><strong>{item.name}</strong><p>{item.description}</p></div>
+              <div><strong>{item.name}</strong><p>{item.description}</p><small>{item.requiresOnline ? "Join the server, then use /receive if it does not arrive instantly." : "Can be delivered while offline."}</small></div>
               <span>{points(item.pricePoints)} pts</span>
             </div>
           ))}
@@ -125,7 +125,7 @@ export function ServerProfileActions({
       <div className="store-grid">
         {items.map((item) => (
           <article className="store-profile-card" key={item.id}>
-            <div><strong>{item.name}</strong><p>{item.description}</p></div>
+            <div><strong>{item.name}</strong><p>{item.description}</p><small>{item.requiresOnline ? "Online delivery" : "Offline-safe delivery"}</small></div>
             <div><span>{points(item.pricePoints)} earned pts</span><button className="icon-button" type="button" title={`Buy ${item.name}`} aria-label={`Buy ${item.name}`} disabled={busy} onClick={() => request("/api/player/purchase", { itemId: item.id })}><ShoppingBag size={16} /></button></div>
           </article>
         ))}

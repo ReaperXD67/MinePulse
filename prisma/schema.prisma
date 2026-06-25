@@ -98,22 +98,25 @@ enum BillingKind {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  username      String
-  minecraftUuid String?  @unique
-  minecraftName String?
-  passwordHash  String?
-  role          UserRole @default(PLAYER)
-  walletPoints  Int      @default(0)
-  bio           String   @default("")
-  avatarUrl     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  email          String   @unique
+  username       String
+  minecraftUuid  String?  @unique
+  minecraftName  String?
+  passwordHash   String?
+  role           UserRole @default(PLAYER)
+  walletPoints   Int      @default(0)
+  friendsPrivate Boolean  @default(false)
+  bio            String   @default("")
+  avatarUrl      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   ownedServers       Server[]            @relation("OwnerServers")
   sessions           ServerSession[]
   purchases          Purchase[]          @relation("BuyerPurchases")
+  friends            Friendship[]        @relation("FriendshipOwner")
+  friendedBy         Friendship[]        @relation("FriendshipTarget")
   likes              ServerLike[]
   favorites          Favorite[]
   comments           Comment[]
@@ -160,7 +163,7 @@ model Server {
   trustStatus                  TrustStatus     @default(VERIFIED)
   riskScore                    Int             @default(0)
   pointPool                    Int             @default(0)
-  rewardRatePerSecond          Int             @default(1)
+  rewardRatePerSecond          Float           @default(1)
   maxPaidPlayers               Int             @default(20)
   minPlaySecondsForComment     Int             @default(1800)
   premiumPlan                  PremiumPlanCode @default(NONE)
@@ -197,6 +200,7 @@ model Server {
   supportTickets     SupportTicket[]
   promoRedemptions   PromoRedemption[]
   enforcementActions EnforcementAction[]
+  hourlyStats        ServerHourlyStat[]
 
   @@index([status, premiumUntil])
   @@index([trustStatus, status])
@@ -204,15 +208,16 @@ model Server {
 }
 
 model StoreItem {
-  id          String          @id @default(cuid())
-  serverId    String
-  name        String
-  description String
-  pricePoints Int
-  command     String
-  status      StoreItemStatus @default(ACTIVE)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id             String          @id @default(cuid())
+  serverId       String
+  name           String
+  description    String
+  pricePoints    Int
+  command        String
+  requiresOnline Boolean         @default(true)
+  status         StoreItemStatus @default(ACTIVE)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   server    Server     @relation(fields: [serverId], references: [id], onDelete: Cascade)
   purchases Purchase[]
@@ -227,6 +232,7 @@ model Purchase {
   itemId          String
   status          PurchaseStatus @default(PENDING)
   commandSnapshot String
+  requiresOnline  Boolean        @default(true)
   createdAt       DateTime       @default(now())
   deliveredAt     DateTime?
 
@@ -250,6 +256,7 @@ model ServerSession {
   activeSeconds       Int           @default(0)
   afkSeconds          Int           @default(0)
   rewardedPoints      Int           @default(0)
+  rewardCarryPoints   Float         @default(0)
   suspiciousScore     Int           @default(0)
   activityEvents      Int           @default(0)
   lastNonce           String?
@@ -267,6 +274,35 @@ model ServerSession {
 
   @@index([serverId, userId, status])
   @@index([lastHeartbeatAt])
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+
+  user   User @relation("FriendshipOwner", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("FriendshipTarget", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@index([friendId])
+}
+
+model ServerHourlyStat {
+  id                String   @id @default(cuid())
+  serverId          String
+  hourStart         DateTime
+  sampleCount       Int      @default(0)
+  onlinePlayerTotal Int      @default(0)
+  peakOnline        Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, hourStart])
+  @@index([serverId, hourStart])
 }
 
 model ServerLike {

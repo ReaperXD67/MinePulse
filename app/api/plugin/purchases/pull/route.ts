@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 const schema = z.object({
   serverId: z.string().min(1),
   secret: z.string().min(8),
+  minecraftUuid: z.string().trim().min(8).max(80).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20)
 });
 
@@ -24,7 +25,11 @@ export async function POST(request: Request) {
     }
 
     const purchases = await prisma.purchase.findMany({
-      where: { serverId: server.id, status: "PENDING" },
+      where: {
+        serverId: server.id,
+        status: "PENDING",
+        ...(input.minecraftUuid ? { buyer: { minecraftUuid: input.minecraftUuid } } : {})
+      },
       include: { buyer: true, item: true },
       orderBy: { createdAt: "asc" },
       take: input.limit
@@ -38,6 +43,7 @@ export async function POST(request: Request) {
           player,
           uuid: purchase.buyer.minecraftUuid,
           item: purchase.item.name,
+          requiresOnline: purchase.requiresOnline,
           command: purchase.commandSnapshot
             .replaceAll("{player}", player)
             .replaceAll("{uuid}", purchase.buyer.minecraftUuid || "")

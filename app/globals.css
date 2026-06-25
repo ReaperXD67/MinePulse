@@ -700,6 +700,28 @@ h1 {
 
 .chart-box {
   height: 260px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.chart-loading {
+  height: 100%;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent),
+    rgba(255, 255, 255, 0.035);
+  background-size: 220% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 220% 0;
+  }
+
+  to {
+    background-position: -220% 0;
+  }
 }
 
 .mono {
@@ -829,6 +851,161 @@ h1 {
 
 .command-grid {
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.tag-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0 22px;
+}
+
+.tag-filter {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(224, 238, 246, 0.13);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  transition: border-color 160ms ease, color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.tag-filter:hover,
+.tag-filter.active {
+  border-color: rgba(93, 255, 179, 0.42);
+  background: rgba(93, 255, 179, 0.1);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.privacy-toggle {
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.privacy-toggle span {
+  display: grid;
+  gap: 3px;
+}
+
+.privacy-toggle small {
+  color: var(--muted);
+}
+
+.friend-panel {
+  margin: 26px 0;
+}
+
+.friend-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.friend-list {
+  display: grid;
+  gap: 10px;
+}
+
+.friend-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(120deg, rgba(93, 255, 179, 0.08), transparent 38%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.friend-card > div:nth-child(2) {
+  display: grid;
+  gap: 3px;
+}
+
+.friend-card span,
+.friend-card small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.friend-card a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.friend-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-grant-panel {
+  grid-column: 1 / -1;
+}
+
+.grant-form {
+  max-width: 820px;
+}
+
+.hourly-stat-list {
+  display: grid;
+  gap: 8px;
+}
+
+.hourly-stat-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.hourly-stat-list > div:last-child {
+  border-bottom: 0;
+}
+
+.hourly-stat-list span,
+.hourly-stat-list small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.store-profile-card small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .friend-add-form,
+  .friend-card,
+  .hourly-stat-list > div {
+    grid-template-columns: 1fr;
+  }
+
+  .friend-state {
+    justify-content: space-between;
+  }
 }
 
 /* Product system v5: no navbar, immersive world navigator */

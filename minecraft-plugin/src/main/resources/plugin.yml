@@ -1,6 +1,6 @@
 name: MinePulseBridge
 main: com.minepulse.bridge.MinePulseBridgePlugin
-version: 0.3.1
+version: 0.4.0
 api-version: "1.20"
 author: MinePulse
 description: Verified playtime rewards and purchase delivery bridge for MinePulse.
@@ -15,9 +15,11 @@ commands:
     description: Show your MinePulse wallet and verified session rewards.
   pool:
     description: Show this server's MinePulse campaign pool and reward rate.
+  receive:
+    description: Retry queued MinePulse store item deliveries for your account.
   minepulse:
     description: Show MinePulse statistics, link an account, or open command help.
-    usage: /minepulse [pool|help|link <code>]
+    usage: /minepulse [pool|help|receive|link <code>]
 permissions:
   minepulse.admin:
     description: Allows administrative MinePulse diagnostics.

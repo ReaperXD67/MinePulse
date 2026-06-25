@@ -1,4 +1,4 @@
-# MinePulse Bridge 0.3.1
+# MinePulse Bridge 0.4.0
 
 The Paper plugin connects real Minecraft activity to MinePulse. It sends signed telemetry, receives website-managed protection policy, shows activity challenges, reports player statistics, and delivers store purchases as console commands.
 
@@ -11,7 +11,7 @@ The Paper plugin connects real Minecraft activity to MinePulse. It sends signed 
 
 ## Install
 
-1. Download `MinePulseBridge-0.3.1.jar` from `/plugin` on the website.
+1. Download `MinePulseBridge-0.4.0.jar` from `/plugin` on the website.
 2. Copy it into the Paper server's `plugins/` directory.
 3. Start Paper once, then stop it after `plugins/MinePulseBridge/config.yml` is created.
 4. In MinePulse, open **Account -> Your servers -> Plugin connection**.
@@ -50,6 +50,7 @@ Only connection credentials remain local because the plugin needs them before it
 - `/answer <value>` submits the current website-generated arithmetic check.
 - `/points` shows the player's platform wallet, current server rewards, and verified playtime.
 - `/pool` shows the server campaign pool and reward rate.
+- `/receive` retries queued store deliveries for the player on the current server.
 - `/minepulse help` lists commands.
 - `/minepulse link <code>` connects the in-game UUID to a signed-in website account using a ten-minute code.
 - `/mpcode <value>` remains as a backwards-compatible alias for `/answer`.
@@ -63,6 +64,8 @@ Only connection credentials remain local because the plugin needs them before it
 5. The website validates the answer. Required checks pause rewards until the answer is accepted.
 6. MinePulse calculates the reward server-side and deducts it from the campaign pool.
 
+Players must link a MinePulse website account before rewards start. Unlinked Minecraft players can still play normally, but the bridge will not create a wallet or pay points for them.
+
 Heartbeats use HMAC-SHA256, timestamps, and unique nonces. The website rejects stale signatures and replays, stores only a hash derived from the player IP, and records suspicious sessions for moderation.
 
 No plugin can make a server owner unable to modify software on a machine they control. MinePulse therefore combines telemetry with website-side reward calculation, challenge verification, stale bridge visibility, player reports, trust states, and administrator enforcement.
@@ -70,6 +73,8 @@ No plugin can make a server owner unable to modify software on a machine they co
 ## Purchase Delivery
 
 Store commands support `{player}` and `{uuid}` placeholders. The bridge polls pending purchases, dispatches commands as console, and acknowledges delivery. Failed delivery refunds the player's earned points.
+
+By default, store items require the player to be online. If the player buys on the website while offline, the purchase remains pending until they join the server. They can run `/receive` to retry delivery immediately.
 
 Example:
 

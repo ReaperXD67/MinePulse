@@ -20,6 +20,7 @@ export type MarketplaceServer = {
   pointPool: number;
   rewardRatePerSecond: number;
   maxPaidPlayers: number;
+  averageOnline: number;
   premiumPlan: "NONE" | "GOLD" | "DIAMOND";
   premiumUntil: string | null;
   trustStatus: "VERIFIED" | "WATCHLIST" | "SUSPENDED" | "BLACKLISTED";
@@ -76,7 +77,7 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
         <div className="metric-grid">
           <div className="mini-metric"><span className="metric-label">Campaign</span><strong>{compact(server.pointPool)}</strong></div>
           <div className="mini-metric"><span className="metric-label">Earn</span><strong>{server.rewardRatePerSecond}/s</strong></div>
-          <div className="mini-metric"><span className="metric-label">Paid cap</span><strong>{server.maxPaidPlayers}</strong></div>
+          <div className="mini-metric"><span className="metric-label">Avg online</span><strong>{server.averageOnline}</strong></div>
         </div>
 
         {teaser ? <div className="store-teaser"><div><span>Store preview</span><strong>{teaser.name}</strong><small>{teaser.description}</small></div><b>{points(teaser.pricePoints)} pts</b></div> : <div className="store-teaser empty-teaser">No store items published</div>}

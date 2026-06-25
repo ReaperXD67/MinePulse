@@ -25,7 +25,7 @@ export default async function AdminPage() {
     );
   }
 
-  const [stats, pointPackages, premiumTiers, servers, billing, promos, reports, enforcement] = await Promise.all([
+  const [stats, pointPackages, premiumTiers, servers, billing, promos, reports, enforcement, users] = await Promise.all([
     platformStats(),
     prisma.pointPackage.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.premiumTier.findMany({ orderBy: { priority: "desc" } }),
@@ -44,6 +44,11 @@ export default async function AdminPage() {
       include: { server: { select: { name: true } }, admin: { select: { username: true } } },
       orderBy: { createdAt: "desc" },
       take: 12
+    }),
+    prisma.user.findMany({
+      select: { id: true, username: true, email: true, minecraftName: true, walletPoints: true },
+      orderBy: { updatedAt: "desc" },
+      take: 50
     })
   ]);
 
@@ -140,6 +145,13 @@ export default async function AdminPage() {
           premiumPlan: server.premiumPlan,
           premiumUntil: server.premiumUntil?.toISOString() ?? null,
           trustStatus: server.trustStatus
+        }))}
+        users={users.map((account) => ({
+          id: account.id,
+          username: account.username,
+          email: account.email,
+          minecraftName: account.minecraftName,
+          walletPoints: account.walletPoints
         }))}
       />
 

@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       : null;
 
     return NextResponse.json({
+      linked: Boolean(player),
       walletPoints: player?.walletPoints ?? 0,
       session: session ?? {
         activeSeconds: 0,

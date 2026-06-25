@@ -11,6 +11,8 @@ Members earn points on funded servers, then spend those earned points on ranks, 
 
 Buying a store item never refills a server campaign. Promo codes such as `BOOST10` add bonus campaign credits without discounting the purchase price.
 
+Reward rates support half-point steps such as `1`, `1.5`, `2`, `2.5`, and `3` points per second. Wallets still store whole points; the backend keeps fractional carry inside each session so players are paid fairly over time.
+
 ## Stack
 
 - Next.js App Router
@@ -44,6 +46,8 @@ Seeded accounts:
 
 ## Test With Minecraft
 
+For a sendable tester checklist, use [TESTING_GUIDE.md](TESTING_GUIDE.md).
+
 Docker Desktop can launch a real Paper 1.21.4 server with the downloadable MinePulse Bridge already mounted:
 
 ```bash
@@ -59,7 +63,8 @@ Wait until `MinePulseBridge` appears in green, then connect Minecraft Java Editi
 2. Create a ten-minute link code.
 3. In Minecraft, run `/minepulse link <code>`.
 4. Use `/points`, `/pool`, and `/minepulse help` while testing.
-5. After five verified minutes, answer the activity prompt with `/answer <value>`.
+5. Buy a store item on the website while linked, then join the server and run `/receive` if the item does not arrive immediately.
+6. After five verified minutes, answer the activity prompt with `/answer <value>`.
 
 To watch Paper and bridge logs or remove the test server:
 
@@ -71,11 +76,12 @@ npm run game:test:down
 ## Key Flows
 
 - `/` shows the randomized marketplace. Premium servers shuffle first. Regular servers shuffle below. Empty campaigns are hidden.
-- `/account` combines the member wallet, public profile, purchases, play sessions, favorites, server publishing, campaign funding, store management, plugin credentials, and support inbox.
+- `/` can also filter the shuffled directory by tags such as Survival, SMP, or Economy.
+- `/account` combines the member wallet, public profile, privacy, friends, purchases, play sessions, favorites, server publishing, campaign funding, store management, plugin credentials, and support inbox.
 - `/servers/[slug]` is the full server profile with screenshots, owner story, rules, store, verified reviews, support, reports, and trust telemetry.
 - `/members/[id]` shows a public member profile and published servers.
 - `/plugin` is the bridge download, installation, command, anti-AFK, and official support center.
-- `/admin` manages economy pricing, Gold/Diamond tiers, promo bonuses, reports, punishments, server trust, campaign credits, and statistics.
+- `/admin` manages economy pricing, Gold/Diamond tiers, promo bonuses, reports, punishments, manual wallet grants, server trust, campaign credits, and statistics.
 - `/player` and `/owner` redirect to the unified account for backward compatibility.
 
 ## Plugin API
@@ -88,7 +94,7 @@ Important endpoints:
 - `POST /api/plugin/purchases/pull` returns pending commands for a server.
 - `POST /api/plugin/purchases/ack` confirms delivery or refunds failed purchases.
 
-Version 0.3.1 syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, accumulates movement and interaction telemetry, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, and uses website-generated arithmetic `/answer` challenges. MinePulse calculates wallet rewards on the website; the plugin never directly edits balances.
+Version 0.4.0 syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, accumulates movement and interaction telemetry, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, uses website-generated arithmetic `/answer` challenges, retries queued deliveries with `/receive`, and only rewards linked MinePulse accounts. MinePulse calculates wallet rewards on the website; the plugin never directly edits balances.
 
 ## Plugin Build
 

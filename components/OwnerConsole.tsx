@@ -71,6 +71,7 @@ type OwnerServer = {
     description: string;
     pricePoints: number;
     command: string;
+    requiresOnline: boolean;
     status: string;
   }>;
   supportTickets: Array<{
@@ -182,7 +183,8 @@ export function OwnerConsole({
       name: form.get("name"),
       description: form.get("description"),
       pricePoints: form.get("pricePoints"),
-      command: form.get("command")
+      command: form.get("command"),
+      requiresOnline: form.get("requiresOnline") === "on"
     });
     if (ok) {
       formElement.reset();
@@ -252,7 +254,7 @@ export function OwnerConsole({
             <div className="form-row"><label>Support URL</label><input className="field" name="supportUrl" type="url" /></div>
           </div>
           <div className="form-grid three">
-            <div className="form-row"><label>Reward per second</label><input className="field" name="rewardRatePerSecond" type="number" defaultValue="1" /></div>
+            <div className="form-row"><label>Reward per second</label><input className="field" name="rewardRatePerSecond" type="number" min="1" max="100" step="0.5" defaultValue="1" /></div>
             <div className="form-row"><label>Paid player cap</label><input className="field" name="maxPaidPlayers" type="number" defaultValue="20" /></div>
             <div className="form-row"><label>Seconds before reviews</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue="1800" /></div>
           </div>
@@ -310,7 +312,7 @@ export function OwnerConsole({
                   <div className="form-row"><label>Support</label><input className="field" name="supportUrl" type="url" defaultValue={server.supportUrl || ""} /></div>
                 </div>
                 <div className="form-grid three">
-                  <div className="form-row"><label>Reward/s</label><input className="field" name="rewardRatePerSecond" type="number" defaultValue={server.rewardRatePerSecond} /></div>
+                  <div className="form-row"><label>Reward/s</label><input className="field" name="rewardRatePerSecond" type="number" min="1" max="100" step="0.5" defaultValue={server.rewardRatePerSecond} /></div>
                   <div className="form-row"><label>Paid cap</label><input className="field" name="maxPaidPlayers" type="number" defaultValue={server.maxPaidPlayers} /></div>
                   <div className="form-row"><label>Review seconds</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue={server.minPlaySecondsForComment} /></div>
                 </div>
@@ -400,7 +402,7 @@ export function OwnerConsole({
                     {server.items.map((item) => (
                       <tr key={item.id}>
                         <td><strong>{item.name}</strong><p>{item.description}</p></td>
-                        <td>{points(item.pricePoints)}</td><td className="mono command-cell">{item.command}</td><td>{item.status}</td>
+                        <td>{points(item.pricePoints)}</td><td className="mono command-cell">{item.command}</td><td>{item.requiresOnline ? "Online" : "Anytime"} - {item.status}</td>
                         <td><button className="icon-button" type="button" title="Hide item" onClick={() => send(`/api/owner/items/${item.id}`, {}, "DELETE")}><Trash2 size={15} /></button></td>
                       </tr>
                     ))}
@@ -411,6 +413,7 @@ export function OwnerConsole({
                 <div className="form-grid two"><div className="form-row"><label>Item name</label><input className="field" name="name" placeholder="VIP Rank · 7 days" required /></div><div className="form-row"><label>Earned-point price</label><input className="field" name="pricePoints" type="number" placeholder="7200" required /></div></div>
                 <div className="form-row"><label>Description</label><input className="field" name="description" placeholder="Cosmetic rank with queue priority" required /></div>
                 <div className="form-row"><label>Console command</label><input className="field mono" name="command" placeholder="lp user {player} parent addtemp vip 7d" required /></div>
+                <label className="toggle-row"><input name="requiresOnline" type="checkbox" defaultChecked /> Deliver only while the player is online</label>
                 <button className="ghost-button" disabled={busy} type="submit"><PackagePlus size={16} /> Add store item</button>
               </form>
             </div>

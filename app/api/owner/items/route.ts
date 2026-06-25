@@ -12,7 +12,8 @@ const schema = z.object({
   name: z.string().trim().min(3).max(80),
   description: z.string().trim().min(5).max(180),
   pricePoints: z.coerce.number().int().min(1).max(100000000),
-  command: z.string().trim().min(4).max(240)
+  command: z.string().trim().min(4).max(240),
+  requiresOnline: z.boolean().default(true)
 });
 
 export async function POST(request: Request) {

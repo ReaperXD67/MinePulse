@@ -9,9 +9,15 @@ import { shuffle } from "@/lib/random";
 
 export const dynamic = "force-dynamic";
 
-export default async function MarketplacePage() {
+export default async function MarketplacePage({
+  searchParams
+}: {
+  searchParams: Promise<{ tag?: string }>;
+}) {
   const user = await currentUser();
   const now = new Date();
+  const { tag } = await searchParams;
+  const selectedTag = typeof tag === "string" ? tag.trim() : "";
 
   const [servers, platform, pointPackages, premiumTiers] = await Promise.all([
     prisma.server.findMany({
@@ -25,6 +31,10 @@ export default async function MarketplacePage() {
           where: { status: "ACTIVE" },
           orderBy: { pricePoints: "asc" },
           take: 3
+        },
+        hourlyStats: {
+          orderBy: { hourStart: "desc" },
+          take: 1
         },
         _count: {
           select: {
@@ -61,6 +71,9 @@ export default async function MarketplacePage() {
     pointPool: server.pointPool,
     rewardRatePerSecond: server.rewardRatePerSecond,
     maxPaidPlayers: server.maxPaidPlayers,
+    averageOnline: server.hourlyStats[0]?.sampleCount
+      ? Math.round(server.hourlyStats[0].onlinePlayerTotal / server.hourlyStats[0].sampleCount)
+      : 0,
     premiumPlan: server.premiumPlan,
     premiumUntil: server.premiumUntil?.toISOString() ?? null,
     trustStatus: server.trustStatus,
@@ -84,15 +97,22 @@ export default async function MarketplacePage() {
     }))
   }));
 
+  const availableTags = Array.from(
+    new Set(visibleServers.flatMap((server) => server.tags.map((serverTag) => serverTag.trim()).filter(Boolean)))
+  ).sort((left, right) => left.localeCompare(right));
+  const selectedTagLower = selectedTag.toLowerCase();
+  const filteredServers = selectedTag
+    ? visibleServers.filter((server) => server.tags.some((serverTag) => serverTag.toLowerCase() === selectedTagLower))
+    : visibleServers;
   const premium = shuffle(
-    visibleServers.filter(
+    filteredServers.filter(
       (server) =>
         server.premiumPlan !== "NONE" &&
         server.premiumUntil &&
         new Date(server.premiumUntil).getTime() > now.getTime()
     )
   );
-  const regular = shuffle(visibleServers.filter((server) => !premium.some((p) => p.id === server.id)));
+  const regular = shuffle(filteredServers.filter((server) => !premium.some((p) => p.id === server.id)));
   const sortedServers = [...premium, ...regular];
   const [usersCount, pools, purchaseCount, playtime] = platform;
   const cheapestPackage = pointPackages[0];
@@ -146,7 +166,7 @@ export default async function MarketplacePage() {
       </section>
 
       <section className="container network-rules" aria-label="Network rules">
-        <div><b>01</b><span>Premium worlds shuffle first. Every other funded world still gets a fair draw.</span></div>
+        <div><b>01</b><span>Premium worlds shuffle first. Tag filters keep the same fair draw.</span></div>
         <div><b>02</b><span>Empty campaign pools leave the atlas until the owner funds them again.</span></div>
         <div><b>03</b><span>Signed bridge activity, movement, and challenges decide every reward.</span></div>
       </section>
@@ -156,11 +176,24 @@ export default async function MarketplacePage() {
           <div>
             <p className="eyebrow"><RadioTower size={14} /> Live directory</p>
             <h2>Worlds transmitting now</h2>
-            <p>No filters and no permanent first place. Refresh to deal the funded worlds again.</p>
+            <p>Use a tag to focus the atlas, or refresh to deal the funded worlds again.</p>
           </div>
           <Link className="ghost-button" href="/">
             <RefreshCw size={16} /> Refresh list
           </Link>
+        </div>
+
+        <div className="tag-filter-row" aria-label="Server tag filters">
+          <Link className={`tag-filter ${!selectedTag ? "active" : ""}`} href="/">All worlds</Link>
+          {availableTags.map((serverTag) => (
+            <Link
+              className={`tag-filter ${serverTag.toLowerCase() === selectedTagLower ? "active" : ""}`}
+              href={`/?tag=${encodeURIComponent(serverTag)}#servers`}
+              key={serverTag}
+            >
+              {serverTag}
+            </Link>
+          ))}
         </div>
 
         {sortedServers.length ? (
