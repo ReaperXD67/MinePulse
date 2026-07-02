@@ -43,6 +43,20 @@ function authSecret() {
   return new TextEncoder().encode(secret);
 }
 
+function secureAuthCookie() {
+  const override = process.env.AUTH_COOKIE_SECURE?.toLowerCase();
+
+  if (override === "true") {
+    return true;
+  }
+
+  if (override === "false") {
+    return false;
+  }
+
+  return process.env.NODE_ENV === "production";
+}
+
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
 }
@@ -125,7 +139,7 @@ export function setSessionCookie(response: NextResponse, token: string) {
   response.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: secureAuthCookie(),
     path: "/",
     maxAge: 60 * 60 * 24 * 7
   });
@@ -135,7 +149,7 @@ export function clearSessionCookie(response: NextResponse) {
   response.cookies.set(COOKIE_NAME, "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: secureAuthCookie(),
     path: "/",
     maxAge: 0
   });

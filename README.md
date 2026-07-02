@@ -120,5 +120,6 @@ For local testing where Paper and the website run on the same machine, keep `api
 
 - Copy `.env.example` to `.env` locally, and set the same variables in your host.
 - `AUTH_SECRET` must be a strong unique value of at least 32 characters. Production will refuse to boot with the demo secret.
+- `AUTH_COOKIE_SECURE="false"` is allowed only for temporary HTTP/IP-based VPS testing. Use HTTPS and remove it or set it to `"true"` before real public launch.
 - For real production payments, connect Stripe or PayPal where the current owner top-up and premium routes write simulated billing records.
 - SQLite is fine for local MVP testing. Use Postgres before handling real money or large traffic.
