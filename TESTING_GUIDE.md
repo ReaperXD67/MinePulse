@@ -7,7 +7,7 @@ This guide is for testers who need to run MinePulse locally, connect a Minecraft
 MinePulse is ready for local MVP testing:
 
 - Website runs locally with a real Prisma/SQLite database.
-- Login, unified account, server listing, tag filters, favorites, likes, comments, support, reports, admin pricing, promo codes, manual wallet grants, and creator tools are implemented.
+- Login, signup, unified account, server listing, tag filters, favorites, likes, comments, support, reports, admin pricing, promo codes, manual wallet grants, and creator tools are implemented.
 - Paper plugin connects to the website, syncs server policy, verifies activity, blocks AFK rewards, asks `/answer` challenges, rewards only linked players, and delivers store purchases.
 - Docker can run a local Paper test server on `localhost:25565`.
 
@@ -44,6 +44,14 @@ http://localhost:3000
 ```
 
 ## Demo Accounts
+
+New testers can create their own account at:
+
+```text
+http://localhost:3000/signup
+```
+
+Each tester should use a separate account. Do not make everyone share one login, because wallet points, Minecraft linking, purchases, friends, and profile edits will mix together.
 
 | Role | Email | Password |
 | --- | --- | --- |

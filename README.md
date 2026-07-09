@@ -34,6 +34,8 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+Testers can create their own accounts at `http://localhost:3000/signup`. Use separate accounts for each tester so wallets, Minecraft links, purchases, friends, and profile edits do not collide.
+
 `db:apply` applies the generated SQLite migration directly. The Prisma schema and generated client still remain the source of truth; this command exists because Prisma 7's schema engine can be opaque on some local Windows SQLite setups.
 
 Seeded accounts:

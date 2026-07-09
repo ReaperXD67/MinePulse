@@ -66,6 +66,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
                   <span><strong>Enter Network</strong><small>Continue with your member identity.</small></span><ArrowUpRight size={20} />
                 </Link>
               )}
+              {!user ? (
+                <Link className="world-route route-lime" href="/signup">
+                  <span className="route-index">04</span><UserRound size={25} />
+                  <span><strong>Create Account</strong><small>Make a separate tester profile.</small></span><ArrowUpRight size={20} />
+                </Link>
+              ) : null}
               {user?.role === UserRole.ADMIN ? (
                 <Link className="world-route route-rose" href="/admin">
                   <span className="route-index">04</span><Settings2 size={25} />
@@ -73,7 +79,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
                 </Link>
               ) : null}
               <a className="world-route route-violet" href={discordUrl} target={discordUrl.startsWith("http") ? "_blank" : undefined} rel={discordUrl.startsWith("http") ? "noreferrer" : undefined}>
-                <span className="route-index">{user?.role === UserRole.ADMIN ? "05" : "04"}</span><MessageCircle size={25} />
+                <span className="route-index">{!user || user.role === UserRole.ADMIN ? "05" : "04"}</span><MessageCircle size={25} />
                 <span><strong>Official Discord</strong><small>Setup help, releases, and community support.</small></span><ArrowUpRight size={20} />
               </a>
             </nav>

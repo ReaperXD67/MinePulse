@@ -3,18 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { KeyRound, LogIn } from "lucide-react";
+import { Sparkles, UserPlus } from "lucide-react";
 
-const demoAccounts = [
-  ["Control", "admin@minepulse.local", "admin123"],
-  ["Skyforge", "owner@minepulse.local", "owner123"],
-  ["PixelRunner", "player@minepulse.local", "player123"]
-] as const;
-
-export function LoginForm() {
+export function SignupForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("player@minepulse.local");
-  const [password, setPassword] = useState("player123");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -23,21 +18,20 @@ export function LoginForm() {
     setLoading(true);
     setMessage("");
 
-    const response = await fetch("/api/auth/login", {
+    const response = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ username, email, password })
     });
-
     const payload = await response.json().catch(() => ({}));
     setLoading(false);
 
     if (!response.ok) {
-      setMessage(payload.error || "Login failed");
+      setMessage(payload.error || "Account creation failed");
       return;
     }
 
-    router.push("/");
+    router.push("/account");
     router.refresh();
   }
 
@@ -45,15 +39,28 @@ export function LoginForm() {
     <form className="auth-form" onSubmit={submit}>
       <div>
         <p className="eyebrow">
-          <KeyRound size={14} /> Secure role access
+          <Sparkles size={14} /> Tester access
         </p>
-        <h2>Enter the network</h2>
+        <h2>Create account</h2>
         <p className="lead">
-          Use a seeded identity to test the unified account, server publishing, purchases, and moderation.
+          Make a separate test identity for wallet rewards, Minecraft linking, purchases, friends, and server publishing.
         </p>
       </div>
 
       <div className="form-grid">
+        <div className="form-row">
+          <label htmlFor="username">Display name</label>
+          <input
+            className="field"
+            id="username"
+            minLength={3}
+            maxLength={40}
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            autoComplete="nickname"
+            required
+          />
+        </div>
         <div className="form-row">
           <label htmlFor="email">Email</label>
           <input
@@ -63,6 +70,7 @@ export function LoginForm() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
+            required
           />
         </div>
         <div className="form-row">
@@ -71,36 +79,20 @@ export function LoginForm() {
             className="field"
             id="password"
             type="password"
+            minLength={8}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
+            autoComplete="new-password"
+            required
           />
         </div>
       </div>
 
       <button className="solid-button" type="submit" disabled={loading}>
-        <LogIn size={16} /> {loading ? "Checking..." : "Login"}
+        <UserPlus size={16} /> {loading ? "Creating..." : "Create test account"}
       </button>
-      <Link className="ghost-button auth-switch-link" href="/signup">Create a test account</Link>
-
-      <div className="inline-actions" aria-label="Demo accounts">
-        {demoAccounts.map(([label, demoEmail, demoPassword]) => (
-          <button
-            className="ghost-button"
-            key={label}
-            type="button"
-            onClick={() => {
-              setEmail(demoEmail);
-              setPassword(demoPassword);
-              setMessage("");
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <p className="toast-line">{message}</p>
+      <Link className="ghost-button auth-switch-link" href="/login">Already have an account</Link>
+      <p className="toast-line" aria-live="polite">{message}</p>
     </form>
   );
 }
