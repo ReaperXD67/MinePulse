@@ -10,9 +10,11 @@ export type ChartPoint = {
 
 export async function platformStats() {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const [users, activeServers, purchases, billing, serverPools, walletTotals, ledgers] = await Promise.all([
+  const onlineCutoff = new Date(Date.now() - 2 * 60 * 1000);
+  const [users, activeServers, onlinePlayersNow, purchases, billing, serverPools, walletTotals, ledgers] = await Promise.all([
     prisma.user.count(),
     prisma.server.count({ where: { status: "ACTIVE", pointPool: { gt: 0 } } }),
+    prisma.serverSession.count({ where: { status: "ACTIVE", lastHeartbeatAt: { gte: onlineCutoff } } }),
     prisma.purchase.count(),
     prisma.billingLedger.aggregate({ _sum: { moneyCents: true } }),
     prisma.server.aggregate({ _sum: { pointPool: true } }),
@@ -29,6 +31,7 @@ export async function platformStats() {
   return {
     users,
     activeServers,
+    onlinePlayersNow,
     purchases,
     revenueCents: billing._sum.moneyCents ?? 0,
     serverPools: serverPools._sum.pointPool ?? 0,

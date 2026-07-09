@@ -240,7 +240,7 @@ export function OwnerConsole({
             <div className="form-row"><label>Port</label><input className="field" name="port" type="number" defaultValue="25565" /></div>
             <div className="form-row"><label>Version</label><input className="field" name="version" defaultValue="1.21.x" /></div>
             <div className="form-row"><label>Region</label><input className="field" name="region" defaultValue="EU" /></div>
-            <div className="form-row"><label>Tags</label><input className="field" name="tags" defaultValue="Survival,Economy,SMP" /></div>
+            <div className="form-row"><label>Tags - max 10</label><input className="field" name="tags" defaultValue="Survival,Economy,SMP" /></div>
           </div>
           <div className="form-row"><label>Listing summary</label><textarea className="textarea" name="description" defaultValue="A player-first server with fair rewards and a cosmetic point shop." required /></div>
           <div className="form-row"><label>Full profile story</label><textarea className="textarea tall" name="longDescription" placeholder="What makes the community, gameplay, and economy special?" /></div>
@@ -299,7 +299,7 @@ export function OwnerConsole({
                   <div className="form-row"><label>Region</label><input className="field" name="region" defaultValue={server.region} /></div>
                   <div className="form-row"><label>Status</label><select className="select" name="status" defaultValue={server.status}><option value="ACTIVE">Active</option><option value="PAUSED">Paused</option></select></div>
                 </div>
-                <div className="form-row"><label>Tags</label><input className="field" name="tags" defaultValue={server.tags} /></div>
+                <div className="form-row"><label>Tags - max 10</label><input className="field" name="tags" defaultValue={server.tags} /></div>
                 <div className="form-row"><label>Listing summary</label><textarea className="textarea" name="description" defaultValue={server.description} /></div>
                 <div className="form-row"><label>Full profile story</label><textarea className="textarea tall" name="longDescription" defaultValue={server.longDescription} /></div>
                 <div className="form-grid two">

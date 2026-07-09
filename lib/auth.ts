@@ -22,6 +22,9 @@ export type SessionUser = Pick<
   | "username"
   | "role"
   | "walletPoints"
+  | "level"
+  | "lifetimeEarnedPoints"
+  | "lastDailyClaimAt"
   | "friendsPrivate"
   | "minecraftUuid"
   | "minecraftName"
@@ -108,6 +111,9 @@ export async function currentUser(): Promise<SessionUser | null> {
       username: true,
       role: true,
       walletPoints: true,
+      level: true,
+      lifetimeEarnedPoints: true,
+      lastDailyClaimAt: true,
       friendsPrivate: true,
       minecraftUuid: true,
       minecraftName: true,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { makePluginSecret, slugify } from "@/lib/random";
+import { normalizeServerTags } from "@/lib/server-tags";
 import { routeError } from "@/lib/api";
 
 export const runtime = "nodejs";
@@ -47,9 +48,11 @@ export async function POST(request: Request) {
   try {
     const user = await requireMember();
     const input = schema.parse(await request.json());
+    const tags = normalizeServerTags(input.tags);
     const server = await prisma.server.create({
       data: {
         ...input,
+        tags,
         ownerId: user.id,
         slug: await uniqueSlug(input.name),
         pointPool: 0,

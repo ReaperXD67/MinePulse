@@ -5,6 +5,7 @@ import { OwnerConsole } from "@/components/OwnerConsole";
 import { ProfileForm } from "@/components/ProfileForm";
 import { MinecraftLinkPanel } from "@/components/MinecraftLinkPanel";
 import { FriendPanel } from "@/components/FriendPanel";
+import { DailyRewardPanel } from "@/components/DailyRewardPanel";
 import { currentUser } from "@/lib/auth";
 import { minutesLabel, money, points, shortDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -159,6 +160,13 @@ export default async function AccountPage() {
           <small>{money(billing._sum.moneyCents ?? 0)} funded</small>
         </div>
       </section>
+
+      <DailyRewardPanel
+        walletPoints={profile?.walletPoints ?? 0}
+        level={profile?.level ?? 0}
+        lifetimeEarnedPoints={profile?.lifetimeEarnedPoints ?? 0}
+        lastDailyClaimAt={profile?.lastDailyClaimAt?.toISOString() ?? null}
+      />
 
       <section className="dashboard-grid account-overview-grid">
         <div className="panel">

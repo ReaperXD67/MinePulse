@@ -853,6 +853,210 @@ h1 {
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
 
+/* Progression and premium visibility pass */
+.progression-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.75fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.level-console,
+.daily-claim-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(224, 238, 246, 0.14);
+  border-radius: 4px;
+  background:
+    linear-gradient(135deg, rgba(72, 227, 255, 0.09), transparent 42%),
+    linear-gradient(315deg, rgba(155, 255, 91, 0.08), transparent 48%),
+    rgba(8, 13, 17, 0.9);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
+}
+
+.level-console::before,
+.daily-claim-card::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(90deg, #000, transparent 78%);
+  pointer-events: none;
+}
+
+.level-console {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  min-height: 210px;
+  padding: 24px;
+}
+
+.level-ring {
+  --progress: 0%;
+  display: grid;
+  width: 132px;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #091014 0 55%, transparent 56%),
+    conic-gradient(var(--lime) var(--progress), rgba(255, 255, 255, 0.09) 0);
+  box-shadow:
+    inset 0 0 0 1px rgba(224, 238, 246, 0.12),
+    0 0 42px rgba(155, 255, 91, 0.18);
+}
+
+.level-ring span,
+.level-ring strong {
+  grid-area: 1 / 1;
+}
+
+.level-ring span {
+  margin-top: -32px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.level-ring strong {
+  color: #fff;
+  font-size: 46px;
+  line-height: 1;
+}
+
+.level-console h2,
+.daily-claim-card h2 {
+  margin-bottom: 8px;
+  font-size: 28px;
+}
+
+.level-console p:not(.eyebrow),
+.daily-claim-card p:not(.eyebrow) {
+  margin-bottom: 14px;
+  color: #b9c8cd;
+  line-height: 1.6;
+}
+
+.progress-track {
+  overflow: hidden;
+  height: 9px;
+  border: 1px solid rgba(224, 238, 246, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--lime), var(--cyan));
+  box-shadow: 0 0 22px rgba(72, 227, 255, 0.28);
+}
+
+.daily-claim-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: space-between;
+  min-height: 210px;
+  padding: 24px;
+}
+
+.daily-claim-card small {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 12px;
+  border: 1px solid rgba(247, 201, 72, 0.22);
+  padding: 6px 9px;
+  background: rgba(247, 201, 72, 0.08);
+  color: #ffe8a3;
+  font-size: 12px;
+}
+
+.claim-button {
+  justify-self: start;
+}
+
+.server-card.premium-gold,
+.server-card.premium-diamond {
+  position: relative;
+  isolation: isolate;
+}
+
+.server-card.premium-gold {
+  border-color: rgba(247, 201, 72, 0.62);
+  box-shadow:
+    0 0 0 1px rgba(247, 201, 72, 0.18),
+    0 0 34px rgba(247, 201, 72, 0.22),
+    0 24px 54px rgba(0, 0, 0, 0.28);
+}
+
+.server-card.premium-diamond {
+  border-color: rgba(72, 227, 255, 0.72);
+  box-shadow:
+    0 0 0 1px rgba(72, 227, 255, 0.24),
+    0 0 42px rgba(72, 227, 255, 0.28),
+    0 24px 54px rgba(0, 0, 0, 0.3);
+}
+
+.server-card.premium-gold::after,
+.server-card.premium-diamond::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.server-card.premium-gold::after {
+  background: linear-gradient(135deg, rgba(247, 201, 72, 0.14), transparent 38%);
+}
+
+.server-card.premium-diamond::after {
+  background:
+    linear-gradient(135deg, rgba(72, 227, 255, 0.18), transparent 40%),
+    linear-gradient(315deg, rgba(167, 139, 250, 0.12), transparent 44%);
+}
+
+.server-card.premium-gold .server-card-image {
+  box-shadow: inset 0 -4px 0 rgba(247, 201, 72, 0.72);
+}
+
+.server-card.premium-diamond .server-card-image {
+  box-shadow: inset 0 -4px 0 rgba(72, 227, 255, 0.82);
+}
+
+.purchase-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.purchase-pill-list span {
+  border: 1px solid rgba(224, 238, 246, 0.12);
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #d8e5e8;
+  font-size: 12px;
+}
+
+@media (max-width: 880px) {
+  .progression-panel,
+  .level-console {
+    grid-template-columns: 1fr;
+  }
+
+  .level-ring {
+    width: 112px;
+  }
+}
+
 .tag-filter-row {
   display: flex;
   flex-wrap: wrap;

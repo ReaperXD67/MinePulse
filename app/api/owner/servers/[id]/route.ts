@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ServerStatus, UserRole } from "@/lib/generated/prisma/client";
 import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeServerTags } from "@/lib/server-tags";
 import { routeError } from "@/lib/api";
 
 export const runtime = "nodejs";
@@ -71,11 +72,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const { id } = await context.params;
     await authorize(id);
     const input = schema.parse(await request.json());
+    const tags = typeof input.tags === "string" ? normalizeServerTags(input.tags) : undefined;
     const policyChanged = Object.keys(input).some((key) => policyFields.has(key));
     const updated = await prisma.server.update({
       where: { id },
       data: {
         ...input,
+        ...(tags ? { tags } : {}),
         ...(policyChanged ? { pluginConfigRevision: { increment: 1 } } : {})
       }
     });

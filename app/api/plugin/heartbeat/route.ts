@@ -9,6 +9,7 @@ import {
   verifyHeartbeatSignature,
   verifyMathChallenge
 } from "@/lib/plugin-security";
+import { claimableLevelRewards } from "@/lib/progression";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
 
@@ -83,7 +84,9 @@ export async function POST(request: Request) {
         id: true,
         email: true,
         passwordHash: true,
-        walletPoints: true
+        walletPoints: true,
+        level: true,
+        lifetimeEarnedPoints: true
       }
     });
 
@@ -330,9 +333,12 @@ export async function POST(request: Request) {
 
       let balanceAfter = player.walletPoints;
       if (earned > 0) {
-        const updatedUser = await tx.user.update({
+        let updatedUser = await tx.user.update({
           where: { id: player.id },
-          data: { walletPoints: { increment: earned } }
+          data: {
+            walletPoints: { increment: earned },
+            lifetimeEarnedPoints: { increment: earned }
+          }
         });
         balanceAfter = updatedUser.walletPoints;
 
@@ -351,6 +357,28 @@ export async function POST(request: Request) {
             note: `Heartbeat reward from ${freshServer.name}`
           }
         });
+
+        const levelRewards = claimableLevelRewards(updatedUser.level, updatedUser.lifetimeEarnedPoints);
+        for (const reward of levelRewards) {
+          updatedUser = await tx.user.update({
+            where: { id: player.id },
+            data: {
+              walletPoints: { increment: reward.rewardPoints },
+              level: reward.level
+            }
+          });
+          balanceAfter = updatedUser.walletPoints;
+
+          await tx.pointLedger.create({
+            data: {
+              userId: player.id,
+              type: LedgerType.LEVEL_REWARD,
+              amountPoints: reward.rewardPoints,
+              balanceAfter,
+              note: `Level ${reward.level} bonus for ${reward.requiredPoints} verified points`
+            }
+          });
+        }
       }
 
       return {

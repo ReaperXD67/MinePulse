@@ -58,7 +58,7 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
   const teaser = server.items[0];
 
   return (
-    <article className="server-card">
+    <article className={`server-card ${premiumClass ? `premium-${premiumClass}` : ""}`}>
       <Link className="server-card-image" href={`/servers/${server.slug}`} style={{ "--image": `url(${server.bannerImage})` } as React.CSSProperties} aria-label={`View ${server.name}`}>
         <div className="card-signal-row">
           <span className={`status-pill trust-${server.trustStatus.toLowerCase()}`}><ShieldCheck size={12} /> {server.trustStatus}</span>

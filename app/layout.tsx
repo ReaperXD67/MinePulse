@@ -31,7 +31,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <div className="navigator-user">
       <Link href="/account" aria-label="Open account">
         <Gamepad2 size={17} />
-        <span><strong>{user.username}</strong><small><Coins size={11} /> {points(user.walletPoints)}</small></span>
+        <span><strong>{user.username}</strong><small><Coins size={11} /> {points(user.walletPoints)} - LVL {user.level}</small></span>
       </Link>
       <form action="/api/auth/logout" method="post">
         <button className="icon-button" title="Log out" aria-label="Log out"><LogOut size={16} /></button>

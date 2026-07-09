@@ -83,6 +83,8 @@ enum EnforcementType {
 enum LedgerType {
   PLAYER_REWARD
   PLAYER_SPEND
+  LEVEL_REWARD
+  DAILY_REWARD
   SERVER_TOPUP
   SERVER_PREMIUM
   PROMO_BONUS
@@ -98,19 +100,22 @@ enum BillingKind {
 }
 
 model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  username       String
-  minecraftUuid  String?  @unique
-  minecraftName  String?
-  passwordHash   String?
-  role           UserRole @default(PLAYER)
-  walletPoints   Int      @default(0)
-  friendsPrivate Boolean  @default(false)
-  bio            String   @default("")
-  avatarUrl      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  username             String
+  minecraftUuid        String?   @unique
+  minecraftName        String?
+  passwordHash         String?
+  role                 UserRole  @default(PLAYER)
+  walletPoints         Int       @default(0)
+  level                Int       @default(0)
+  lifetimeEarnedPoints Int       @default(0)
+  lastDailyClaimAt     DateTime?
+  friendsPrivate       Boolean   @default(false)
+  bio                  String    @default("")
+  avatarUrl            String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   ownedServers       Server[]            @relation("OwnerServers")
   sessions           ServerSession[]

@@ -25,7 +25,6 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
 
   const initials = member.username.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   const activeSeconds = member.sessions.reduce((sum, session) => sum + session.activeSeconds, 0);
-  const earned = member.sessions.reduce((sum, session) => sum + session.rewardedPoints, 0);
 
   return (
     <main className="container dashboard member-profile-page">
@@ -41,9 +40,9 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
 
       <section className="metrics-row">
         <div className="stat-tile"><span>Public servers</span><strong>{member.ownedServers.length}</strong></div>
+        <div className="stat-tile"><span>Player level</span><strong>{member.level}</strong></div>
         <div className="stat-tile"><span>Verified play</span><strong>{minutesLabel(activeSeconds)}</strong></div>
-        <div className="stat-tile"><span>Lifetime earned</span><strong>{points(earned)}</strong></div>
-        <div className="stat-tile"><span>Current wallet</span><strong>{points(member.walletPoints)}</strong></div>
+        <div className="stat-tile"><span>Lifetime earned</span><strong>{points(member.lifetimeEarnedPoints)}</strong></div>
       </section>
 
       <section className="panel">

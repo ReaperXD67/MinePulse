@@ -70,6 +70,8 @@ async function main() {
       passwordHash: playerHash,
       role: UserRole.PLAYER,
       walletPoints: 18500,
+      level: 3,
+      lifetimeEarnedPoints: 7200,
       friendsPrivate: false,
       bio: "Survival player, event hunter, and new server creator."
     }
@@ -295,6 +297,13 @@ async function main() {
         amountPoints: 7200,
         balanceAfter: 18500,
         note: "Verified playtime reward from Skyforge Economy"
+      },
+      {
+        userId: player.id,
+        type: LedgerType.LEVEL_REWARD,
+        amountPoints: 3000,
+        balanceAfter: 18500,
+        note: "Demo level bonuses through level 3"
       },
       {
         serverId: servers[0].id,

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { AdminConsole } from "@/components/AdminConsole";
 import { AdminSafetyConsole } from "@/components/AdminSafetyConsole";
 import { StatsChart } from "@/components/StatsChart";
@@ -10,7 +11,11 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams
+}: {
+  searchParams: Promise<{ buyers?: string }>;
+}) {
   const user = await currentUser();
 
   if (!user) {
@@ -25,7 +30,12 @@ export default async function AdminPage() {
     );
   }
 
-  const [stats, pointPackages, premiumTiers, servers, billing, promos, reports, enforcement, users] = await Promise.all([
+  const { buyers } = await searchParams;
+  const buyerWindow = buyers === "all" ? "all" : Number(buyers || 5);
+  const buyerDays = buyerWindow === "all" || ![5, 14, 30].includes(buyerWindow) ? 5 : buyerWindow;
+  const buyerSince = buyers === "all" ? null : new Date(Date.now() - buyerDays * 24 * 60 * 60 * 1000);
+
+  const [stats, pointPackages, premiumTiers, servers, billing, promos, reports, enforcement, grantUsers, buyerUsers] = await Promise.all([
     platformStats(),
     prisma.pointPackage.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.premiumTier.findMany({ orderBy: { priority: "desc" } }),
@@ -49,8 +59,33 @@ export default async function AdminPage() {
       select: { id: true, username: true, email: true, minecraftName: true, walletPoints: true },
       orderBy: { updatedAt: "desc" },
       take: 50
+    }),
+    prisma.user.findMany({
+      where: buyerSince ? { purchases: { some: { createdAt: { gte: buyerSince } } } } : { purchases: { some: {} } },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        minecraftName: true,
+        walletPoints: true,
+        createdAt: true,
+        purchases: {
+          where: buyerSince ? { createdAt: { gte: buyerSince } } : undefined,
+          include: {
+            item: { select: { name: true, pricePoints: true } },
+            server: { select: { name: true } }
+          },
+          orderBy: { createdAt: "desc" },
+          take: 8
+        },
+        _count: { select: { purchases: true } }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50
     })
   ]);
+
+  const buyerWindowLabel = buyers === "all" ? "all time" : `${buyerDays} days`;
 
   return (
     <main className="container dashboard">
@@ -64,20 +99,20 @@ export default async function AdminPage() {
 
       <section className="metrics-row">
         <div className="stat-tile" style={{ "--accent": "var(--lime)" } as React.CSSProperties}>
-          <span>Users</span>
+          <span>Accounts created</span>
           <strong>{stats.users}</strong>
         </div>
         <div className="stat-tile" style={{ "--accent": "var(--cyan)" } as React.CSSProperties}>
+          <span>Players online now</span>
+          <strong>{stats.onlinePlayersNow}</strong>
+        </div>
+        <div className="stat-tile" style={{ "--accent": "var(--gold)" } as React.CSSProperties}>
           <span>Active funded servers</span>
           <strong>{stats.activeServers}</strong>
         </div>
-        <div className="stat-tile" style={{ "--accent": "var(--gold)" } as React.CSSProperties}>
+        <div className="stat-tile" style={{ "--accent": "var(--rose)" } as React.CSSProperties}>
           <span>Revenue</span>
           <strong>{money(stats.revenueCents)}</strong>
-        </div>
-        <div className="stat-tile" style={{ "--accent": "var(--rose)" } as React.CSSProperties}>
-          <span>Server pools</span>
-          <strong>{points(stats.serverPools)}</strong>
         </div>
       </section>
 
@@ -146,7 +181,7 @@ export default async function AdminPage() {
           premiumUntil: server.premiumUntil?.toISOString() ?? null,
           trustStatus: server.trustStatus
         }))}
-        users={users.map((account) => ({
+        users={grantUsers.map((account) => ({
           id: account.id,
           username: account.username,
           email: account.email,
@@ -154,6 +189,64 @@ export default async function AdminPage() {
           walletPoints: account.walletPoints
         }))}
       />
+
+      <section className="panel" id="buyers">
+        <div className="panel-header">
+          <div>
+            <h2>Account intelligence</h2>
+            <p>Filter item buyers, account creation date, and recent point spend.</p>
+          </div>
+          <div className="inline-actions">
+            <Link className={`tag-filter ${buyers !== "14" && buyers !== "30" && buyers !== "all" ? "active" : ""}`} href="/admin?buyers=5#buyers">5 days</Link>
+            <Link className={`tag-filter ${buyers === "14" ? "active" : ""}`} href="/admin?buyers=14#buyers">14 days</Link>
+            <Link className={`tag-filter ${buyers === "30" ? "active" : ""}`} href="/admin?buyers=30#buyers">30 days</Link>
+            <Link className={`tag-filter ${buyers === "all" ? "active" : ""}`} href="/admin?buyers=all#buyers">All</Link>
+          </div>
+        </div>
+        <div className="table-shell">
+          <table className="table buyer-table">
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th>Created</th>
+                <th>Window spend</th>
+                <th>Purchases</th>
+                <th>Latest items</th>
+              </tr>
+            </thead>
+            <tbody>
+              {buyerUsers.map((account) => {
+                const windowSpend = account.purchases.reduce((sum, purchase) => sum + purchase.item.pricePoints, 0);
+                return (
+                  <tr key={account.id}>
+                    <td>
+                      <strong>{account.username}</strong>
+                      <p>{account.minecraftName || account.email}</p>
+                    </td>
+                    <td>{account.createdAt.toLocaleString()}</td>
+                    <td>{points(windowSpend)}</td>
+                    <td>{account.purchases.length} in {buyerWindowLabel}<br /><span className="toast-line">{account._count.purchases} lifetime</span></td>
+                    <td>
+                      {account.purchases.length ? (
+                        <div className="purchase-pill-list">
+                          {account.purchases.map((purchase) => (
+                            <span key={purchase.id}>
+                              {purchase.item.name} - {points(purchase.item.pricePoints)} - {purchase.server.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        "No purchases in window"
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {!buyerUsers.length ? <tr><td colSpan={5}>No buyers found for this window.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="panel">
         <div className="panel-header compact-heading"><div><h2>Enforcement history</h2><p>Warnings, pauses, blacklists, credit removals, and restorations.</p></div></div>
