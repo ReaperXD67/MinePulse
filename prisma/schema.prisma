@@ -210,6 +210,7 @@ model Server {
   @@index([status, premiumUntil])
   @@index([trustStatus, status])
   @@index([ownerId])
+  @@unique([host, port])
 }
 
 model StoreItem {

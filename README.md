@@ -1,6 +1,6 @@
-# MinePulse
+# KarixMC
 
-MinePulse is a production-style MVP for a Minecraft server marketplace where verified playtime earns platform points.
+KarixMC is a production-style MVP for a Minecraft server marketplace where verified playtime earns platform points. Internal database names and the stable `MinePulseBridge` plugin ID are retained for compatibility.
 
 Members earn points on funded servers, then spend those earned points on ranks, crates, cosmetics, or any server-configured item. The same account can also publish servers, buy campaign credits with real money, choose reward rates per second, cap paid players, and buy Gold or Diamond placement. Admins control pricing, bonus promo codes, reports, punishments, campaign pools, premium state, server visibility, and platform statistics.
 

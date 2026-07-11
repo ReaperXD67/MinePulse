@@ -9,6 +9,7 @@ import { DailyRewardPanel } from "@/components/DailyRewardPanel";
 import { currentUser } from "@/lib/auth";
 import { minutesLabel, money, points, shortDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { serverJoinAddress } from "@/lib/server-address";
 
 export const dynamic = "force-dynamic";
 
@@ -176,7 +177,7 @@ export default async function AccountPage() {
           <div className="activity-list">
             {purchases.map((purchase) => (
               <div className="activity-row" key={purchase.id}>
-                <div><strong>{purchase.item.name}</strong><span>{purchase.server.name} · {shortDate(purchase.createdAt)}</span></div>
+                <div><strong>{purchase.item.name}</strong><span>{purchase.server.name} / {shortDate(purchase.createdAt)}</span></div>
                 <span className={`status-pill status-${purchase.status.toLowerCase()}`}>{purchase.status}</span>
               </div>
             ))}
@@ -191,7 +192,7 @@ export default async function AccountPage() {
           <div className="activity-list">
             {ledger.map((entry) => (
               <div className="activity-row" key={entry.id}>
-                <div><strong>{entry.note}</strong><span>{entry.server?.name || "MinePulse"} · {shortDate(entry.createdAt)}</span></div>
+                <div><strong>{entry.note}</strong><span>{entry.server?.name || "KarixMC"} / {shortDate(entry.createdAt)}</span></div>
                 <span className={entry.amountPoints >= 0 ? "amount-positive" : "amount-negative"}>
                   {entry.amountPoints > 0 ? "+" : ""}{points(entry.amountPoints)}
                 </span>
@@ -210,7 +211,7 @@ export default async function AccountPage() {
           <div className="activity-list">
             {sessions.map((session) => (
               <div className="activity-row" key={session.id}>
-                <div><strong>{session.server.name}</strong><span>{minutesLabel(session.activeSeconds)} active · {minutesLabel(session.afkSeconds)} AFK</span></div>
+                <div><strong>{session.server.name}</strong><span>{minutesLabel(session.activeSeconds)} active / {minutesLabel(session.afkSeconds)} AFK</span></div>
                 <span className="amount-positive">+{points(session.rewardedPoints)}</span>
               </div>
             ))}
@@ -225,7 +226,7 @@ export default async function AccountPage() {
           <div className="activity-list">
             {favorites.map((favorite) => (
               <Link className="activity-row" href={`/servers/${favorite.server.slug}`} key={favorite.id}>
-                <div><strong>{favorite.server.name}</strong><span className="mono">{favorite.server.host}:{favorite.server.port}</span></div>
+                <div><strong>{favorite.server.name}</strong><span className="mono">{serverJoinAddress(favorite.server.host, favorite.server.port)}</span></div>
                 <ExternalLink size={16} />
               </Link>
             ))}
@@ -255,6 +256,7 @@ export default async function AccountPage() {
       </section>
 
       <OwnerConsole
+        appBaseUrl={process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}
         servers={servers.map((server) => ({
           id: server.id,
           slug: server.slug,
@@ -328,7 +330,7 @@ export default async function AccountPage() {
         <div className="activity-list">
           {tickets.map((ticket) => (
             <div className="activity-row" key={ticket.id}>
-              <div><strong>{ticket.subject}</strong><span>{ticket.server.name} · {ticket.ownerNote || "Waiting for server staff"}</span></div>
+              <div><strong>{ticket.subject}</strong><span>{ticket.server.name} / {ticket.ownerNote || "Waiting for server staff"}</span></div>
               <span className={`status-pill status-${ticket.status.toLowerCase()}`}>{ticket.status.replace("_", " ")}</span>
             </div>
           ))}

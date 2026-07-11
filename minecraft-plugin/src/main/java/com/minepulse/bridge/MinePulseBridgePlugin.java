@@ -72,7 +72,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
     Bukkit.getScheduler().runTaskTimer(this, this::tickBridge, 40L, 100L);
     Bukkit.getScheduler().runTaskTimerAsynchronously(this, this::syncPolicy, 20L, 1200L);
-    getLogger().info("MinePulse bridge enabled. Protection policy will sync from the website.");
+    getLogger().info("KarixMC bridge enabled. Protection policy will sync from the website.");
   }
 
   private void registerCommand(String name) {
@@ -159,7 +159,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     }
 
     if (!(sender instanceof Player player)) {
-      sender.sendMessage("Only players can view MinePulse statistics.");
+      sender.sendMessage("Only players can view KarixMC statistics.");
       return true;
     }
 
@@ -170,7 +170,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
     if (name.equals("minepulse") && args.length > 0 && args[0].equalsIgnoreCase("link")) {
       if (args.length < 2) {
-        player.sendMessage(prefix() + ChatColor.YELLOW + "Use /minepulse link <code> from your MinePulse account.");
+        player.sendMessage(prefix() + ChatColor.YELLOW + "Use /minepulse link <code> from your KarixMC account.");
       } else {
         linkAccount(player, args[1]);
       }
@@ -189,7 +189,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
   private boolean answerChallenge(CommandSender sender, String[] args) {
     if (!(sender instanceof Player player)) {
-      sender.sendMessage("Only players can answer a MinePulse activity check.");
+      sender.sendMessage("Only players can answer a KarixMC activity check.");
       return true;
     }
 
@@ -209,7 +209,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
     challenge.submittedAnswer = args[0];
     markActive(player);
-    player.sendMessage(prefix() + ChatColor.AQUA + "Answer submitted. MinePulse is verifying it.");
+    player.sendMessage(prefix() + ChatColor.AQUA + "Answer submitted. KarixMC is verifying it.");
     return true;
   }
 
@@ -218,7 +218,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     player.sendMessage(prefix() + ChatColor.WHITE + "/pool" + ChatColor.GRAY + " - this server's campaign balance");
     player.sendMessage(prefix() + ChatColor.WHITE + "/answer <value>" + ChatColor.GRAY + " - answer an activity check");
     player.sendMessage(prefix() + ChatColor.WHITE + "/minepulse link <code>" + ChatColor.GRAY + " - connect your website account");
-    player.sendMessage(prefix() + ChatColor.WHITE + "/receive" + ChatColor.GRAY + " - retry queued MinePulse store deliveries");
+    player.sendMessage(prefix() + ChatColor.WHITE + "/receive" + ChatColor.GRAY + " - retry queued KarixMC store deliveries");
   }
 
   private void linkAccount(Player player, String code) {
@@ -297,7 +297,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
         lastLinkNoticeAt.put(playerId, current);
         String message = response.has("message")
           ? response.get("message").getAsString()
-          : "Link your MinePulse account before rewards can start.";
+          : "Link your KarixMC account before rewards can start.";
         player.sendMessage(prefix() + ChatColor.YELLOW + message);
       }
       return;
@@ -329,7 +329,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
         player.sendMessage(prefix() + ChatColor.GOLD + ChatColor.BOLD + "ACTIVITY CHECK");
         player.sendMessage(ChatColor.YELLOW + challenge.question);
         player.sendMessage(ChatColor.GRAY + (challenge.required
-          ? "Rewards pause until MinePulse verifies your answer."
+          ? "Rewards pause until KarixMC verifies your answer."
           : "This server uses optional activity checks."));
         player.sendMessage("");
       }
@@ -347,7 +347,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       JsonObject data = response.getAsJsonObject("policy");
       PluginPolicy next = PluginPolicy.from(data);
       if (next.revision != policy.revision) {
-        getLogger().info("MinePulse website policy synced at revision " + next.revision + ".");
+        getLogger().info("KarixMC website policy synced at revision " + next.revision + ".");
       }
       policy = next;
     } catch (Exception error) {
@@ -374,8 +374,8 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       return;
     }
     if (response.has("linked") && !response.get("linked").getAsBoolean()) {
-      player.sendMessage(prefix() + ChatColor.YELLOW + "Link your MinePulse account before rewards and wallet stats can start.");
-      player.sendMessage(ChatColor.GRAY + "Open MinePulse account settings, create a code, then run /minepulse link <code>.");
+      player.sendMessage(prefix() + ChatColor.YELLOW + "Link your KarixMC account before rewards and wallet stats can start.");
+      player.sendMessage(ChatColor.GRAY + "Open KarixMC account settings, create a code, then run /minepulse link <code>.");
       return;
     }
     JsonObject server = response.getAsJsonObject("server");
@@ -425,7 +425,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
         Bukkit.getScheduler().runTask(this, () -> {
           Player player = Bukkit.getPlayer(requestedBy);
           if (player != null) {
-            player.sendMessage(prefix() + ChatColor.GRAY + "No queued MinePulse deliveries for you on this server.");
+            player.sendMessage(prefix() + ChatColor.GRAY + "No queued KarixMC deliveries for you on this server.");
           }
         });
       }
@@ -439,7 +439,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   private void deliverPurchase(JsonObject purchase) {
     String purchaseId = purchase.get("id").getAsString();
     String command = purchase.get("command").getAsString();
-    String item = purchase.has("item") ? purchase.get("item").getAsString() : "MinePulse item";
+    String item = purchase.has("item") ? purchase.get("item").getAsString() : "KarixMC item";
     String playerName = purchase.has("player") ? purchase.get("player").getAsString() : "";
     String uuid = purchase.has("uuid") && !purchase.get("uuid").isJsonNull() ? purchase.get("uuid").getAsString() : "";
     boolean requiresOnline = !purchase.has("requiresOnline") || purchase.get("requiresOnline").getAsBoolean();
@@ -553,7 +553,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       mac.init(new SecretKeySpec(pluginSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
       return HexFormat.of().formatHex(mac.doFinal(canonical.getBytes(StandardCharsets.UTF_8)));
     } catch (Exception error) {
-      throw new IllegalStateException("Could not sign MinePulse heartbeat", error);
+      throw new IllegalStateException("Could not sign KarixMC heartbeat", error);
     }
   }
 
@@ -577,7 +577,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   }
 
   private String prefix() {
-    return ChatColor.DARK_GRAY + "[" + ChatColor.AQUA + "MinePulse" + ChatColor.DARK_GRAY + "] ";
+    return ChatColor.DARK_GRAY + "[" + ChatColor.AQUA + "KarixMC" + ChatColor.DARK_GRAY + "] ";
   }
 
   private String formatNumber(long value) {

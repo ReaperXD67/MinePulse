@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { makePluginSecret, slugify } from "@/lib/random";
 import { normalizeServerTags } from "@/lib/server-tags";
 import { routeError } from "@/lib/api";
+import { normalizeServerAddress } from "@/lib/server-address";
 
 export const runtime = "nodejs";
 
@@ -49,9 +50,26 @@ export async function POST(request: Request) {
     const user = await requireMember();
     const input = schema.parse(await request.json());
     const tags = normalizeServerTags(input.tags);
+    const address = normalizeServerAddress(input.host, input.port);
+    const existing = await prisma.server.findFirst({
+      where: {
+        host: address.host,
+        port: address.port,
+        status: { not: "REMOVED" }
+      },
+      select: { id: true }
+    });
+
+    if (existing) {
+      throw new Response("That Minecraft server is already registered. Contact support if you own it.", {
+        status: 409
+      });
+    }
+
     const server = await prisma.server.create({
       data: {
         ...input,
+        ...address,
         tags,
         ownerId: user.id,
         slug: await uniqueSlug(input.name),

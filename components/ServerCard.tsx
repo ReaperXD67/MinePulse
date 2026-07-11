@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowUpRight, Coins, Heart, MessageSquare, RadioTower, ShieldCheck, Star, Zap } from "lucide-react";
 import { compact, daysLeft, points } from "@/lib/format";
+import { serverJoinAddress } from "@/lib/server-address";
 
 export type MarketplaceServer = {
   id: string;
@@ -67,8 +68,8 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
       </Link>
       <div className="server-card-body">
         <div className="server-title-row">
-          <div><Link href={`/servers/${server.slug}`}><h3>{server.name}</h3></Link><div className="server-host">{server.host}:{server.port}</div></div>
-          {server.premiumPlan !== "NONE" ? <span className={`badge ${premiumClass}`}><Zap size={13} /> {server.premiumPlan} · {daysLeft(server.premiumUntil)}</span> : null}
+          <div><Link href={`/servers/${server.slug}`}><h3>{server.name}</h3></Link><div className="server-host">{serverJoinAddress(server.host, server.port)}</div></div>
+          {server.premiumPlan !== "NONE" ? <span className={`badge ${premiumClass}`}><Zap size={13} /> {server.premiumPlan} / {daysLeft(server.premiumUntil)}</span> : null}
         </div>
 
         <p className="server-description">{server.description}</p>

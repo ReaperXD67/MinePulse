@@ -49,7 +49,7 @@ export function TopbarShell({ account, children }: { account: ReactNode; childre
         <span className="launcher-core" aria-hidden="true">
           {Array.from({ length: 9 }, (_, index) => <i key={index} />)}
         </span>
-        <span className="launcher-copy"><strong>MinePulse</strong><small>{open ? "Close navigator" : "Explore worlds"}</small></span>
+        <span className="launcher-copy"><strong>KarixMC</strong><small><i className="live-pip" /> {open ? "Close navigator" : "Network live"}</small></span>
         {open ? <X size={19} /> : <Menu size={19} />}
       </button>
 
@@ -58,8 +58,8 @@ export function TopbarShell({ account, children }: { account: ReactNode; childre
 
       <section id="world-navigator" className="world-navigator" aria-hidden={!open} onClick={closeFromLink}>
         <div className="navigator-frame">
-          <div className="navigator-kicker"><span>MP // WORLD NETWORK</span><i /> <b>LIVE DIRECTORY</b></div>
-          <div className="navigator-title"><span>Navigator</span><h2>Choose where to go next.</h2></div>
+          <div className="navigator-kicker"><span>KX // REWARD NETWORK</span><i /> <b>LIVE DIRECTORY</b></div>
+          <div className="navigator-title"><span>Navigator</span><h2>Move through the network.</h2></div>
           {children}
           <footer className="navigator-footer"><span><kbd>ESC</kbd> close</span><span><kbd>/</kbd> toggle anywhere</span><strong>Verified worlds. Shared rewards.</strong></footer>
         </div>

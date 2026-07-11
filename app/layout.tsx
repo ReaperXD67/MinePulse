@@ -19,8 +19,11 @@ import { UserRole } from "@/lib/generated/prisma/client";
 import { points } from "@/lib/format";
 
 export const metadata: Metadata = {
-  title: "MinePulse",
-  description: "Verified Minecraft playtime rewards and server marketplace."
+  title: {
+    default: "KarixMC | Play anywhere. Earn everywhere.",
+    template: "%s | KarixMC"
+  },
+  description: "The verified Minecraft reward network for players and server owners."
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

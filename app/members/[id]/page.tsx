@@ -31,9 +31,9 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
       <section className="member-profile-hero">
         <div className="profile-avatar large" style={member.avatarUrl ? { backgroundImage: `url(${member.avatarUrl})` } : undefined}>{!member.avatarUrl ? initials : null}</div>
         <div>
-          <p className="eyebrow"><Gamepad2 size={14} /> MinePulse member</p>
+          <p className="eyebrow"><Gamepad2 size={14} /> KarixMC member</p>
           <h1>{member.username}</h1>
-          <p>{member.bio || "Player and community creator on MinePulse."}</p>
+          <p>{member.bio || "Player and community creator on KarixMC."}</p>
           <span>Joined {shortDate(member.createdAt)}</span>
         </div>
       </section>

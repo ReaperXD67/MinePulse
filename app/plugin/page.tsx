@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "MinePulse Bridge | Install and protect rewards",
-  description: "Download and connect the MinePulse Paper plugin for verified playtime rewards."
+  title: "KarixMC Bridge | Install and protect rewards",
+  description: "Download and connect the KarixMC Paper plugin for verified playtime rewards."
 };
 
 const commands = [
@@ -34,6 +34,7 @@ const commands = [
 
 export default function PluginPage() {
   const discordUrl = process.env.NEXT_PUBLIC_DISCORD_URL || "#support";
+  const appBaseUrl = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   return (
     <main className="plugin-page">
@@ -41,7 +42,7 @@ export default function PluginPage() {
         <div className="plugin-hero-shade" />
         <div className="container plugin-hero-content">
           <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.4.0</span><i>Paper 1.20-1.21</i></div>
-          <h1>MinePulse Bridge</h1>
+          <h1>KarixMC Bridge</h1>
           <p>Connect real Minecraft activity to the reward economy. The website owns policy and balances; the plugin verifies play, delivers purchases, and stays deliberately small.</p>
           <div className="inline-actions plugin-hero-actions">
             <a className="solid-button download-button" href="/downloads/MinePulseBridge-0.4.0.jar" download>
@@ -59,7 +60,7 @@ export default function PluginPage() {
 
       <section className="plugin-band plugin-flow-band">
         <div className="container">
-          <div className="plugin-section-heading"><span>Connection path</span><h2>Three credentials. Everything else lives on MinePulse.</h2></div>
+          <div className="plugin-section-heading"><span>Connection path</span><h2>Three credentials. Everything else lives on KarixMC.</h2></div>
           <div className="connection-flow">
             <div><b>01</b><PlugZap size={20} /><strong>Install</strong><span>Place the jar in Paper&apos;s plugins folder.</span></div>
             <div><b>02</b><Fingerprint size={20} /><strong>Connect</strong><span>Add URL, server ID, and secret once.</span></div>
@@ -82,11 +83,19 @@ export default function PluginPage() {
           </div>
           <div className="install-terminal" aria-label="Plugin configuration example">
             <header><i /><i /><i /><span>plugins/MinePulseBridge/config.yml</span></header>
-            <pre><code>{`api-base-url: "https://your-minepulse.com"
+            <pre><code>{`api-base-url: "${appBaseUrl}"
 server-id: "from-creator-studio"
 plugin-secret: "keep-this-private"`}</code></pre>
-            <footer><CheckCircle2 size={15} /> Policy, AFK rules, reward rate, and delivery polling sync from MinePulse</footer>
+            <footer><CheckCircle2 size={15} /> Policy, AFK rules, reward rate, and delivery polling sync from KarixMC</footer>
           </div>
+        </div>
+      </section>
+
+      <section className="plugin-band config-explainer-band">
+        <div className="container config-explainer-grid">
+          <div><b>API URL</b><strong>{appBaseUrl}</strong><p>This is the website address. It is not a wallet URL and it is not the Minecraft join address.</p></div>
+          <div><b>Server ID + secret</b><strong>Creator Studio / Bridge</strong><p>Copy both from your server card. The secret proves that this plugin belongs to that listing.</p></div>
+          <div><b>Connection proof</b><strong>Policy sync, then player activity</strong><p>Policy sync appears after startup. Reward heartbeats begin only while a player is online.</p></div>
         </div>
       </section>
 

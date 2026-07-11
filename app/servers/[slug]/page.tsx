@@ -20,6 +20,8 @@ import { ServerProfileActions } from "@/components/ServerProfileActions";
 import { currentUser } from "@/lib/auth";
 import { compact, daysLeft, minutesLabel, points, shortDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { activePremiumPlan } from "@/lib/premium";
+import { serverJoinAddress } from "@/lib/server-address";
 
 export const dynamic = "force-dynamic";
 
@@ -58,8 +60,12 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
     prisma.purchase.count({ where: { serverId: server.id, status: "DELIVERED" } })
   ]);
 
-  const heartbeatAge = server.lastHeartbeatAt ? Date.now() - server.lastHeartbeatAt.getTime() : Number.POSITIVE_INFINITY;
+  const bridgeSignalAt = [server.lastHeartbeatAt, server.lastConfigSyncAt]
+    .filter((value): value is Date => Boolean(value))
+    .sort((left, right) => right.getTime() - left.getTime())[0];
+  const heartbeatAge = bridgeSignalAt ? Date.now() - bridgeSignalAt.getTime() : Number.POSITIVE_INFINITY;
   const bridgeState = heartbeatAge <= 120000 ? "online" : heartbeatAge <= 900000 ? "stale" : "offline";
+  const premiumPlan = activePremiumPlan(server.premiumPlan, server.premiumUntil);
   const gallery = server.galleryImages.split(",").map((image) => image.trim()).filter(Boolean).slice(0, 5);
   const rules = server.rules.split("\n").map((rule) => rule.trim()).filter(Boolean);
   const ownerInitials = server.owner.username.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
@@ -74,14 +80,14 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
               <div className="inline-actions">
                 <span className={`status-pill trust-${server.trustStatus.toLowerCase()}`}><ShieldCheck size={13} /> {server.trustStatus}</span>
                 <span className={`status-pill bridge-${bridgeState}`}><RadioTower size={13} /> Bridge {bridgeState}</span>
-                {server.premiumPlan !== "NONE" ? <span className={`status-pill trust-${server.premiumPlan.toLowerCase()}`}><Zap size={13} /> {server.premiumPlan} · {daysLeft(server.premiumUntil)}</span> : null}
+                {premiumPlan !== "NONE" ? <span className={`status-pill trust-${premiumPlan.toLowerCase()}`}><Zap size={13} /> {premiumPlan} / {daysLeft(server.premiumUntil)}</span> : null}
               </div>
               <h1>{server.name}</h1>
               <p>{server.description}</p>
             </div>
             <div className="server-connect-panel">
               <span>Join address</span>
-              <code>{server.host}:{server.port}</code>
+              <code>{serverJoinAddress(server.host, server.port)}</code>
               <div className="tag-row"><span className="tag">{server.version}</span><span className="tag">{server.region}</span>{server.tags.split(",").map((tag) => <span className="tag" key={tag}>{tag.trim()}</span>)}</div>
             </div>
           </div>
@@ -133,7 +139,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
           </section>
 
           <section className="panel">
-            <div className="panel-header compact-heading"><div><p className="eyebrow"><MessageSquare size={14} /> Community</p><h2>Verified player reviews</h2><p>Players must meet this server’s {minutesLabel(server.minPlaySecondsForComment)} verified-play requirement before posting.</p></div><span className="badge">{server._count.comments}</span></div>
+            <div className="panel-header compact-heading"><div><p className="eyebrow"><MessageSquare size={14} /> Community</p><h2>Verified player reviews</h2><p>Players must meet this server&apos;s {minutesLabel(server.minPlaySecondsForComment)} verified-play requirement before posting.</p></div><span className="badge">{server._count.comments}</span></div>
             <div className="review-list">
               {server.comments.map((comment) => {
                 const initials = comment.user.username.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
@@ -149,7 +155,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
             <div className="profile-avatar small" style={server.owner.avatarUrl ? { backgroundImage: `url(${server.owner.avatarUrl})` } : undefined}>{!server.owner.avatarUrl ? ownerInitials : null}</div>
             <p className="eyebrow">Server creator</p>
             <h3>{server.owner.username}</h3>
-            <p>{server.owner.bio || "MinePulse community creator."}</p>
+            <p>{server.owner.bio || "KarixMC community creator."}</p>
             <span>Member since {shortDate(server.owner.createdAt)}</span>
             <Link className="ghost-button" href={`/members/${server.owner.id}`}><ExternalLink size={15} /> View member profile</Link>
           </section>
@@ -158,11 +164,12 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
             <div className="panel-header compact-heading"><div><p className="eyebrow"><ShieldCheck size={14} /> Integrity</p><h3>Reward protection</h3></div></div>
             <div className="trust-check-list">
               <div><ShieldCheck size={17} /><span><strong>Signed bridge</strong><small>{server.lastPluginVersion || "No version reported"}</small></span></div>
-              <div><Clock3 size={17} /><span><strong>Last heartbeat</strong><small>{server.lastHeartbeatAt ? shortDate(server.lastHeartbeatAt) : "Not connected"}</small></span></div>
+              <div><Clock3 size={17} /><span><strong>Plugin connection</strong><small>{server.lastConfigSyncAt ? shortDate(server.lastConfigSyncAt) : "Not connected"}</small></span></div>
+              <div><RadioTower size={17} /><span><strong>Last player activity</strong><small>{server.lastHeartbeatAt ? shortDate(server.lastHeartbeatAt) : "Waiting for an online player"}</small></span></div>
               <div><Coins size={17} /><span><strong>Rewards issued</strong><small>{points(sessionTotals._sum.rewardedPoints ?? 0)} earned points</small></span></div>
               <div><ShieldAlert size={17} /><span><strong>Open reports</strong><small>{server._count.reports} submitted</small></span></div>
             </div>
-            <p className="supporting-copy">MinePulse calculates rewards server-side. Reports and signed heartbeat history help moderators detect missing or suspicious activity.</p>
+            <p className="supporting-copy">KarixMC calculates rewards server-side. Reports and signed heartbeat history help moderators detect missing or suspicious activity.</p>
           </section>
 
           <section className="panel">

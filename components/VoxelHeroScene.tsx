@@ -139,6 +139,7 @@ export function VoxelHeroScene() {
       height = Math.max(1, Math.floor(bounds.height));
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
+      group.position.x = width < 760 ? 0 : 2.7;
       camera.updateProjectionMatrix();
     }
 
@@ -172,7 +173,7 @@ export function VoxelHeroScene() {
 
       camera.position.x += (pointer.x * 0.7 - camera.position.x) * 0.025;
       camera.position.y += (5.2 - pointer.y * 0.35 - camera.position.y) * 0.025;
-      camera.lookAt(0, 0.2, 0);
+      camera.lookAt(width < 760 ? 0 : 1.2, 0.2, 0);
       renderer.render(scene, camera);
     }
 

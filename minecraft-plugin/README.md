@@ -1,6 +1,6 @@
-# MinePulse Bridge 0.4.0
+# KarixMC Bridge 0.4.0
 
-The Paper plugin connects real Minecraft activity to MinePulse. It sends signed telemetry, receives website-managed protection policy, shows activity challenges, reports player statistics, and delivers store purchases as console commands.
+The Paper plugin connects real Minecraft activity to KarixMC. Its stable Paper plugin ID and folder remain `MinePulseBridge` for compatibility.
 
 ## Requirements
 
@@ -23,11 +23,13 @@ server-id: "from-creator-studio"
 plugin-secret: "keep-this-private"
 ```
 
-6. Start Paper. The console should report that the website policy synced.
+6. Start Paper. Creator Studio should show **Plugin reached website** after policy sync.
+
+Policy sync proves the plugin can reach KarixMC even when the Minecraft server is empty. **Last player activity** remains empty until at least one player joins. If a secret may have leaked, use the rotate button in Creator Studio, update `config.yml`, and restart Paper; the old secret stops working immediately.
 
 Docker deployments can provide the same three values as `MINEPULSE_API_BASE_URL`, `MINEPULSE_SERVER_ID`, and `MINEPULSE_PLUGIN_SECRET` environment variables. Environment variables take precedence over `config.yml`.
 
-For same-machine development, `api-base-url` can be `http://localhost:3000`. On a different host, `localhost` is wrong; use the public HTTPS URL reachable from the Minecraft server.
+For same-machine development, `api-base-url` can be `http://localhost:3000`. On a different host, `localhost` is wrong; use the public website URL reachable from the Minecraft server. There is no separate wallet URL: the wallet is the `/account` page on that website.
 
 ## Website-Managed Policy
 

@@ -6,6 +6,7 @@ import { currentUser } from "@/lib/auth";
 import { compact, money, points } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { shuffle } from "@/lib/random";
+import { activePremiumPlan } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -57,45 +58,52 @@ export default async function MarketplacePage({
     prisma.premiumTier.findMany({ where: { active: true }, orderBy: { priority: "desc" } })
   ]);
 
-  const visibleServers = servers.map<MarketplaceServer>((server) => ({
-    id: server.id,
-    slug: server.slug,
-    name: server.name,
-    host: server.host,
-    port: server.port,
-    version: server.version,
-    region: server.region,
-    tags: server.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
-    description: server.description,
-    bannerImage: server.bannerImage || "/voxel-network.png",
-    pointPool: server.pointPool,
-    rewardRatePerSecond: server.rewardRatePerSecond,
-    maxPaidPlayers: server.maxPaidPlayers,
-    averageOnline: server.hourlyStats[0]?.sampleCount
-      ? Math.round(server.hourlyStats[0].onlinePlayerTotal / server.hourlyStats[0].sampleCount)
-      : 0,
-    premiumPlan: server.premiumPlan,
-    premiumUntil: server.premiumUntil?.toISOString() ?? null,
-    trustStatus: server.trustStatus,
-    bridgeState: !server.lastHeartbeatAt
-      ? "offline"
-      : now.getTime() - server.lastHeartbeatAt.getTime() <= 120000
-        ? "online"
-        : now.getTime() - server.lastHeartbeatAt.getTime() <= 900000
-          ? "stale"
-          : "offline",
-    likes: server._count.likes,
-    favorites: server._count.favorites,
-    comments: server._count.comments,
-    liked: Boolean(server.likes?.length),
-    favorited: Boolean(server.favorites?.length),
-    items: server.items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      pricePoints: item.pricePoints
-    }))
-  }));
+  const visibleServers = servers.map<MarketplaceServer>((server) => {
+    const premiumPlan = activePremiumPlan(server.premiumPlan, server.premiumUntil, now);
+    const bridgeSignalAt = [server.lastHeartbeatAt, server.lastConfigSyncAt]
+      .filter((value): value is Date => Boolean(value))
+      .sort((left, right) => right.getTime() - left.getTime())[0];
+
+    return {
+      id: server.id,
+      slug: server.slug,
+      name: server.name,
+      host: server.host,
+      port: server.port,
+      version: server.version,
+      region: server.region,
+      tags: server.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+      description: server.description,
+      bannerImage: server.bannerImage || "/voxel-network.png",
+      pointPool: server.pointPool,
+      rewardRatePerSecond: server.rewardRatePerSecond,
+      maxPaidPlayers: server.maxPaidPlayers,
+      averageOnline: server.hourlyStats[0]?.sampleCount
+        ? Math.round(server.hourlyStats[0].onlinePlayerTotal / server.hourlyStats[0].sampleCount)
+        : 0,
+      premiumPlan,
+      premiumUntil: premiumPlan === "NONE" ? null : server.premiumUntil?.toISOString() ?? null,
+      trustStatus: server.trustStatus,
+      bridgeState: !bridgeSignalAt
+        ? "offline"
+        : now.getTime() - bridgeSignalAt.getTime() <= 120000
+          ? "online"
+          : now.getTime() - bridgeSignalAt.getTime() <= 900000
+            ? "stale"
+            : "offline",
+      likes: server._count.likes,
+      favorites: server._count.favorites,
+      comments: server._count.comments,
+      liked: Boolean(server.likes?.length),
+      favorited: Boolean(server.favorites?.length),
+      items: server.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        pricePoints: item.pricePoints
+      }))
+    };
+  });
 
   const availableTags = Array.from(
     new Set(visibleServers.flatMap((server) => server.tags.map((serverTag) => serverTag.trim()).filter(Boolean)))
@@ -127,11 +135,12 @@ export default async function MarketplacePage({
         <div className="container arena-layer">
           <div className="headline-copy">
             <p className="eyebrow">
-              <ShieldCheck size={15} /> Minecraft time, converted
+              <ShieldCheck size={15} /> Verified Minecraft reward network
             </p>
-            <h1>Minecraft playtime, rewarded.</h1>
+            <h1 className="karix-wordmark"><span>Karix</span><em>MC</em></h1>
+            <p className="hero-manifesto"><span>Play any world.</span><strong>Earn on one network.</strong></p>
             <p className="lead">
-              Enter funded worlds, play for real, and carry what you earn across the network. No cash ranks required.
+              Real play becomes a portable balance. Discover funded servers, earn while active, and unlock ranks or items across the network without paying cash.
             </p>
             <div className="command-strip">
               <Link className="solid-button" href="#servers">
@@ -153,7 +162,7 @@ export default async function MarketplacePage({
           </div>
 
           <aside className="network-beacon" aria-label="Live network signal">
-            <div className="beacon-orbit" aria-hidden="true"><i /><i /><i /><strong>LIVE</strong></div>
+            <div className="beacon-orbit" aria-hidden="true"><i /><i /><i /><strong>KX</strong></div>
             <div className="beacon-readout">
               <p>Network telemetry</p>
               <div><span>Campaign signal</span><strong>{points(pools._sum.pointPool ?? 0)}</strong></div>

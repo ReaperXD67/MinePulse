@@ -52,7 +52,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       }
     });
 
-    return NextResponse.json({ reportId: report.id, message: "Report sent to MinePulse safety" });
+    return NextResponse.json({ reportId: report.id, message: "Report sent to KarixMC safety" });
   } catch (error) {
     return routeError(error);
   }

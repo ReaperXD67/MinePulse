@@ -111,7 +111,7 @@ export async function POST(request: Request) {
         requiresChallenge: false,
         challengeAccepted: false,
         challenge: null,
-        message: "Link your MinePulse account with /minepulse link <code> before rewards can start."
+        message: "Link your KarixMC account with /minepulse link <code> before rewards can start."
       });
     }
 

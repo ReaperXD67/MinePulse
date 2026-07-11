@@ -90,7 +90,7 @@ export function ServerProfileActions({
 
       {panel === "review" ? (
         <form className="inline-form-panel" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); interact("comment", String(form.get("body") || "")); }}>
-          <div><strong>Write a verified review</strong><p>Reviews unlock after the server’s required verified playtime.</p></div>
+          <div><strong>Write a verified review</strong><p>Reviews unlock after the server&apos;s required verified playtime.</p></div>
           <textarea className="textarea" name="body" minLength={3} maxLength={240} required placeholder="How was the gameplay, community, and reward delivery?" />
           <button className="solid-button" disabled={busy}><Send size={15} /> Post review</button>
         </form>
@@ -98,7 +98,7 @@ export function ServerProfileActions({
 
       {panel === "support" ? (
         <form className="inline-form-panel" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); request(`/api/servers/${serverId}/support`, { subject: form.get("subject"), body: form.get("body") }); }}>
-          <div><strong>Contact server support</strong><p>The server owner sees this in their MinePulse inbox.</p></div>
+          <div><strong>Contact server support</strong><p>The server owner sees this in their KarixMC inbox.</p></div>
           <input className="field" name="subject" minLength={4} maxLength={100} required placeholder="What do you need help with?" />
           <textarea className="textarea" name="body" minLength={12} maxLength={1200} required placeholder="Include your Minecraft name and what happened." />
           <button className="solid-button" disabled={busy}><LifeBuoy size={15} /> Send request</button>
@@ -107,7 +107,7 @@ export function ServerProfileActions({
 
       {panel === "report" ? (
         <form className="inline-form-panel report-panel" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); request(`/api/servers/${serverId}/report`, { reason: form.get("reason"), details: form.get("details"), evidenceUrl: form.get("evidenceUrl") }); }}>
-          <div><strong>Report this server</strong><p>MinePulse safety reviews reward failures, tampered plugins, fake players, scams, and abuse.</p></div>
+          <div><strong>Report this server</strong><p>KarixMC safety reviews reward failures, tampered plugins, fake players, scams, and abuse.</p></div>
           <select className="select" name="reason" defaultValue="NO_REWARD">
             <option value="NO_REWARD">Did not receive earned points</option>
             <option value="PLUGIN_TAMPERING">Modified or suspicious plugin</option>

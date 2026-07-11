@@ -2,25 +2,25 @@ name: MinePulseBridge
 main: com.minepulse.bridge.MinePulseBridgePlugin
 version: 0.4.0
 api-version: "1.20"
-author: MinePulse
-description: Verified playtime rewards and purchase delivery bridge for MinePulse.
+author: KarixMC
+description: Verified playtime rewards and purchase delivery bridge for KarixMC.
 commands:
   answer:
-    description: Answer a website-verified MinePulse activity check.
+    description: Answer a website-verified KarixMC activity check.
     usage: /answer <value>
   mpcode:
     description: Backward-compatible alias for /answer.
     usage: /mpcode <value>
   points:
-    description: Show your MinePulse wallet and verified session rewards.
+    description: Show your KarixMC wallet and verified session rewards.
   pool:
-    description: Show this server's MinePulse campaign pool and reward rate.
+    description: Show this server's KarixMC campaign pool and reward rate.
   receive:
-    description: Retry queued MinePulse store item deliveries for your account.
+    description: Retry queued KarixMC store item deliveries for your account.
   minepulse:
-    description: Show MinePulse statistics, link an account, or open command help.
+    description: Show KarixMC statistics, link an account, or open command help.
     usage: /minepulse [pool|help|receive|link <code>]
 permissions:
   minepulse.admin:
-    description: Allows administrative MinePulse diagnostics.
+    description: Allows administrative KarixMC diagnostics.
     default: op

@@ -13,6 +13,7 @@ import {
   LifeBuoy,
   PackagePlus,
   RadioTower,
+  RotateCcw,
   Save,
   Server,
   ShieldCheck,
@@ -21,6 +22,8 @@ import {
   Trash2
 } from "lucide-react";
 import { money, points, shortDate } from "@/lib/format";
+import { activePremiumPlan } from "@/lib/premium";
+import { serverJoinAddress } from "@/lib/server-address";
 
 type OwnerServer = {
   id: string;
@@ -90,16 +93,21 @@ type PremiumTier = { id: string; name: string; priceCents: number; durationDays:
 export function OwnerConsole({
   servers,
   pointPackages,
-  premiumTiers
+  premiumTiers,
+  appBaseUrl
 }: {
   servers: OwnerServer[];
   pointPackages: PointPackage[];
   premiumTiers: PremiumTier[];
+  appBaseUrl: string;
 }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [promoCodes, setPromoCodes] = useState<Record<string, string>>({});
+  const [serverSecrets, setServerSecrets] = useState<Record<string, string>>(() =>
+    Object.fromEntries(servers.map((server) => [server.id, server.pluginSecret]))
+  );
 
   async function send(url: string, body: unknown, method = "POST") {
     setBusy(true);
@@ -222,6 +230,27 @@ export function OwnerConsole({
     setMessage(`${label} copied`);
   }
 
+  async function rotateSecret(serverId: string) {
+    if (!window.confirm("Rotate this plugin secret? The current plugin will disconnect until config.yml is updated.")) {
+      return;
+    }
+
+    setBusy(true);
+    setMessage("");
+    const response = await fetch(`/api/owner/servers/${serverId}/plugin-secret`, { method: "POST" });
+    const payload = await response.json().catch(() => ({}));
+    setBusy(false);
+
+    if (!response.ok) {
+      setMessage(payload.error || "Secret rotation failed");
+      return;
+    }
+
+    setServerSecrets((current) => ({ ...current, [serverId]: payload.pluginSecret }));
+    setMessage(payload.message);
+    router.refresh();
+  }
+
   return (
     <div className="creator-studio">
       <p className="global-message" aria-live="polite">{message}</p>
@@ -275,7 +304,7 @@ export function OwnerConsole({
                 <span className="status-pill">{server.status}</span>
               </div>
               <h3>{server.name}</h3>
-              <p className="mono">{server.host}:{server.port}</p>
+              <p className="mono">{serverJoinAddress(server.host, server.port)}</p>
             </div>
             <div className="management-stats">
               <div><span>Campaign credits</span><strong>{points(server.pointPool)}</strong></div>
@@ -353,20 +382,24 @@ export function OwnerConsole({
                     </button>
                   ))}
                 </div>
-                {server.premiumUntil ? <p className="toast-line">{server.premiumPlan} active until {shortDate(server.premiumUntil)}</p> : null}
+                {activePremiumPlan(server.premiumPlan as "NONE" | "GOLD" | "DIAMOND", server.premiumUntil) !== "NONE" ? (
+                  <p className="toast-line">{server.premiumPlan} active until {shortDate(server.premiumUntil!)}</p>
+                ) : <p className="toast-line">No active premium placement</p>}
               </section>
 
               <section className="subpanel">
                 <div className="panel-header compact-heading"><div><p className="eyebrow"><RadioTower size={14} /> Bridge</p><h4>Plugin connection</h4></div></div>
                 <div className="bridge-actions">
                   <Link className="solid-button" href="/plugin"><Download size={15} /> Install plugin</Link>
-                  <span className="status-pill"><Activity size={13} /> Policy r{server.pluginConfigRevision}</span>
+                  <span className={`status-pill bridge-${server.lastConfigSyncAt ? "online" : "offline"}`}><Activity size={13} /> {server.lastConfigSyncAt ? "Plugin reached website" : "Waiting for plugin"}</span>
                 </div>
+                <div className="credential-row"><div><span>Website API URL</span><code>{appBaseUrl}</code></div><button className="icon-button" type="button" title="Copy website API URL" onClick={() => copy(appBaseUrl, "Website API URL")}><Copy size={15} /></button></div>
                 <div className="credential-row"><div><span>Server ID</span><code>{server.id}</code></div><button className="icon-button" type="button" title="Copy server ID" onClick={() => copy(server.id, "Server ID")}><Copy size={15} /></button></div>
-                <div className="credential-row"><div><span>Plugin secret</span><code>{server.pluginSecret}</code></div><button className="icon-button" type="button" title="Copy plugin secret" onClick={() => copy(server.pluginSecret, "Plugin secret")}><Copy size={15} /></button></div>
+                <div className="credential-row"><div><span>Plugin secret</span><code>{serverSecrets[server.id]}</code></div><div className="credential-actions"><button className="icon-button" type="button" title="Copy plugin secret" onClick={() => copy(serverSecrets[server.id], "Plugin secret")}><Copy size={15} /></button><button className="icon-button danger-button" type="button" title="Rotate plugin secret" disabled={busy} onClick={() => rotateSecret(server.id)}><RotateCcw size={15} /></button></div></div>
+                <p className="credential-help">Put the website URL, Server ID, and plugin secret in <code>plugins/MinePulseBridge/config.yml</code>, then restart Paper. Keep the secret private.</p>
                 <div className="integrity-grid">
-                  <div><span>Last signed heartbeat</span><strong>{server.lastHeartbeatAt ? shortDate(server.lastHeartbeatAt) : "Not connected"}</strong></div>
-                  <div><span>Last policy sync</span><strong>{server.lastConfigSyncAt ? shortDate(server.lastConfigSyncAt) : "Waiting for plugin"}</strong></div>
+                  <div><span>Last player activity</span><strong>{server.lastHeartbeatAt ? shortDate(server.lastHeartbeatAt) : "Waiting for an online player"}</strong></div>
+                  <div><span>Plugin connection</span><strong>{server.lastConfigSyncAt ? `Synced ${shortDate(server.lastConfigSyncAt)}` : "Not connected"}</strong></div>
                   <div><span>Plugin version</span><strong>{server.lastPluginVersion || "-"}</strong></div>
                   <div><span>Risk score</span><strong>{server.riskScore}</strong></div>
                 </div>

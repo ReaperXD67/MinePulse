@@ -5,6 +5,7 @@ import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeServerTags } from "@/lib/server-tags";
 import { routeError } from "@/lib/api";
+import { normalizeServerAddress } from "@/lib/server-address";
 
 export const runtime = "nodejs";
 
@@ -70,14 +71,32 @@ async function authorize(serverId: string) {
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
-    await authorize(id);
+    const { server } = await authorize(id);
     const input = schema.parse(await request.json());
     const tags = typeof input.tags === "string" ? normalizeServerTags(input.tags) : undefined;
+    const address = normalizeServerAddress(input.host ?? server.host, input.port ?? server.port);
+    const existing = await prisma.server.findFirst({
+      where: {
+        id: { not: id },
+        host: address.host,
+        port: address.port,
+        status: { not: "REMOVED" }
+      },
+      select: { id: true }
+    });
+
+    if (existing) {
+      throw new Response("That Minecraft server is already registered. Contact support if you own it.", {
+        status: 409
+      });
+    }
+
     const policyChanged = Object.keys(input).some((key) => policyFields.has(key));
     const updated = await prisma.server.update({
       where: { id },
       data: {
         ...input,
+        ...address,
         ...(tags ? { tags } : {}),
         ...(policyChanged ? { pluginConfigRevision: { increment: 1 } } : {})
       }
