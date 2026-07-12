@@ -41,8 +41,11 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   private final Map<UUID, Long> lastActiveAt = new ConcurrentHashMap<>();
   private final Map<UUID, Integer> movementScoreSinceHeartbeat = new ConcurrentHashMap<>();
   private final Map<UUID, Integer> activityEventsSinceHeartbeat = new ConcurrentHashMap<>();
+  private final Map<UUID, Long> lastHeartbeatSentAt = new ConcurrentHashMap<>();
   private final Map<UUID, Challenge> challenges = new ConcurrentHashMap<>();
   private final Map<UUID, Long> lastLinkNoticeAt = new ConcurrentHashMap<>();
+  private final Map<UUID, Long> lastRewardNoticeAt = new ConcurrentHashMap<>();
+  private final Map<UUID, String> lastRewardState = new ConcurrentHashMap<>();
   private HttpClient http;
   private String apiBaseUrl;
   private String serverId;
@@ -62,11 +65,16 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     serverId = connectionValue("MINEPULSE_SERVER_ID", "server-id", "");
     pluginSecret = connectionValue("MINEPULSE_PLUGIN_SECRET", "plugin-secret", "");
 
+    if (!configured()) {
+      getLogger().severe("KarixMC Bridge is not configured. Add api-base-url, server-id, and plugin-secret to plugins/KarixMCBridge/config.yml, then restart Paper.");
+    }
+
     Bukkit.getPluginManager().registerEvents(this, this);
     registerCommand("answer");
     registerCommand("points");
     registerCommand("pool");
     registerCommand("receive");
+    registerCommand("karixmc");
     registerCommand("minepulse");
     registerCommand("mpcode");
 
@@ -104,6 +112,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     lastActiveAt.put(player.getUniqueId(), now());
     movementScoreSinceHeartbeat.put(player.getUniqueId(), 0);
     activityEventsSinceHeartbeat.put(player.getUniqueId(), 0);
+    lastHeartbeatSentAt.put(player.getUniqueId(), now());
   }
 
   @EventHandler
@@ -113,8 +122,11 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     lastActiveAt.remove(id);
     movementScoreSinceHeartbeat.remove(id);
     activityEventsSinceHeartbeat.remove(id);
+    lastHeartbeatSentAt.remove(id);
     challenges.remove(id);
     lastLinkNoticeAt.remove(id);
+    lastRewardNoticeAt.remove(id);
+    lastRewardState.remove(id);
   }
 
   @EventHandler
@@ -154,6 +166,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   @Override
   public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
     String name = command.getName().toLowerCase(Locale.ROOT);
+    boolean bridgeCommand = name.equals("karixmc") || name.equals("minepulse");
     if (name.equals("answer") || name.equals("mpcode")) {
       return answerChallenge(sender, args);
     }
@@ -163,26 +176,26 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       return true;
     }
 
-    if (name.equals("minepulse") && args.length > 0 && args[0].equalsIgnoreCase("help")) {
+    if (bridgeCommand && args.length > 0 && args[0].equalsIgnoreCase("help")) {
       showHelp(player);
       return true;
     }
 
-    if (name.equals("minepulse") && args.length > 0 && args[0].equalsIgnoreCase("link")) {
+    if (bridgeCommand && args.length > 0 && args[0].equalsIgnoreCase("link")) {
       if (args.length < 2) {
-        player.sendMessage(prefix() + ChatColor.YELLOW + "Use /minepulse link <code> from your KarixMC account.");
+        player.sendMessage(prefix() + ChatColor.YELLOW + "Use /karixmc link <code> from your KarixMC account.");
       } else {
         linkAccount(player, args[1]);
       }
       return true;
     }
 
-    if (name.equals("receive") || (name.equals("minepulse") && args.length > 0 && args[0].equalsIgnoreCase("receive"))) {
+    if (name.equals("receive") || (bridgeCommand && args.length > 0 && args[0].equalsIgnoreCase("receive"))) {
       receivePurchases(player);
       return true;
     }
 
-    boolean poolOnly = name.equals("pool") || (name.equals("minepulse") && args.length > 0 && args[0].equalsIgnoreCase("pool"));
+    boolean poolOnly = name.equals("pool") || (bridgeCommand && args.length > 0 && args[0].equalsIgnoreCase("pool"));
     fetchPlayerStats(player, poolOnly);
     return true;
   }
@@ -217,7 +230,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     player.sendMessage(prefix() + ChatColor.WHITE + "/points" + ChatColor.GRAY + " - wallet and session rewards");
     player.sendMessage(prefix() + ChatColor.WHITE + "/pool" + ChatColor.GRAY + " - this server's campaign balance");
     player.sendMessage(prefix() + ChatColor.WHITE + "/answer <value>" + ChatColor.GRAY + " - answer an activity check");
-    player.sendMessage(prefix() + ChatColor.WHITE + "/minepulse link <code>" + ChatColor.GRAY + " - connect your website account");
+    player.sendMessage(prefix() + ChatColor.WHITE + "/karixmc link <code>" + ChatColor.GRAY + " - connect your website account");
     player.sendMessage(prefix() + ChatColor.WHITE + "/receive" + ChatColor.GRAY + " - retry queued KarixMC store deliveries");
   }
 
@@ -258,9 +271,12 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     boolean afk = isAfk(player, current);
     int movementScore = Math.min(1_000_000, movementScoreSinceHeartbeat.getOrDefault(player.getUniqueId(), 0));
     int activityEvents = Math.min(10_000, activityEventsSinceHeartbeat.getOrDefault(player.getUniqueId(), 0));
+    long previousHeartbeat = lastHeartbeatSentAt.getOrDefault(player.getUniqueId(), current);
+    long reportedSeconds = Math.max(0, Math.min(60, current - previousHeartbeat));
     Challenge challenge = challenges.get(player.getUniqueId());
     movementScoreSinceHeartbeat.put(player.getUniqueId(), 0);
     activityEventsSinceHeartbeat.put(player.getUniqueId(), 0);
+    lastHeartbeatSentAt.put(player.getUniqueId(), current);
 
     JsonObject payload = new JsonObject();
     payload.addProperty("serverId", serverId);
@@ -278,7 +294,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
         payload.addProperty("challengeAnswer", challenge.submittedAnswer);
       }
     }
-    payload.addProperty("reportedSeconds", policy.heartbeatIntervalSeconds);
+    payload.addProperty("reportedSeconds", reportedSeconds);
     payload.addProperty("pluginVersion", getPluginMeta().getVersion());
     payload.addProperty("signature", signHeartbeat(payload));
     return payload;
@@ -306,7 +322,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     boolean accepted = response.has("challengeAccepted") && response.get("challengeAccepted").getAsBoolean();
     if (accepted) {
       challenges.remove(playerId);
-      player.sendMessage(prefix() + ChatColor.GREEN + "Activity confirmed. Rewards resumed.");
+      player.sendMessage(prefix() + ChatColor.GREEN + "Activity check confirmed.");
     }
 
     if (response.has("challenge") && !response.get("challenge").isJsonNull()) {
@@ -333,6 +349,35 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
           : "This server uses optional activity checks."));
         player.sendMessage("");
       }
+    }
+
+    applyRewardState(player, response);
+  }
+
+  private void applyRewardState(Player player, JsonObject response) {
+    if (!response.has("rewardState") || !response.has("rewardMessage")) {
+      return;
+    }
+
+    UUID playerId = player.getUniqueId();
+    String state = response.get("rewardState").getAsString();
+    String message = response.get("rewardMessage").getAsString();
+    String previous = lastRewardState.put(playerId, state);
+    long current = now();
+    long lastNotice = lastRewardNoticeAt.getOrDefault(playerId, 0L);
+    boolean changed = previous == null || !previous.equals(state);
+
+    if (state.equals("EARNING")) {
+      if (changed) {
+        lastRewardNoticeAt.put(playerId, current);
+        player.sendMessage(prefix() + ChatColor.GREEN + message);
+      }
+      return;
+    }
+
+    if (changed || current - lastNotice >= 60) {
+      lastRewardNoticeAt.put(playerId, current);
+      player.sendMessage(prefix() + ChatColor.YELLOW + message);
     }
   }
 
@@ -375,7 +420,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     }
     if (response.has("linked") && !response.get("linked").getAsBoolean()) {
       player.sendMessage(prefix() + ChatColor.YELLOW + "Link your KarixMC account before rewards and wallet stats can start.");
-      player.sendMessage(ChatColor.GRAY + "Open KarixMC account settings, create a code, then run /minepulse link <code>.");
+      player.sendMessage(ChatColor.GRAY + "Open KarixMC account settings, create a code, then run /karixmc link <code>.");
       return;
     }
     JsonObject server = response.getAsJsonObject("server");

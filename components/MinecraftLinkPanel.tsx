@@ -24,7 +24,7 @@ export function MinecraftLinkPanel({ minecraftName, isLinked }: { minecraftName:
   }
 
   async function copyCommand() {
-    await navigator.clipboard.writeText(`/minepulse link ${code}`);
+    await navigator.clipboard.writeText(`/karixmc link ${code}`);
     setMessage("Link command copied");
   }
 
@@ -37,7 +37,7 @@ export function MinecraftLinkPanel({ minecraftName, isLinked }: { minecraftName:
       </div>
       {code ? (
         <div className="link-code-readout">
-          <div><span>Run in Minecraft within 10 minutes</span><code>/minepulse link {code}</code><small>Expires {new Date(expiresAt).toLocaleTimeString()}</small></div>
+          <div><span>Run in Minecraft within 10 minutes</span><code>/karixmc link {code}</code><small>Expires {new Date(expiresAt).toLocaleTimeString()}</small></div>
           <button className="icon-button" type="button" title="Copy link command" aria-label="Copy link command" onClick={copyCommand}><Copy size={16} /></button>
         </div>
       ) : (

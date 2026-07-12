@@ -1,24 +1,24 @@
-# KarixMC Bridge 0.4.0
+# KarixMC Bridge 0.5.0
 
-The Paper plugin connects real Minecraft activity to KarixMC. Its stable Paper plugin ID and folder remain `MinePulseBridge` for compatibility.
+The Paper plugin connects real Minecraft activity to KarixMC. The visible plugin ID and configuration folder are `KarixMCBridge`; `/minepulse` remains a command alias during migration.
 
 ## Requirements
 
 - Paper 1.20 or 1.21
 - Java 17 or newer
-- Outbound HTTPS access to the deployed MinePulse website
+- Outbound HTTPS access to the deployed KarixMC website
 - Maven 3.9 or newer only when building from source
 
 ## Install
 
-1. Download `MinePulseBridge-0.4.0.jar` from `/plugin` on the website.
+1. Download `KarixMCBridge-0.5.0.jar` from `/plugin` on the website.
 2. Copy it into the Paper server's `plugins/` directory.
-3. Start Paper once, then stop it after `plugins/MinePulseBridge/config.yml` is created.
-4. In MinePulse, open **Account -> Your servers -> Plugin connection**.
+3. Start Paper once, then stop it after `plugins/KarixMCBridge/config.yml` is created.
+4. In KarixMC, open **Account -> Your servers -> Plugin connection**.
 5. Put the website URL, Server ID, and Plugin secret into the generated file:
 
 ```yaml
-api-base-url: "https://your-minepulse.com"
+api-base-url: "https://your-karixmc.com"
 server-id: "from-creator-studio"
 plugin-secret: "keep-this-private"
 ```
@@ -53,24 +53,24 @@ Only connection credentials remain local because the plugin needs them before it
 - `/points` shows the player's platform wallet, current server rewards, and verified playtime.
 - `/pool` shows the server campaign pool and reward rate.
 - `/receive` retries queued store deliveries for the player on the current server.
-- `/minepulse help` lists commands.
-- `/minepulse link <code>` connects the in-game UUID to a signed-in website account using a ten-minute code.
+- `/karixmc help` lists commands.
+- `/karixmc link <code>` connects the in-game UUID to a signed-in website account using a ten-minute code.
 - `/mpcode <value>` remains as a backwards-compatible alias for `/answer`.
 
 ## Verification Flow
 
 1. The plugin accumulates meaningful movement, chat, command, and inventory activity.
 2. After the owner-configured idle period, the heartbeat reports the player as AFK and no points are awarded.
-3. MinePulse periodically creates an arithmetic question such as `How much is 2 + 3? Use /answer <value>`.
+3. KarixMC periodically creates an arithmetic question such as `How much is 2 + 3? Use /answer <value>`.
 4. The plugin displays it and sends the player's answer in a signed heartbeat.
 5. The website validates the answer. Required checks pause rewards until the answer is accepted.
-6. MinePulse calculates the reward server-side and deducts it from the campaign pool.
+6. KarixMC calculates the reward server-side and deducts it from the campaign pool.
 
-Players must link a MinePulse website account before rewards start. Unlinked Minecraft players can still play normally, but the bridge will not create a wallet or pay points for them.
+Players must link a KarixMC website account before rewards start. Unlinked Minecraft players can still play normally, but the bridge will not create a wallet or pay points for them.
 
 Heartbeats use HMAC-SHA256, timestamps, and unique nonces. The website rejects stale signatures and replays, stores only a hash derived from the player IP, and records suspicious sessions for moderation.
 
-No plugin can make a server owner unable to modify software on a machine they control. MinePulse therefore combines telemetry with website-side reward calculation, challenge verification, stale bridge visibility, player reports, trust states, and administrator enforcement.
+No plugin can make a server owner unable to modify software on a machine they control. KarixMC therefore combines telemetry with website-side reward calculation, challenge verification, stale bridge visibility, player reports, trust states, and administrator enforcement.
 
 ## Purchase Delivery
 

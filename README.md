@@ -1,13 +1,13 @@
 # KarixMC
 
-KarixMC is a production-style MVP for a Minecraft server marketplace where verified playtime earns platform points. Internal database names and the stable `MinePulseBridge` plugin ID are retained for compatibility.
+KarixMC is a production-style MVP for a Minecraft server marketplace where verified playtime earns platform points. The visible Paper plugin is `KarixMCBridge`; internal Java package names and legacy `/minepulse` commands remain compatible.
 
 Members earn points on funded servers, then spend those earned points on ranks, crates, cosmetics, or any server-configured item. The same account can also publish servers, buy campaign credits with real money, choose reward rates per second, cap paid players, and buy Gold or Diamond placement. Admins control pricing, bonus promo codes, reports, punishments, campaign pools, premium state, server visibility, and platform statistics.
 
 ## Two Separate Currencies
 
-- **Earned points** live in a member wallet. They are created only by verified playtime and can only buy server store items.
-- **Campaign credits** live in a server reward pool. They are bought with real money and can only pay verified player rewards.
+- **Wallet points** live in a member wallet. Verified play is the main source; level rewards, the 20-hour claim, and documented admin grants also add wallet points. Wallet points can buy server store items.
+- **Campaign credits** live in a server reward pool. The MVP test buttons simulate buying them; production payments will require a payment provider. Campaign credits can only pay verified player rewards.
 
 Buying a store item never refills a server campaign. Promo codes such as `BOOST10` add bonus campaign credits without discounting the purchase price.
 
@@ -50,7 +50,7 @@ Seeded accounts:
 
 For a sendable tester checklist, use [TESTING_GUIDE.md](TESTING_GUIDE.md).
 
-Docker Desktop can launch a real Paper 1.21.4 server with the downloadable MinePulse Bridge already mounted:
+Docker Desktop can launch a real Paper 1.21.4 server with the downloadable KarixMC Bridge already mounted:
 
 ```bash
 npm run db:seed
@@ -59,12 +59,12 @@ npm run game:test:up
 npm run game:test:status
 ```
 
-Wait until `MinePulseBridge` appears in green, then connect Minecraft Java Edition 1.21.4 to `localhost:25565`. The test server uses offline mode only for local development.
+Wait until `KarixMCBridge` appears in green, then connect Minecraft Java Edition 1.21.4 to `localhost:25565`. The test server uses offline mode only for local development. For a real server, follow [CLIENT_PLUGIN_TESTING_GUIDE.md](CLIENT_PLUGIN_TESTING_GUIDE.md).
 
 1. Sign in to the website as PixelRunner and open **Account -> Minecraft identity**.
 2. Create a ten-minute link code.
-3. In Minecraft, run `/minepulse link <code>`.
-4. Use `/points`, `/pool`, and `/minepulse help` while testing.
+3. In Minecraft, run `/karixmc link <code>`.
+4. Use `/points`, `/pool`, and `/karixmc help` while testing.
 5. Buy a store item on the website while linked, then join the server and run `/receive` if the item does not arrive immediately.
 6. After five verified minutes, answer the activity prompt with `/answer <value>`.
 
@@ -96,7 +96,7 @@ Important endpoints:
 - `POST /api/plugin/purchases/pull` returns pending commands for a server.
 - `POST /api/plugin/purchases/ack` confirms delivery or refunds failed purchases.
 
-Version 0.4.0 syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, accumulates movement and interaction telemetry, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, uses website-generated arithmetic `/answer` challenges, retries queued deliveries with `/receive`, and only rewards linked MinePulse accounts. MinePulse calculates wallet rewards on the website; the plugin never directly edits balances.
+Version 0.5.0 syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, accumulates movement and interaction telemetry, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, uses website-generated arithmetic `/answer` challenges, retries queued deliveries with `/receive`, and only rewards linked KarixMC accounts. KarixMC calculates wallet rewards on the website; the plugin never directly edits balances.
 
 ## Plugin Build
 

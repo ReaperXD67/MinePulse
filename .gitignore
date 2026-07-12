@@ -3,6 +3,8 @@ node_modules
 .screenshots
 .next-dev.log
 .next-dev.err.log
+.tmp-dev-out.log
+.tmp-dev-err.log
 prisma/*.db
 prisma/*.db-journal
 # Keep environment variables out of version control

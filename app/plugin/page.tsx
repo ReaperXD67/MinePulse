@@ -28,8 +28,8 @@ const commands = [
   { command: "/pool", detail: "The server campaign balance and current reward rate." },
   { command: "/receive", detail: "Retry queued store deliveries after joining the server." },
   { command: "/answer <value>", detail: "Submit the website-generated arithmetic activity check." },
-  { command: "/minepulse link <code>", detail: "Connect this Minecraft identity to the account that owns the wallet." },
-  { command: "/minepulse help", detail: "Show the available bridge commands in game." }
+  { command: "/karixmc link <code>", detail: "Connect this Minecraft identity to the account that owns the wallet." },
+  { command: "/karixmc help", detail: "Show the available bridge commands in game." }
 ];
 
 export default function PluginPage() {
@@ -41,11 +41,11 @@ export default function PluginPage() {
       <section className="plugin-hero" style={{ backgroundImage: "url('/voxel-network.png')" }}>
         <div className="plugin-hero-shade" />
         <div className="container plugin-hero-content">
-          <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.4.0</span><i>Paper 1.20-1.21</i></div>
+          <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.5.0</span><i>Paper 1.20-1.21</i></div>
           <h1>KarixMC Bridge</h1>
           <p>Connect real Minecraft activity to the reward economy. The website owns policy and balances; the plugin verifies play, delivers purchases, and stays deliberately small.</p>
           <div className="inline-actions plugin-hero-actions">
-            <a className="solid-button download-button" href="/downloads/MinePulseBridge-0.4.0.jar" download>
+            <a className="solid-button download-button" href="/downloads/KarixMCBridge-0.5.0.jar" download>
               <ArrowDownToLine size={17} /> Download jar
             </a>
             <Link className="ghost-button" href="/account#servers"><ServerCog size={17} /> Open server setup</Link>
@@ -82,7 +82,7 @@ export default function PluginPage() {
             </div>
           </div>
           <div className="install-terminal" aria-label="Plugin configuration example">
-            <header><i /><i /><i /><span>plugins/MinePulseBridge/config.yml</span></header>
+            <header><i /><i /><i /><span>plugins/KarixMCBridge/config.yml</span></header>
             <pre><code>{`api-base-url: "${appBaseUrl}"
 server-id: "from-creator-studio"
 plugin-secret: "keep-this-private"`}</code></pre>

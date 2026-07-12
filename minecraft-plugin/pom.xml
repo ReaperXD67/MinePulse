@@ -4,11 +4,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.minepulse</groupId>
-  <artifactId>minepulse-bridge</artifactId>
-  <version>0.4.0</version>
+  <artifactId>karixmc-bridge</artifactId>
+  <version>0.5.0</version>
   <packaging>jar</packaging>
 
-  <name>MinePulse Bridge</name>
+  <name>KarixMC Bridge</name>
 
   <properties>
     <maven.compiler.source>17</maven.compiler.source>

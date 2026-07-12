@@ -378,7 +378,7 @@ export function OwnerConsole({
                 <div className="premium-options">
                   {premiumTiers.map((tier) => (
                     <button className="ghost-button" key={tier.id} type="button" disabled={busy} onClick={() => send(`/api/owner/servers/${server.id}/premium`, { tierId: tier.id })}>
-                      <Gem size={15} /> {tier.name} · {money(tier.priceCents)}
+                      <Gem size={15} /> {tier.name} / {money(tier.priceCents)}
                     </button>
                   ))}
                 </div>
@@ -396,7 +396,7 @@ export function OwnerConsole({
                 <div className="credential-row"><div><span>Website API URL</span><code>{appBaseUrl}</code></div><button className="icon-button" type="button" title="Copy website API URL" onClick={() => copy(appBaseUrl, "Website API URL")}><Copy size={15} /></button></div>
                 <div className="credential-row"><div><span>Server ID</span><code>{server.id}</code></div><button className="icon-button" type="button" title="Copy server ID" onClick={() => copy(server.id, "Server ID")}><Copy size={15} /></button></div>
                 <div className="credential-row"><div><span>Plugin secret</span><code>{serverSecrets[server.id]}</code></div><div className="credential-actions"><button className="icon-button" type="button" title="Copy plugin secret" onClick={() => copy(serverSecrets[server.id], "Plugin secret")}><Copy size={15} /></button><button className="icon-button danger-button" type="button" title="Rotate plugin secret" disabled={busy} onClick={() => rotateSecret(server.id)}><RotateCcw size={15} /></button></div></div>
-                <p className="credential-help">Put the website URL, Server ID, and plugin secret in <code>plugins/MinePulseBridge/config.yml</code>, then restart Paper. Keep the secret private.</p>
+                <p className="credential-help">Put the website URL, Server ID, and plugin secret in <code>plugins/KarixMCBridge/config.yml</code>, then restart Paper. Keep the secret private.</p>
                 <div className="integrity-grid">
                   <div><span>Last player activity</span><strong>{server.lastHeartbeatAt ? shortDate(server.lastHeartbeatAt) : "Waiting for an online player"}</strong></div>
                   <div><span>Plugin connection</span><strong>{server.lastConfigSyncAt ? `Synced ${shortDate(server.lastConfigSyncAt)}` : "Not connected"}</strong></div>
@@ -443,7 +443,7 @@ export function OwnerConsole({
                 </table>
               </div>
               <form className="form-grid add-item-form" onSubmit={(event) => addItem(event, server.id)}>
-                <div className="form-grid two"><div className="form-row"><label>Item name</label><input className="field" name="name" placeholder="VIP Rank · 7 days" required /></div><div className="form-row"><label>Earned-point price</label><input className="field" name="pricePoints" type="number" placeholder="7200" required /></div></div>
+                <div className="form-grid two"><div className="form-row"><label>Item name</label><input className="field" name="name" placeholder="VIP Rank / 7 days" required /></div><div className="form-row"><label>Earned-point price</label><input className="field" name="pricePoints" type="number" placeholder="7200" required /></div></div>
                 <div className="form-row"><label>Description</label><input className="field" name="description" placeholder="Cosmetic rank with queue priority" required /></div>
                 <div className="form-row"><label>Console command</label><input className="field mono" name="command" placeholder="lp user {player} parent addtemp vip 7d" required /></div>
                 <label className="toggle-row"><input name="requiresOnline" type="checkbox" defaultChecked /> Deliver only while the player is online</label>
@@ -466,7 +466,7 @@ export function OwnerConsole({
           </details>
 
           <footer className="management-card-footer">
-            <span>{server.likeCount} likes · {server.favoriteCount} favorites</span>
+            <span>{server.likeCount} likes / {server.favoriteCount} favorites</span>
             <button className="ghost-button danger-button" type="button" disabled={busy} onClick={() => send(`/api/owner/servers/${server.id}`, {}, "DELETE")}><Trash2 size={15} /> Remove listing</button>
           </footer>
         </article>

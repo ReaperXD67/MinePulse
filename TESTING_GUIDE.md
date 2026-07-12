@@ -1,10 +1,10 @@
-# MinePulse Local MVP Testing Guide
+# KarixMC Local MVP Testing Guide
 
-This guide is for testers who need to run MinePulse locally, connect a Minecraft client, and verify the website plus plugin flows.
+This guide is for testers who need to run KarixMC locally, connect a Minecraft client, and verify the website plus plugin flows.
 
 ## Current Readiness
 
-MinePulse is ready for local MVP testing:
+KarixMC is ready for local MVP testing:
 
 - Website runs locally with a real Prisma/SQLite database.
 - Login, signup, unified account, server listing, tag filters, favorites, likes, comments, support, reports, admin pricing, promo codes, manual wallet grants, and creator tools are implemented.
@@ -72,7 +72,7 @@ npm run game:test:status
 
 Expected result:
 
-- `MinePulseBridge` appears in the plugin list.
+- `KarixMCBridge` appears in the plugin list.
 - Docker exposes the Minecraft server at `localhost:25565`.
 
 Useful commands:
@@ -92,7 +92,7 @@ npm run game:test:down
 6. In game, run:
 
 ```text
-/minepulse link CODE
+/karixmc link CODE
 ```
 
 Expected result:
@@ -206,7 +206,7 @@ Store item test:
 - Add an item with a command like:
 
 ```text
-say Delivered MinePulse item to {player}
+say Delivered KarixMC item to {player}
 ```
 
 - Keep **Deliver only while the player is online** enabled for normal item/rank commands.
@@ -247,7 +247,7 @@ npm run db:seed
 Plugin not connecting:
 
 - Confirm the website is running.
-- Confirm Docker Paper logs show `MinePulseBridge`.
+- Confirm Docker Paper logs show `KarixMCBridge`.
 - Confirm Docker uses `http://host.docker.internal:3000` internally.
 - Check:
 

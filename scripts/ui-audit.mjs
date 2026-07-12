@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 import fs from "node:fs/promises";
 
-const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:3001";
+const baseUrl = process.env.AUDIT_BASE_URL || "http://localhost:3001";
 const outputDir = ".screenshots";
 const routes = ["/", "/plugin", "/login", "/signup", "/servers/skyforge-economy"];
 const errors = [];
