@@ -54,7 +54,10 @@ async function auditViewport(name, viewport) {
 await auditViewport("desktop", { width: 1440, height: 1000 });
 await auditViewport("mobile", { width: 390, height: 844 });
 
-const ownerContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+const ownerContext = await browser.newContext({
+  viewport: { width: 1440, height: 1000 },
+  permissions: ["clipboard-read", "clipboard-write"]
+});
 const loginResponse = await ownerContext.request.post(`${baseUrl}/api/auth/login`, {
   data: { email: "owner@minepulse.local", password: "owner123" }
 });
@@ -71,6 +74,18 @@ if (!loginResponse.ok()) {
   if (overflow > 1) errors.push(`owner account overflow: ${overflow}px`);
   if (!(await ownerPage.getByText("Website API URL", { exact: true }).first().isVisible())) {
     errors.push("owner account: plugin connection credentials are not visible");
+  }
+  const linkButton = ownerPage.getByRole("button", { name: /Create link code|Relink Minecraft/ }).first();
+  if (await linkButton.isVisible()) {
+    await linkButton.click();
+    const copyButton = ownerPage.getByRole("button", { name: "Copy link command" });
+    await copyButton.waitFor({ state: "visible" });
+    await copyButton.click();
+    const copyConfirmation = ownerPage.getByText("Link command copied", { exact: true });
+    await copyConfirmation.waitFor({ state: "visible" }).catch(() => null);
+    if (!(await copyConfirmation.isVisible())) {
+      errors.push("owner account: Minecraft link command did not copy");
+    }
   }
   await ownerPage.screenshot({ path: `${outputDir}/audit-owner-account.png`, fullPage: true });
 }

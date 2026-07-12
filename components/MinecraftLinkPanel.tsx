@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircle2, Copy, Gamepad2, Link2 } from "lucide-react";
+import { copyText } from "@/lib/copy-text";
 
 export function MinecraftLinkPanel({ minecraftName, isLinked }: { minecraftName: string | null; isLinked: boolean }) {
   const [code, setCode] = useState("");
@@ -24,8 +25,8 @@ export function MinecraftLinkPanel({ minecraftName, isLinked }: { minecraftName:
   }
 
   async function copyCommand() {
-    await navigator.clipboard.writeText(`/karixmc link ${code}`);
-    setMessage("Link command copied");
+    const copied = await copyText(`/karixmc link ${code}`);
+    setMessage(copied ? "Link command copied" : "Copy was blocked. Select the command and copy it manually.");
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { copyText } from "@/lib/copy-text";
 import { useState } from "react";
 import {
   Activity,
@@ -226,8 +227,8 @@ export function OwnerConsole({
   }
 
   async function copy(value: string, label: string) {
-    await navigator.clipboard.writeText(value);
-    setMessage(`${label} copied`);
+    const copied = await copyText(value);
+    setMessage(copied ? `${label} copied` : "Copy was blocked. Select the value and copy it manually.");
   }
 
   async function rotateSecret(serverId: string) {
@@ -352,7 +353,7 @@ export function OwnerConsole({
             <div className="management-side-stack">
               <section className="subpanel">
                 <div className="panel-header compact-heading"><div><p className="eyebrow"><Coins size={14} /> Campaign</p><h4>Fund player rewards</h4></div></div>
-                <p className="supporting-copy">Purchased credits only pay verified playtime. Use <strong>BOOST10</strong> once per server for a 10% bonus.</p>
+                <p className="supporting-copy"><strong>MVP test mode:</strong> click any package below to add campaign credits immediately. No real payment is taken. Use <strong>BOOST10</strong> once per server for a 10% bonus.</p>
                 <input
                   className="field mono"
                   aria-label={`Promo code for ${server.name}`}
