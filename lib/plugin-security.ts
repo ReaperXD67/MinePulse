@@ -28,7 +28,7 @@ export function clampHeartbeatSeconds(rawSeconds: number) {
     return 0;
   }
 
-  return Math.min(Math.floor(rawSeconds), 30);
+  return Math.min(Math.floor(rawSeconds), 60);
 }
 
 function challengeAnswerHash(challengeId: string, answer: string) {

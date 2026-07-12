@@ -107,11 +107,13 @@ export async function POST(request: Request) {
         suspiciousScore: 0,
         paidActivePlayers: 0,
         rewardable: false,
+        rewardState: "ACCOUNT_NOT_LINKED",
+        rewardMessage: "Link your KarixMC account before rewards can start.",
         integrityVerified: true,
         requiresChallenge: false,
         challengeAccepted: false,
         challenge: null,
-        message: "Link your KarixMC account with /minepulse link <code> before rewards can start."
+        message: "Link your KarixMC account with /karixmc link <code> before rewards can start."
       });
     }
 
@@ -238,13 +240,19 @@ export async function POST(request: Request) {
 
       const rawElapsed = input.reportedSeconds || (now.getTime() - session.lastHeartbeatAt.getTime()) / 1000;
       const elapsed = clampHeartbeatSeconds(rawElapsed);
-      const paidActivePlayers = await tx.serverSession.count({
+      const activeSessions = await tx.serverSession.findMany({
         where: {
           serverId: freshServer.id,
           status: SessionStatus.ACTIVE,
-          lastHeartbeatAt: { gte: cutoff }
-        }
+          OR: [
+            { lastHeartbeatAt: { gte: cutoff } },
+            { id: session.id }
+          ]
+        },
+        orderBy: [{ startedAt: "asc" }, { id: "asc" }],
+        select: { id: true }
       });
+      const paidActivePlayers = activeSessions.length;
 
       const requiredMovementScore = Math.max(
         1,
@@ -255,10 +263,39 @@ export async function POST(request: Request) {
       const activeInteraction = input.activityEvents >= freshServer.minimumActivityEvents;
       const challengePending = Boolean(challengeId);
       const challengeOk = !freshServer.challengeRequired || !challengePending;
-      const withinPaidCap = paidActivePlayers <= freshServer.maxPaidPlayers;
+      const withinPaidCap = activeSessions
+        .slice(0, freshServer.maxPaidPlayers)
+        .some((activeSession) => activeSession.id === session.id);
       const verifiedActive = elapsed > 0 && !input.afk && (strictMovement || activeInteraction) && challengeOk;
       const rewardable =
         verifiedActive && withinPaidCap && freshServer.pointPool > 0 && freshServer.rewardRatePerSecond > 0;
+
+      const rewardState = freshServer.pointPool <= 0
+        ? "EMPTY_POOL"
+        : freshServer.rewardRatePerSecond <= 0
+          ? "REWARDS_DISABLED"
+          : !withinPaidCap
+            ? "PAID_CAP"
+            : input.afk
+              ? "AFK"
+              : !challengeOk
+                ? "ACTIVITY_CHECK"
+                : !strictMovement && !activeInteraction
+                  ? "INACTIVE"
+                  : "EARNING";
+      const rewardMessage = rewardState === "EMPTY_POOL"
+        ? "Rewards are paused because this server's campaign pool is empty."
+        : rewardState === "REWARDS_DISABLED"
+          ? "Rewards are currently disabled by the server owner."
+          : rewardState === "PAID_CAP"
+            ? `Rewards are paused because all ${freshServer.maxPaidPlayers} paid player slots are in use.`
+            : rewardState === "AFK"
+              ? "Rewards are paused because you are AFK. Move or interact to continue earning."
+              : rewardState === "ACTIVITY_CHECK"
+                ? "Rewards are paused until you answer the activity check with /answer <value>."
+                : rewardState === "INACTIVE"
+                  ? "Rewards are paused because no meaningful activity was detected. Move, chat, or interact to continue."
+                  : `Verified play active. Earning ${freshServer.rewardRatePerSecond} point(s) per second.`;
 
       const preciseEarned = rewardable
         ? Math.min(freshServer.pointPool, session.rewardCarryPoints + elapsed * freshServer.rewardRatePerSecond)
@@ -390,6 +427,8 @@ export async function POST(request: Request) {
         suspiciousScore: updatedSession.suspiciousScore,
         paidActivePlayers,
         rewardable,
+        rewardState,
+        rewardMessage,
         integrityVerified: true,
         requiresChallenge: challengePending,
         challengeAccepted,
