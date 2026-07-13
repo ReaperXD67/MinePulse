@@ -95,12 +95,14 @@ export function OwnerConsole({
   servers,
   pointPackages,
   premiumTiers,
-  appBaseUrl
+  appBaseUrl,
+  paymentMode
 }: {
   servers: OwnerServer[];
   pointPackages: PointPackage[];
   premiumTiers: PremiumTier[];
   appBaseUrl: string;
+  paymentMode: "test" | "nowpayments";
 }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
@@ -124,6 +126,11 @@ export function OwnerConsole({
     if (!response.ok) {
       setMessage(payload.error || "Action failed");
       return false;
+    }
+
+    if (payload.checkoutUrl) {
+      window.location.assign(payload.checkoutUrl);
+      return true;
     }
 
     setMessage(payload.message || "Saved");
@@ -353,7 +360,12 @@ export function OwnerConsole({
             <div className="management-side-stack">
               <section className="subpanel">
                 <div className="panel-header compact-heading"><div><p className="eyebrow"><Coins size={14} /> Campaign</p><h4>Fund player rewards</h4></div></div>
-                <p className="supporting-copy"><strong>MVP test mode:</strong> click any package below to add campaign credits immediately. No real payment is taken. Use <strong>BOOST10</strong> once per server for a 10% bonus.</p>
+                <p className="supporting-copy">
+                  {paymentMode === "nowpayments"
+                    ? <><strong>Crypto checkout:</strong> credits are added only after NOWPayments confirms the payment.</>
+                    : <><strong>MVP test mode:</strong> click any package below to add campaign credits immediately. No real payment is taken.</>}
+                  {" "}Use <strong>BOOST10</strong> once per server for a 10% bonus.
+                </p>
                 <input
                   className="field mono"
                   aria-label={`Promo code for ${server.name}`}

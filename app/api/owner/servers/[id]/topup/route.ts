@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { BillingKind, LedgerType, UserRole } from "@/lib/generated/prisma/client";
+import { BillingKind, CryptoPaymentStatus, CryptoPurchaseKind, LedgerType, UserRole } from "@/lib/generated/prisma/client";
 import { requireMember } from "@/lib/auth";
+import { createNowPaymentsInvoice, cryptoPaymentsAreLive } from "@/lib/crypto-payments";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
 
@@ -66,6 +67,72 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const bonusPoints = promo ? Math.floor((pointPackage.points * promo.bonusPercent) / 100) : 0;
     const fundedPoints = pointPackage.points + bonusPoints;
+
+    if (cryptoPaymentsAreLive()) {
+      const reusable = await prisma.cryptoPayment.findFirst({
+        where: {
+          ownerId: user.id,
+          serverId: server.id,
+          pointPackageId: pointPackage.id,
+          kind: CryptoPurchaseKind.POINTS,
+          promoCodeId: promo?.id ?? null,
+          status: { in: [CryptoPaymentStatus.PENDING, CryptoPaymentStatus.PROCESSING] },
+          checkoutUrl: { not: null },
+          createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) }
+        },
+        orderBy: { createdAt: "desc" }
+      });
+      if (reusable?.checkoutUrl) {
+        return NextResponse.json({
+          paymentId: reusable.id,
+          checkoutUrl: reusable.checkoutUrl,
+          message: "Resuming secure crypto checkout"
+        });
+      }
+
+      const payment = await prisma.cryptoPayment.create({
+        data: {
+          ownerId: user.id,
+          serverId: server.id,
+          pointPackageId: pointPackage.id,
+          promoCodeId: promo?.id,
+          packageCode: pointPackage.code,
+          packageLabel: pointPackage.label,
+          priceCents: pointPackage.priceCents,
+          basePoints: pointPackage.points,
+          bonusPoints,
+          totalPoints: fundedPoints
+        }
+      });
+
+      try {
+        const invoice = await createNowPaymentsInvoice({
+          paymentId: payment.id,
+          priceCents: pointPackage.priceCents,
+          packageLabel: pointPackage.label,
+          serverName: server.name
+        });
+        await prisma.cryptoPayment.update({
+          where: { id: payment.id },
+          data: {
+            providerInvoiceId: invoice.providerInvoiceId,
+            checkoutUrl: invoice.checkoutUrl
+          }
+        });
+        return NextResponse.json({
+          paymentId: payment.id,
+          checkoutUrl: invoice.checkoutUrl,
+          message: "Secure crypto checkout created"
+        }, { status: 201 });
+      } catch (error) {
+        console.error("Crypto invoice creation failed", error);
+        await prisma.cryptoPayment.update({
+          where: { id: payment.id },
+          data: { status: CryptoPaymentStatus.FAILED, providerStatus: "invoice_error" }
+        });
+        throw new Response("Crypto checkout could not be created. Contact KarixMC support.", { status: 502 });
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.server.update({

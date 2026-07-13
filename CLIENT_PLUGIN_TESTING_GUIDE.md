@@ -101,7 +101,7 @@ The campaign pool belongs to one server and pays players for verified seconds.
 5. Select a package such as 250K, 1M, or 5M.
 6. Confirm that Campaign credits increased.
 
-For the current MVP test, package buttons simulate a successful purchase and credit the pool immediately. They do not charge a real card yet. A payment provider and webhook verification are still required before real-money launch.
+With `CRYPTO_PAYMENTS_MODE="test"`, package buttons simulate a successful purchase and credit the pool immediately without charging money. In `nowpayments` mode, the same buttons open hosted crypto checkout and credits appear only after a signed payment confirmation. Keep test mode enabled for the current Minecraft acceptance test; see `CRYPTO_PAYMENT_SETUP.md` before enabling real money.
 
 When the campaign pool reaches zero:
 

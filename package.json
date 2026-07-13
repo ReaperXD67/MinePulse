@@ -17,7 +17,8 @@
     "game:test:logs": "docker compose -f docker-compose.game-test.yml logs -f paper",
     "game:test:status": "docker exec minepulse-paper-test rcon-cli plugins",
     "game:test:down": "docker compose -f docker-compose.game-test.yml down -v",
-    "test:plugin-heartbeat": "tsx scripts/plugin-heartbeat-audit.ts"
+    "test:plugin-heartbeat": "tsx scripts/plugin-heartbeat-audit.ts",
+    "test:crypto-payments": "tsx scripts/crypto-payment-audit.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -99,6 +99,19 @@ enum BillingKind {
   ADMIN_ADJUSTMENT
 }
 
+enum CryptoPaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  EXPIRED
+  FAILED
+}
+
+enum CryptoPurchaseKind {
+  POINTS
+  PREMIUM
+}
+
 model User {
   id                   String    @id @default(cuid())
   email                String    @unique
@@ -130,6 +143,7 @@ model User {
   reports            ServerReport[]
   supportTickets     SupportTicket[]
   promoRedemptions   PromoRedemption[]
+  cryptoPayments     CryptoPayment[]
   enforcementActions EnforcementAction[] @relation("AdminEnforcement")
   minecraftLinkCodes MinecraftLinkCode[]
 }
@@ -204,13 +218,14 @@ model Server {
   reports            ServerReport[]
   supportTickets     SupportTicket[]
   promoRedemptions   PromoRedemption[]
+  cryptoPayments     CryptoPayment[]
   enforcementActions EnforcementAction[]
   hourlyStats        ServerHourlyStat[]
 
+  @@unique([host, port])
   @@index([status, premiumUntil])
   @@index([trustStatus, status])
   @@index([ownerId])
-  @@unique([host, port])
 }
 
 model StoreItem {
@@ -387,6 +402,45 @@ model BillingLedger {
   @@index([ownerId, createdAt])
 }
 
+model CryptoPayment {
+  id                String              @id @default(cuid())
+  ownerId           String
+  serverId          String?
+  pointPackageId    String?
+  premiumTierId     String?
+  promoCodeId       String?
+  kind              CryptoPurchaseKind  @default(POINTS)
+  provider          String              @default("NOWPAYMENTS")
+  providerInvoiceId String?             @unique
+  providerPaymentId String?
+  providerStatus    String              @default("waiting")
+  status            CryptoPaymentStatus @default(PENDING)
+  checkoutUrl       String?
+  packageCode       String
+  packageLabel      String
+  priceCents        Int
+  basePoints        Int                 @default(0)
+  bonusPoints       Int                 @default(0)
+  totalPoints       Int                 @default(0)
+  premiumPlan       String?
+  premiumDays       Int?
+  currency          String              @default("USD")
+  expiresAt         DateTime?
+  settledAt         DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  server       Server?       @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  pointPackage PointPackage? @relation(fields: [pointPackageId], references: [id], onDelete: SetNull)
+  premiumTier  PremiumTier?  @relation(fields: [premiumTierId], references: [id], onDelete: SetNull)
+  promoCode    PromoCode?    @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId, createdAt])
+  @@index([serverId, createdAt])
+  @@index([status, createdAt])
+}
+
 model PromoCode {
   id              String    @id @default(cuid())
   code            String    @unique
@@ -398,8 +452,9 @@ model PromoCode {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  redemptions PromoRedemption[]
-  billings    BillingLedger[]
+  redemptions    PromoRedemption[]
+  billings       BillingLedger[]
+  cryptoPayments CryptoPayment[]
 }
 
 model PromoRedemption {
@@ -481,6 +536,8 @@ model PointPackage {
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  cryptoPayments CryptoPayment[]
 }
 
 model PremiumTier {
@@ -494,4 +551,6 @@ model PremiumTier {
   priority     Int             @default(1)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+
+  cryptoPayments CryptoPayment[]
 }

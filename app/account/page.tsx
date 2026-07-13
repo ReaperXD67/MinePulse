@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Coins, ExternalLink, Heart, RadioTower, ReceiptText, Server, ShieldCheck, Timer } from "lucide-react";
+import { Bitcoin, Coins, ExternalLink, Heart, RadioTower, ReceiptText, Server, ShieldCheck, Timer } from "lucide-react";
 import { OwnerConsole } from "@/components/OwnerConsole";
 import { ProfileForm } from "@/components/ProfileForm";
 import { MinecraftLinkPanel } from "@/components/MinecraftLinkPanel";
 import { FriendPanel } from "@/components/FriendPanel";
 import { DailyRewardPanel } from "@/components/DailyRewardPanel";
 import { currentUser } from "@/lib/auth";
+import { cryptoPaymentMode } from "@/lib/crypto-payments";
 import { minutesLabel, money, points, shortDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { serverJoinAddress } from "@/lib/server-address";
@@ -19,7 +20,7 @@ export default async function AccountPage() {
     redirect("/login");
   }
 
-  const [profile, purchases, sessions, favorites, ledger, servers, pointPackages, premiumTiers, billing, tickets, friendships] =
+  const [profile, purchases, sessions, favorites, ledger, servers, pointPackages, premiumTiers, billing, cryptoPayments, tickets, friendships] =
     await Promise.all([
       prisma.user.findUnique({ where: { id: user.id } }),
       prisma.purchase.findMany({
@@ -62,6 +63,12 @@ export default async function AccountPage() {
       prisma.pointPackage.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
       prisma.premiumTier.findMany({ where: { active: true }, orderBy: { priority: "desc" } }),
       prisma.billingLedger.aggregate({ where: { ownerId: user.id }, _sum: { moneyCents: true, bonusPoints: true } }),
+      prisma.cryptoPayment.findMany({
+        where: { ownerId: user.id },
+        include: { server: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 8
+      }),
       prisma.supportTicket.findMany({
         where: { requesterId: user.id },
         include: { server: true },
@@ -135,6 +142,7 @@ export default async function AccountPage() {
           <a href="#overview">Overview</a>
           <a href="#friends">Friends</a>
           <a href="#servers">Servers</a>
+          <a href="#crypto-payments">Payments</a>
           <a href="#support">Support</a>
         </nav>
       </section>
@@ -320,7 +328,36 @@ export default async function AccountPage() {
         }))}
         pointPackages={pointPackages.map((pack) => ({ id: pack.id, label: pack.label, points: pack.points, priceCents: pack.priceCents }))}
         premiumTiers={premiumTiers.map((tier) => ({ id: tier.id, name: tier.name, priceCents: tier.priceCents, durationDays: tier.durationDays, priority: tier.priority }))}
+        paymentMode={cryptoPaymentMode()}
       />
+
+      <section className="panel" id="crypto-payments">
+        <div className="panel-header compact-heading">
+          <div><p className="eyebrow"><Bitcoin size={14} /> Crypto funding</p><h2>Payment status</h2></div>
+          <span className="badge">{cryptoPaymentMode() === "nowpayments" ? "Live checkout" : "Test mode"}</span>
+        </div>
+        <div className="activity-list">
+          {cryptoPayments.map((payment) => (
+            <div className="activity-row" key={payment.id}>
+              <div>
+                <strong>{payment.packageLabel}</strong>
+                <span>{payment.server?.name || "Removed server"} / {money(payment.priceCents)} / {shortDate(payment.createdAt)}</span>
+              </div>
+              <div className="inline-actions">
+                {payment.checkoutUrl && ["PENDING", "PROCESSING"].includes(payment.status) ? (
+                  <a className="ghost-button" href={payment.checkoutUrl} target="_blank" rel="noreferrer">Resume checkout</a>
+                ) : null}
+                <span className={`status-pill status-${payment.status.toLowerCase()}`}>
+                  {payment.status === "PAID" && payment.totalPoints > 0
+                    ? `PAID +${points(payment.totalPoints)}`
+                    : payment.status}
+                </span>
+              </div>
+            </div>
+          ))}
+          {!cryptoPayments.length ? <div className="empty-state compact-empty">Crypto invoices and their confirmation status will appear here.</div> : null}
+        </div>
+      </section>
 
       <section className="panel" id="support">
         <div className="panel-header compact-heading">

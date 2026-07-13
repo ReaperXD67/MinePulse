@@ -7,7 +7,7 @@ Members earn points on funded servers, then spend those earned points on ranks, 
 ## Two Separate Currencies
 
 - **Wallet points** live in a member wallet. Verified play is the main source; level rewards, the 20-hour claim, and documented admin grants also add wallet points. Wallet points can buy server store items.
-- **Campaign credits** live in a server reward pool. The MVP test buttons simulate buying them; production payments will require a payment provider. Campaign credits can only pay verified player rewards.
+- **Campaign credits** live in a server reward pool. Test mode adds them without charging money; live mode uses a hosted, signed crypto checkout. Campaign credits can only pay verified player rewards.
 
 Buying a store item never refills a server campaign. Promo codes such as `BOOST10` add bonus campaign credits without discounting the purchase price.
 
@@ -124,5 +124,5 @@ For local testing where Paper and the website run on the same machine, keep `api
 - `AUTH_SECRET` must be a strong unique value of at least 32 characters. Production will refuse to boot with the demo secret.
 - Set `APP_BASE_URL` to the public website URL testers open in the browser, for example `http://51.83.180.202:3000` during temporary VPS testing. This prevents redirects from using the internal bind address `0.0.0.0`.
 - `AUTH_COOKIE_SECURE="false"` is allowed only for temporary HTTP/IP-based VPS testing. Use HTTPS and remove it or set it to `"true"` before real public launch.
-- For real production payments, connect Stripe or PayPal where the current owner top-up and premium routes write simulated billing records.
+- Crypto checkout is implemented for campaign packages and Gold/Diamond through NOWPayments. Keep `CRYPTO_PAYMENTS_MODE="test"` until the HTTPS domain, merchant API key, IPN secret, PostgreSQL migration, backups, and launch checks are complete. See [CRYPTO_PAYMENT_SETUP.md](CRYPTO_PAYMENT_SETUP.md).
 - SQLite is fine for local MVP testing. Use Postgres before handling real money or large traffic.
