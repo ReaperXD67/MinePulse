@@ -91,6 +91,54 @@ if (!loginResponse.ok()) {
 }
 
 await ownerContext.close();
+
+const adminContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+const adminLogin = await adminContext.request.post(`${baseUrl}/api/auth/login`, {
+  data: { email: "admin@minepulse.local", password: "admin123" }
+});
+if (!adminLogin.ok()) {
+  errors.push(`admin login failed: ${adminLogin.status()}`);
+} else {
+  const adminPage = await adminContext.newPage();
+  adminPage.on("console", (message) => {
+    if (message.type() === "error") errors.push(`admin console ${adminPage.url()}: ${message.text()}`);
+  });
+  adminPage.on("pageerror", (error) => errors.push(`admin page ${adminPage.url()}: ${error.message}`));
+  await adminPage.goto(`${baseUrl}/admin#campaign-grant`, { waitUntil: "networkidle" });
+  const search = adminPage.getByRole("textbox", { name: "Search campaign credit recipient" });
+  await search.fill("owner@minepulse.local");
+  const result = adminPage.locator(".admin-account-results").getByRole("option", { name: /Skyforge Owner/i });
+  await result.waitFor({ state: "visible" });
+  await result.click();
+  const serverSelect = adminPage.getByRole("combobox", { name: "Campaign server" });
+  if (!(await serverSelect.isEnabled())) errors.push("admin campaign grant: owned server selector stayed disabled");
+  const overflow = await adminPage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  if (overflow > 1) errors.push(`admin account overflow: ${overflow}px`);
+  await adminPage.screenshot({ path: `${outputDir}/audit-admin-campaign-grant.png`, fullPage: true });
+}
+await adminContext.close();
+
+const adminMobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const adminMobileLogin = await adminMobileContext.request.post(`${baseUrl}/api/auth/login`, {
+  data: { email: "admin@minepulse.local", password: "admin123" }
+});
+if (!adminMobileLogin.ok()) {
+  errors.push(`mobile admin login failed: ${adminMobileLogin.status()}`);
+} else {
+  const adminMobilePage = await adminMobileContext.newPage();
+  adminMobilePage.on("console", (message) => {
+    if (message.type() === "error") errors.push(`mobile admin console ${adminMobilePage.url()}: ${message.text()}`);
+  });
+  adminMobilePage.on("pageerror", (error) => errors.push(`mobile admin page ${adminMobilePage.url()}: ${error.message}`));
+  await adminMobilePage.goto(`${baseUrl}/admin#campaign-grant`, { waitUntil: "networkidle" });
+  const overflow = await adminMobilePage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  if (overflow > 1) errors.push(`mobile admin overflow: ${overflow}px`);
+  if (!(await adminMobilePage.getByRole("textbox", { name: "Search campaign credit recipient" }).isVisible())) {
+    errors.push("mobile admin campaign grant search is not visible");
+  }
+  await adminMobilePage.screenshot({ path: `${outputDir}/audit-mobile-admin-campaign-grant.png`, fullPage: true });
+}
+await adminMobileContext.close();
 await browser.close();
 
 console.log(JSON.stringify({ ok: errors.length === 0, errors }, null, 2));

@@ -49,6 +49,7 @@ Seeded accounts:
 ## Test With Minecraft
 
 For a sendable tester checklist, use [TESTING_GUIDE.md](TESTING_GUIDE.md).
+For the hosted Titanaxe server and final pre-domain checks, use [TITANAXE_ACCEPTANCE_TEST.md](TITANAXE_ACCEPTANCE_TEST.md).
 
 Docker Desktop can launch a real Paper 1.21.4 server with the downloadable KarixMC Bridge already mounted:
 
@@ -83,7 +84,7 @@ npm run game:test:down
 - `/servers/[slug]` is the full server profile with screenshots, owner story, rules, store, verified reviews, support, reports, and trust telemetry.
 - `/members/[id]` shows a public member profile and published servers.
 - `/plugin` is the bridge download, installation, command, anti-AFK, and official support center.
-- `/admin` manages economy pricing, Gold/Diamond tiers, promo bonuses, reports, punishments, manual wallet grants, server trust, campaign credits, and statistics.
+- `/admin` manages economy pricing, Gold/Diamond tiers, promo bonuses, reports, punishments, searchable wallet and campaign grants, server trust, campaign credits, and statistics.
 - `/player` and `/owner` redirect to the unified account for backward compatibility.
 
 ## Plugin API

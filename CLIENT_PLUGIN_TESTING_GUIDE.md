@@ -103,6 +103,8 @@ The campaign pool belongs to one server and pays players for verified seconds.
 
 With `CRYPTO_PAYMENTS_MODE="test"`, package buttons simulate a successful purchase and credit the pool immediately without charging money. In `nowpayments` mode, the same buttons open hosted crypto checkout and credits appear only after a signed payment confirmation. Keep test mode enabled for the current Minecraft acceptance test; see `CRYPTO_PAYMENT_SETUP.md` before enabling real money.
 
+Administrators can also use `Admin -> Campaign credit grant` to search an account by email, username, or Minecraft name, select a server owned by that account, and add test/event/support campaign credits with an audit reason. This changes only the selected server pool, never the member's spendable wallet.
+
 When the campaign pool reaches zero:
 
 - players stop earning;

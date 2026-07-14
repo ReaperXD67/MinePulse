@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Crown, Gift, Save, ServerCog } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Coins, Crown, Gift, Save, Search, ServerCog } from "lucide-react";
 import { money, points, shortDate } from "@/lib/format";
 
 type PackageRow = {
@@ -43,6 +43,19 @@ type UserRow = {
   walletPoints: number;
 };
 
+type CampaignAccount = {
+  id: string;
+  username: string;
+  email: string;
+  minecraftName: string | null;
+  ownedServers: Array<{
+    id: string;
+    name: string;
+    pointPool: number;
+    status: string;
+  }>;
+};
+
 export function AdminConsole({
   pointPackages,
   premiumTiers,
@@ -57,6 +70,41 @@ export function AdminConsole({
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [accountQuery, setAccountQuery] = useState("");
+  const [accountResults, setAccountResults] = useState<CampaignAccount[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<CampaignAccount | null>(null);
+  const [campaignServerId, setCampaignServerId] = useState("");
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    const query = accountQuery.trim();
+    if (query.length < 2 || selectedAccount) {
+      setAccountResults([]);
+      setSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setSearching(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/admin/campaign-grants?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (response.ok) setAccountResults(payload.accounts || []);
+      } catch {
+        if (!controller.signal.aborted) setAccountResults([]);
+      } finally {
+        if (!controller.signal.aborted) setSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [accountQuery, selectedAccount]);
 
   async function send(url: string, body: unknown, method = "PATCH") {
     setBusy(true);
@@ -71,11 +119,12 @@ export function AdminConsole({
 
     if (!response.ok) {
       setMessage(payload.error || "Action failed");
-      return;
+      return false;
     }
 
     setMessage(payload.message || "Saved");
     router.refresh();
+    return true;
   }
 
   function updatePointPackage(event: React.FormEvent<HTMLFormElement>, row: PackageRow) {
@@ -131,6 +180,39 @@ export function AdminConsole({
     );
   }
 
+  async function grantCampaignPoints(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    if (!selectedAccount || !campaignServerId) {
+      setMessage("Select an account and one of its servers first");
+      return;
+    }
+    const form = new FormData(formElement);
+    const sent = await send(
+      "/api/admin/campaign-grants",
+      {
+        userId: selectedAccount.id,
+        serverId: campaignServerId,
+        amountPoints: form.get("amountPoints"),
+        description: form.get("description")
+      },
+      "POST"
+    );
+    if (sent) {
+      setSelectedAccount(null);
+      setCampaignServerId("");
+      setAccountQuery("");
+      formElement.reset();
+    }
+  }
+
+  function chooseCampaignAccount(account: CampaignAccount) {
+    setSelectedAccount(account);
+    setAccountQuery(`${account.username} - ${account.email}`);
+    setCampaignServerId(account.ownedServers[0]?.id || "");
+    setAccountResults([]);
+  }
+
   return (
     <div className="dashboard-grid">
       <section className="panel admin-grant-panel">
@@ -154,6 +236,80 @@ export function AdminConsole({
           </div>
           <button className="solid-button" disabled={busy} type="submit"><Gift size={16} /> Grant points</button>
         </form>
+      </section>
+
+      <section className="panel admin-grant-panel" id="campaign-grant">
+        <div className="panel-header">
+          <div>
+            <h2>Campaign credit grant</h2>
+            <p>Find a member, choose a server they own, and add promotional or support credits to that campaign pool.</p>
+          </div>
+        </div>
+        <form className="form-grid grant-form" onSubmit={grantCampaignPoints}>
+          <div className="admin-account-search">
+            <Search size={17} aria-hidden="true" />
+            <input
+              className="field"
+              value={accountQuery}
+              onChange={(event) => {
+                setAccountQuery(event.target.value);
+                setSelectedAccount(null);
+                setCampaignServerId("");
+              }}
+              placeholder="Search email, username, or Minecraft name"
+              aria-label="Search campaign credit recipient"
+              autoComplete="off"
+            />
+            <span>{searching ? "Searching" : ""}</span>
+          </div>
+          {accountResults.length ? (
+            <div className="admin-account-results" role="listbox" aria-label="Matching accounts">
+              {accountResults.map((account) => (
+                <button
+                  type="button"
+                  role="option"
+                  key={account.id}
+                  onClick={() => chooseCampaignAccount(account)}
+                >
+                  <span><strong>{account.username}</strong><small>{account.minecraftName || account.email}</small></span>
+                  <span>{account.ownedServers.length} server{account.ownedServers.length === 1 ? "" : "s"}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {accountQuery.trim().length >= 2 && !searching && !accountResults.length && !selectedAccount ? (
+            <p className="toast-line">No matching account selected. Check the spelling or use the account email.</p>
+          ) : null}
+          {selectedAccount ? (
+            <div className="admin-selected-account">
+              <div><strong>{selectedAccount.username}</strong><span>{selectedAccount.email}</span></div>
+              <span>{selectedAccount.minecraftName || "Minecraft not linked"}</span>
+            </div>
+          ) : null}
+          <select
+            className="select"
+            value={campaignServerId}
+            onChange={(event) => setCampaignServerId(event.target.value)}
+            disabled={!selectedAccount?.ownedServers.length}
+            required
+            aria-label="Campaign server"
+          >
+            <option value="">{selectedAccount?.ownedServers.length ? "Choose server" : "Select an account with a server"}</option>
+            {selectedAccount?.ownedServers.map((server) => (
+              <option value={server.id} key={server.id}>
+                {server.name} - {points(server.pointPool)} credits - {server.status}
+              </option>
+            ))}
+          </select>
+          <div className="form-grid two">
+            <input className="field" name="amountPoints" type="number" min="1" max="1000000000" defaultValue="1000000" required aria-label="Campaign credits to grant" />
+            <input className="field" name="description" placeholder="Testing grant, event prize, or support correction" minLength={4} maxLength={240} required />
+          </div>
+          <button className="solid-button" disabled={busy || !selectedAccount || !campaignServerId} type="submit">
+            <Coins size={16} /> Send campaign credits
+          </button>
+        </form>
+        <p className="toast-line">{message}</p>
       </section>
 
       <section className="panel">
