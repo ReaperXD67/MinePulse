@@ -97,7 +97,7 @@ Important endpoints:
 - `POST /api/plugin/purchases/pull` returns pending commands for a server.
 - `POST /api/plugin/purchases/ack` confirms delivery or refunds failed purchases.
 
-Version 0.5.0 syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, accumulates movement and interaction telemetry, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, uses website-generated arithmetic `/answer` challenges, retries queued deliveries with `/receive`, and only rewards linked KarixMC accounts. KarixMC calculates wallet rewards on the website; the plugin never directly edits balances.
+Version 0.5.1 syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, accumulates movement and interaction telemetry, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, uses website-generated arithmetic `/answer` challenges, retries queued deliveries with `/receive`, and only rewards linked KarixMC accounts. KarixMC calculates wallet rewards on the website; the plugin never directly edits balances.
 
 ## Plugin Build
 

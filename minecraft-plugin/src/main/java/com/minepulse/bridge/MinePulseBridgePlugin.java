@@ -295,7 +295,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       }
     }
     payload.addProperty("reportedSeconds", reportedSeconds);
-    payload.addProperty("pluginVersion", getPluginMeta().getVersion());
+    payload.addProperty("pluginVersion", getDescription().getVersion());
     payload.addProperty("signature", signHeartbeat(payload));
     return payload;
   }

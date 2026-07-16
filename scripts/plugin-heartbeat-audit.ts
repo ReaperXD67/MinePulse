@@ -57,7 +57,7 @@ async function heartbeat(overrides: Partial<HeartbeatInput>) {
     movementScore: 1000,
     activityEvents: 1,
     reportedSeconds: 20,
-    pluginVersion: "0.5.0-audit",
+    pluginVersion: "0.5.1-audit",
     ...overrides
   };
   const signature = crypto.createHmac("sha256", secret).update(signaturePayload(input)).digest("hex");

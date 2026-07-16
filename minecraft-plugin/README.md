@@ -1,17 +1,17 @@
-# KarixMC Bridge 0.5.0
+# KarixMC Bridge 0.5.1
 
-The Paper plugin connects real Minecraft activity to KarixMC. The visible plugin ID and configuration folder are `KarixMCBridge`; `/minepulse` remains a command alias during migration.
+The Paper/Spigot plugin connects real Minecraft activity to KarixMC. The visible plugin ID and configuration folder are `KarixMCBridge`; `/minepulse` remains a command alias during migration.
 
 ## Requirements
 
-- Paper 1.20 or 1.21
+- Paper or Spigot 1.20 or 1.21
 - Java 17 or newer
 - Outbound HTTPS access to the deployed KarixMC website
 - Maven 3.9 or newer only when building from source
 
 ## Install
 
-1. Download `KarixMCBridge-0.5.0.jar` from `/plugin` on the website.
+1. Download `KarixMCBridge-0.5.1.jar` from `/plugin` on the website.
 2. Copy it into the Paper server's `plugins/` directory.
 3. Start Paper once, then stop it after `plugins/KarixMCBridge/config.yml` is created.
 4. In KarixMC, open **Account -> Your servers -> Plugin connection**.

@@ -24,7 +24,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - minepulse-paper-data:/data
-      - ./public/downloads/KarixMCBridge-0.5.0.jar:/plugins/KarixMCBridge.jar:ro
+      - ./public/downloads/KarixMCBridge-0.5.1.jar:/plugins/KarixMCBridge.jar:ro
     healthcheck:
       test: ["CMD", "mc-health"]
       interval: 10s
