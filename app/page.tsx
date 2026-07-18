@@ -1,4 +1,4 @@
-import { Coins, Crosshair, RadioTower, RefreshCw, Server, ShieldCheck, WalletCards } from "lucide-react";
+import { Coins, Crosshair, LayoutGrid, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
 import Link from "next/link";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
 import { VoxelHeroScene } from "@/components/VoxelHeroScene";
@@ -13,12 +13,14 @@ export const dynamic = "force-dynamic";
 export default async function MarketplacePage({
   searchParams
 }: {
-  searchParams: Promise<{ tag?: string }>;
+  searchParams: Promise<{ tag?: string; q?: string; view?: string; shuffle?: string }>;
 }) {
   const user = await currentUser();
   const now = new Date();
-  const { tag } = await searchParams;
+  const { tag, q, view } = await searchParams;
   const selectedTag = typeof tag === "string" ? tag.trim() : "";
+  const query = typeof q === "string" ? q.trim().slice(0, 80) : "";
+  const favoritesOnly = view === "favorites" && Boolean(user);
 
   const [servers, platform, pointPackages, premiumTiers] = await Promise.all([
     prisma.server.findMany({
@@ -109,9 +111,23 @@ export default async function MarketplacePage({
     new Set(visibleServers.flatMap((server) => server.tags.map((serverTag) => serverTag.trim()).filter(Boolean)))
   ).sort((left, right) => left.localeCompare(right));
   const selectedTagLower = selectedTag.toLowerCase();
-  const filteredServers = selectedTag
-    ? visibleServers.filter((server) => server.tags.some((serverTag) => serverTag.toLowerCase() === selectedTagLower))
-    : visibleServers;
+  const normalizedQuery = query.toLowerCase();
+  const filteredServers = visibleServers.filter((server) => {
+    const matchesTag = !selectedTag || server.tags.some((serverTag) => serverTag.toLowerCase() === selectedTagLower);
+    const matchesFavorite = !favoritesOnly || server.favorited;
+    const searchableText = [
+      server.name,
+      server.host,
+      `${server.host}:${server.port}`,
+      server.version,
+      server.region,
+      server.description,
+      ...server.tags,
+      ...server.items.flatMap((item) => [item.name, item.description])
+    ].join(" ").toLowerCase();
+    const matchesQuery = !normalizedQuery || searchableText.includes(normalizedQuery);
+    return matchesTag && matchesFavorite && matchesQuery;
+  });
   const premium = shuffle(
     filteredServers.filter(
       (server) =>
@@ -126,6 +142,17 @@ export default async function MarketplacePage({
   const cheapestPackage = pointPackages[0];
   const topPremium = premiumTiers[0];
   const canManageServers = Boolean(user);
+  const favoriteCount = visibleServers.filter((server) => server.favorited).length;
+
+  function directoryHref(next: { tag?: string; query?: string; favorites?: boolean; shuffle?: boolean }) {
+    const params = new URLSearchParams();
+    if (next.tag) params.set("tag", next.tag);
+    if (next.query) params.set("q", next.query);
+    if (next.favorites) params.set("view", "favorites");
+    if (next.shuffle) params.set("shuffle", Date.now().toString());
+    const value = params.toString();
+    return `${value ? `/?${value}` : "/"}#servers`;
+  }
 
   return (
     <main>
@@ -185,19 +212,68 @@ export default async function MarketplacePage({
           <div>
             <p className="eyebrow"><RadioTower size={14} /> Live directory</p>
             <h2>Worlds transmitting now</h2>
-            <p>Use a tag to focus the atlas, or refresh to deal the funded worlds again.</p>
+            <p>{favoritesOnly ? "Your saved worlds, ready for another session." : "Funded worlds and their live reward stores."}</p>
           </div>
-          <Link className="ghost-button" href="/">
+          <Link className="ghost-button" href={directoryHref({ tag: selectedTag, query, favorites: favoritesOnly, shuffle: true })}>
             <RefreshCw size={16} /> Refresh list
           </Link>
         </div>
 
+        <div className="directory-toolbar">
+          <form className={`server-search-form ${query ? "has-query" : ""}`} action="/#servers" method="get" role="search">
+            <div className="server-search-field">
+              <Search size={18} aria-hidden="true" />
+              <input
+                className="field"
+                type="search"
+                name="q"
+                defaultValue={query}
+                placeholder="Search worlds, addresses, tags or rewards"
+                aria-label="Search servers and rewards"
+              />
+            </div>
+            {selectedTag ? <input type="hidden" name="tag" value={selectedTag} /> : null}
+            {favoritesOnly ? <input type="hidden" name="view" value="favorites" /> : null}
+            <button className="solid-button directory-search-button" type="submit"><Search size={16} /> Search</button>
+            {query ? (
+              <Link
+                className="icon-button directory-clear-button"
+                href={directoryHref({ tag: selectedTag, favorites: favoritesOnly })}
+                aria-label="Clear server search"
+                title="Clear search"
+              >
+                <X size={17} />
+              </Link>
+            ) : null}
+          </form>
+
+          <div className="directory-view-tabs" aria-label="Directory view">
+            <Link
+              className={`directory-view-link ${!favoritesOnly ? "active" : ""}`}
+              href={directoryHref({ tag: selectedTag, query })}
+            >
+              <LayoutGrid size={16} /> All <span>{visibleServers.length}</span>
+            </Link>
+            <Link
+              className={`directory-view-link ${favoritesOnly ? "active" : ""}`}
+              href={user ? directoryHref({ tag: selectedTag, query, favorites: true }) : "/login"}
+            >
+              <Star size={16} fill={favoritesOnly ? "currentColor" : "none"} /> Favorites <span>{favoriteCount}</span>
+            </Link>
+          </div>
+        </div>
+
         <div className="tag-filter-row" aria-label="Server tag filters">
-          <Link className={`tag-filter ${!selectedTag ? "active" : ""}`} href="/">All worlds</Link>
+          <Link
+            className={`tag-filter ${!selectedTag ? "active" : ""}`}
+            href={directoryHref({ query, favorites: favoritesOnly })}
+          >
+            All worlds
+          </Link>
           {availableTags.map((serverTag) => (
             <Link
               className={`tag-filter ${serverTag.toLowerCase() === selectedTagLower ? "active" : ""}`}
-              href={`/?tag=${encodeURIComponent(serverTag)}#servers`}
+              href={directoryHref({ tag: serverTag, query, favorites: favoritesOnly })}
               key={serverTag}
             >
               {serverTag}
@@ -206,13 +282,25 @@ export default async function MarketplacePage({
         </div>
 
         {sortedServers.length ? (
-          <div className="server-grid">
-            {sortedServers.map((server) => (
-              <ServerCard key={server.id} server={server} />
-            ))}
-          </div>
+          <>
+            <div className="directory-result-line" aria-live="polite">
+              <strong>{sortedServers.length}</strong>
+              <span>{favoritesOnly ? "favorite" : "matching"} {sortedServers.length === 1 ? "world" : "worlds"}</span>
+              {query ? <small>for &ldquo;{query}&rdquo;</small> : null}
+            </div>
+            <div className="server-grid">
+              {sortedServers.map((server) => (
+                <ServerCard key={server.id} server={server} />
+              ))}
+            </div>
+          </>
         ) : (
-          <div className="empty-state">No funded servers are currently visible.</div>
+          <div className="empty-state directory-empty-state">
+            <Search size={24} />
+            <strong>{favoritesOnly ? "No favorite worlds match" : "No funded worlds match"}</strong>
+            <span>Try another name, address, tag, or reward.</span>
+            {(query || selectedTag || favoritesOnly) ? <Link className="ghost-button" href="/#servers">Reset directory</Link> : null}
+          </div>
         )}
       </section>
 
