@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowUpRight, Coins, Heart, MessageSquare, RadioTower, ShieldCheck, Star, Zap } from "lucide-react";
+import { ArrowUpRight, Coins, Crown, Gem, Heart, MessageSquare, RadioTower, ShieldCheck, Star } from "lucide-react";
 import { compact, daysLeft, points } from "@/lib/format";
 import { serverJoinAddress } from "@/lib/server-address";
 
@@ -65,11 +65,23 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
           <span className={`status-pill trust-${server.trustStatus.toLowerCase()}`}><ShieldCheck size={12} /> {server.trustStatus}</span>
           <span className={`status-pill bridge-${server.bridgeState}`}><RadioTower size={12} /> {server.bridgeState}</span>
         </div>
+        {premiumClass ? (
+          <span className={`premium-image-sigil ${premiumClass}`} aria-hidden="true">
+            <i>{premiumClass === "diamond" ? <Gem size={18} /> : <Crown size={18} />}</i>
+            <span><small>{premiumClass === "diamond" ? "Apex tier" : "Featured tier"}</small><strong>{server.premiumPlan}</strong></span>
+          </span>
+        ) : null}
       </Link>
       <div className="server-card-body">
         <div className="server-title-row">
           <div><Link href={`/servers/${server.slug}`}><h3>{server.name}</h3></Link><div className="server-host">{serverJoinAddress(server.host, server.port)}</div></div>
-          {server.premiumPlan !== "NONE" ? <span className={`badge ${premiumClass}`}><Zap size={13} /> {server.premiumPlan} / {daysLeft(server.premiumUntil)}</span> : null}
+          {server.premiumPlan !== "NONE" ? (
+            <span className={`badge premium-badge ${premiumClass}`}>
+              {premiumClass === "diamond" ? <Gem size={14} /> : <Crown size={14} />}
+              <strong>{server.premiumPlan}</strong>
+              <small>{daysLeft(server.premiumUntil)}</small>
+            </span>
+          ) : null}
         </div>
 
         <p className="server-description">{server.description}</p>
