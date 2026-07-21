@@ -853,6 +853,166 @@ h1 {
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
 
+/* v6 operations polish: deliberate grants, moderation, and premium signals. */
+.admin-server-grant-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-grant-column {
+  align-content: start;
+  padding: 22px 22px 22px 0;
+}
+
+.admin-grant-column + .admin-grant-column {
+  border-left: 1px solid var(--line);
+  padding-right: 0;
+  padding-left: 22px;
+}
+
+.admin-grant-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  min-height: 46px;
+}
+
+.admin-grant-heading > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--cyan);
+}
+
+.admin-grant-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-grant-heading strong {
+  font-size: 14px;
+}
+
+.admin-grant-heading span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.premium-grant-column .admin-grant-heading > svg {
+  color: var(--gold);
+}
+
+.premium-grant-button {
+  background: linear-gradient(90deg, #f4ca62, #68d8ff);
+  color: #071015;
+}
+
+.admin-server-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-top: 4px;
+}
+
+.admin-server-actions .ghost-button {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.server-card.premium-gold {
+  border-color: rgba(244, 202, 98, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(244, 202, 98, 0.32),
+    0 0 30px rgba(244, 202, 98, 0.2),
+    0 28px 70px rgba(0, 0, 0, 0.42);
+}
+
+.server-card.premium-diamond {
+  border-color: rgba(104, 216, 255, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(104, 216, 255, 0.4),
+    0 0 38px rgba(104, 216, 255, 0.26),
+    0 28px 70px rgba(0, 0, 0, 0.44);
+}
+
+.server-card.premium-gold::before,
+.server-card.premium-diamond::before {
+  inset: 6px;
+  z-index: 3;
+  border-radius: 1px;
+  opacity: 1;
+}
+
+.server-card.premium-gold::before {
+  background:
+    linear-gradient(90deg, #f4ca62, transparent 24%) top left / 42% 1px no-repeat,
+    linear-gradient(180deg, #f4ca62, transparent 28%) top left / 1px 42% no-repeat,
+    linear-gradient(270deg, #f4ca62, transparent 24%) bottom right / 42% 1px no-repeat,
+    linear-gradient(0deg, #f4ca62, transparent 28%) bottom right / 1px 42% no-repeat;
+}
+
+.server-card.premium-diamond::before {
+  background:
+    linear-gradient(90deg, #68d8ff, transparent 24%) top left / 42% 1px no-repeat,
+    linear-gradient(180deg, #68d8ff, transparent 28%) top left / 1px 42% no-repeat,
+    linear-gradient(270deg, #a99aff, transparent 24%) bottom right / 42% 1px no-repeat,
+    linear-gradient(0deg, #a99aff, transparent 28%) bottom right / 1px 42% no-repeat;
+}
+
+.server-card.premium-gold:hover {
+  box-shadow:
+    0 0 0 1px rgba(244, 202, 98, 0.46),
+    0 0 44px rgba(244, 202, 98, 0.3),
+    0 32px 76px rgba(0, 0, 0, 0.48);
+}
+
+.server-card.premium-diamond:hover {
+  box-shadow:
+    0 0 0 1px rgba(104, 216, 255, 0.52),
+    0 0 52px rgba(104, 216, 255, 0.34),
+    0 32px 76px rgba(0, 0, 0, 0.5);
+}
+
+.server-card .badge.gold,
+.server-card .badge.diamond {
+  border-width: 1px;
+  background: rgba(7, 12, 15, 0.92);
+  font-weight: 900;
+}
+
+.server-card .badge.gold {
+  box-shadow: 0 0 20px rgba(244, 202, 98, 0.3), inset 0 0 14px rgba(244, 202, 98, 0.08);
+}
+
+.server-card .badge.diamond {
+  box-shadow: 0 0 24px rgba(104, 216, 255, 0.34), inset 0 0 16px rgba(104, 216, 255, 0.1);
+}
+
+@media (max-width: 760px) {
+  .admin-server-grant-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-grant-column,
+  .admin-grant-column + .admin-grant-column {
+    padding: 18px 0;
+  }
+
+  .admin-grant-column + .admin-grant-column {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .admin-server-actions .ghost-button {
+    flex: 1 1 112px;
+    justify-content: center;
+  }
+}
+
 /* Marketplace directory controls */
 .directory-toolbar {
   display: grid;

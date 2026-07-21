@@ -27,6 +27,12 @@ async function auditViewport(name, viewport) {
   }
 
   await page.goto(baseUrl, { waitUntil: "networkidle" });
+  if ((await page.locator('link[rel~="icon"][href="/icon.svg"]').count()) !== 1) {
+    errors.push(`${name}: KarixMC favicon is missing`);
+  }
+  if ((await page.locator(".server-card .bridge-offline, .server-card .bridge-stale").count()) !== 0) {
+    errors.push(`${name}: an offline or stale server is visible in the marketplace`);
+  }
   const canvas = page.locator(".voxel-scene canvas");
   if ((await canvas.count()) !== 1 || !(await canvas.isVisible())) {
     errors.push(`${name}: hero canvas missing or hidden`);
@@ -44,9 +50,13 @@ async function auditViewport(name, viewport) {
     }
   }
 
+  await page.keyboard.press("Alt");
+  if (await page.locator("#world-navigator").isVisible()) {
+    errors.push(`${name}: Alt unexpectedly opened the navigator`);
+  }
   await page.getByRole("button", { name: "Open world navigator" }).click();
   await page.locator("#world-navigator").waitFor({ state: "visible" });
-  await page.keyboard.press("Escape");
+  await page.locator(".navigator-launcher").click();
   await page.locator("#world-navigator").waitFor({ state: "hidden" });
   await context.close();
 }
@@ -104,14 +114,20 @@ if (!adminLogin.ok()) {
     if (message.type() === "error") errors.push(`admin console ${adminPage.url()}: ${message.text()}`);
   });
   adminPage.on("pageerror", (error) => errors.push(`admin page ${adminPage.url()}: ${error.message}`));
-  await adminPage.goto(`${baseUrl}/admin#campaign-grant`, { waitUntil: "networkidle" });
-  const search = adminPage.getByRole("textbox", { name: "Search campaign credit recipient" });
+  await adminPage.goto(`${baseUrl}/admin#server-grants`, { waitUntil: "networkidle" });
+  const search = adminPage.getByRole("textbox", { name: "Search server owner" });
   await search.fill("owner@minepulse.local");
   const result = adminPage.locator(".admin-account-results").getByRole("option", { name: /Skyforge Owner/i });
   await result.waitFor({ state: "visible" });
   await result.click();
   const serverSelect = adminPage.getByRole("combobox", { name: "Campaign server" });
   if (!(await serverSelect.isEnabled())) errors.push("admin campaign grant: owned server selector stayed disabled");
+  const premiumServerSelect = adminPage.getByRole("combobox", { name: "Premium server" });
+  if (!(await premiumServerSelect.isEnabled())) errors.push("admin premium grant: owned server selector stayed disabled");
+  const premiumDuration = adminPage.getByRole("combobox", { name: "Premium grant duration" });
+  if ((await premiumDuration.locator("option").allTextContents()).join("|") !== "1 week|2 weeks") {
+    errors.push("admin premium grant: expected one-week and two-week durations");
+  }
   const overflow = await adminPage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (overflow > 1) errors.push(`admin account overflow: ${overflow}px`);
   await adminPage.screenshot({ path: `${outputDir}/audit-admin-campaign-grant.png`, fullPage: true });
@@ -130,11 +146,11 @@ if (!adminMobileLogin.ok()) {
     if (message.type() === "error") errors.push(`mobile admin console ${adminMobilePage.url()}: ${message.text()}`);
   });
   adminMobilePage.on("pageerror", (error) => errors.push(`mobile admin page ${adminMobilePage.url()}: ${error.message}`));
-  await adminMobilePage.goto(`${baseUrl}/admin#campaign-grant`, { waitUntil: "networkidle" });
+  await adminMobilePage.goto(`${baseUrl}/admin#server-grants`, { waitUntil: "networkidle" });
   const overflow = await adminMobilePage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (overflow > 1) errors.push(`mobile admin overflow: ${overflow}px`);
-  if (!(await adminMobilePage.getByRole("textbox", { name: "Search campaign credit recipient" }).isVisible())) {
-    errors.push("mobile admin campaign grant search is not visible");
+  if (!(await adminMobilePage.getByRole("textbox", { name: "Search server owner" }).isVisible())) {
+    errors.push("mobile admin server grant search is not visible");
   }
   await adminMobilePage.screenshot({ path: `${outputDir}/audit-mobile-admin-campaign-grant.png`, fullPage: true });
 }

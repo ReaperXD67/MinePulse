@@ -98,7 +98,10 @@ export function ServerProfileActions({
 
       {panel === "support" ? (
         <form className="inline-form-panel" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); request(`/api/servers/${serverId}/support`, { subject: form.get("subject"), body: form.get("body") }); }}>
-          <div><strong>Contact server support</strong><p>The server owner sees this in their KarixMC inbox.</p></div>
+          <div>
+            <strong>Contact this server&apos;s owner</strong>
+            <p>Your request goes to the owner&apos;s Creator Studio inbox. Track replies in <Link href="/account#support">Account &gt; Support</Link>. Use Official Discord for KarixMC platform help.</p>
+          </div>
           <input className="field" name="subject" minLength={4} maxLength={100} required placeholder="What do you need help with?" />
           <textarea className="textarea" name="body" minLength={12} maxLength={1200} required placeholder="Include your Minecraft name and what happened." />
           <button className="solid-button" disabled={busy}><LifeBuoy size={15} /> Send request</button>

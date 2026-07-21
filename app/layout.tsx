@@ -23,7 +23,10 @@ export const metadata: Metadata = {
     default: "KarixMC | Play anywhere. Earn everywhere.",
     template: "%s | KarixMC"
   },
-  description: "The verified Minecraft reward network for players and server owners."
+  description: "The verified Minecraft reward network for players and server owners.",
+  icons: {
+    icon: "/icon.svg"
+  }
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

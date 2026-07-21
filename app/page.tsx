@@ -105,7 +105,7 @@ export default async function MarketplacePage({
         pricePoints: item.pricePoints
       }))
     };
-  });
+  }).filter((server) => server.bridgeState === "online");
 
   const availableTags = Array.from(
     new Set(visibleServers.flatMap((server) => server.tags.map((serverTag) => serverTag.trim()).filter(Boolean)))
@@ -297,8 +297,8 @@ export default async function MarketplacePage({
         ) : (
           <div className="empty-state directory-empty-state">
             <Search size={24} />
-            <strong>{favoritesOnly ? "No favorite worlds match" : "No funded worlds match"}</strong>
-            <span>Try another name, address, tag, or reward.</span>
+            <strong>{favoritesOnly ? "No favorite worlds are online" : "No live funded worlds match"}</strong>
+            <span>Try another name, address, tag, or check back when a server reconnects.</span>
             {(query || selectedTag || favoritesOnly) ? <Link className="ghost-button" href="/#servers">Reset directory</Link> : null}
           </div>
         )}

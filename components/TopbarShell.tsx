@@ -8,25 +8,9 @@ export function TopbarShell({ account, children }: { account: ReactNode; childre
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      const isTyping = target?.matches("input, textarea, select, [contenteditable='true']");
-
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-
-      if (!isTyping && (event.altKey || event.key === "/")) {
-        event.preventDefault();
-        setOpen((current) => !current);
-      }
-    }
-
     document.body.style.overflow = open ? "hidden" : "";
-    window.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = "";
-      window.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
 
@@ -61,7 +45,7 @@ export function TopbarShell({ account, children }: { account: ReactNode; childre
           <div className="navigator-kicker"><span>KX // REWARD NETWORK</span><i /> <b>LIVE DIRECTORY</b></div>
           <div className="navigator-title"><span>Navigator</span><h2>Move through the network.</h2></div>
           {children}
-          <footer className="navigator-footer"><span><kbd>ESC</kbd> close</span><span><kbd>/</kbd> toggle anywhere</span><strong>Verified worlds. Shared rewards.</strong></footer>
+          <footer className="navigator-footer"><strong>Verified worlds. Shared rewards.</strong></footer>
         </div>
       </section>
     </header>
