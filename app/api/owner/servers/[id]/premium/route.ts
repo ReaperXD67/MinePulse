@@ -36,6 +36,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Premium tier not available" }, { status: 404 });
     }
 
+    if (!cryptoPaymentsAreLive()) {
+      return NextResponse.json(
+        { error: "Purchases are paused during controlled testing. Contact KarixMC support for premium access." },
+        { status: 503 }
+      );
+    }
+
     if (cryptoPaymentsAreLive()) {
       const reusable = await prisma.cryptoPayment.findFirst({
         where: {

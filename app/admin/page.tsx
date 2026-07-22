@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AdminConsole } from "@/components/AdminConsole";
 import { AdminSafetyConsole } from "@/components/AdminSafetyConsole";
 import { StatsChart } from "@/components/StatsChart";
+import { Boxes, Crown, Flag, PackageCheck, RadioTower, ShieldAlert, UserPlus, WalletCards } from "lucide-react";
 import { currentUser } from "@/lib/auth";
 import { UserRole } from "@/lib/generated/prisma/client";
 import { money, points } from "@/lib/format";
@@ -86,6 +87,7 @@ export default async function AdminPage({
   ]);
 
   const buyerWindowLabel = buyers === "all" ? "all time" : `${buyerDays} days`;
+  const bridgeOnlineCutoff = Date.now() - 2 * 60 * 1000;
 
   return (
     <main className="container dashboard">
@@ -113,6 +115,27 @@ export default async function AdminPage({
         <div className="stat-tile" style={{ "--accent": "var(--rose)" } as React.CSSProperties}>
           <span>Revenue</span>
           <strong>{money(stats.revenueCents)}</strong>
+        </div>
+      </section>
+
+      <section className="panel admin-ops-panel">
+        <div className="panel-header compact-heading">
+          <div>
+            <p className="eyebrow">Live operations</p>
+            <h2>Network health at a glance</h2>
+            <p>Connection, moderation, delivery, and economy signals for the whole fleet.</p>
+          </div>
+        </div>
+        <div className="admin-ops-grid">
+          <div><Boxes size={18} /><span><small>Listed fleet</small><strong>{stats.totalServers}</strong></span></div>
+          <div><RadioTower size={18} /><span><small>Bridges online</small><strong>{stats.bridgeOnlineServers} / {stats.totalServers}</strong></span></div>
+          <div><Crown size={18} /><span><small>Live premium</small><strong>{stats.activePremiumServers}</strong></span></div>
+          <div><PackageCheck size={18} /><span><small>Pending deliveries</small><strong>{stats.pendingPurchases}</strong></span></div>
+          <div><ShieldAlert size={18} /><span><small>Open reports</small><strong>{stats.openReports}</strong></span></div>
+          <div><Flag size={18} /><span><small>Flagged sessions</small><strong>{stats.flaggedSessions}</strong></span></div>
+          <div><WalletCards size={18} /><span><small>Campaign reserves</small><strong>{points(stats.serverPools)}</strong></span></div>
+          <div><WalletCards size={18} /><span><small>Player wallet supply</small><strong>{points(stats.walletTotals)}</strong></span></div>
+          <div><UserPlus size={18} /><span><small>New accounts / 24h</small><strong>{stats.newUsers24Hours}</strong></span></div>
         </div>
       </section>
 
@@ -175,11 +198,33 @@ export default async function AdminPage({
           id: server.id,
           name: server.name,
           owner: server.owner.username,
+          host: server.host,
+          port: server.port,
+          tags: server.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
           status: server.status,
           pointPool: server.pointPool,
           premiumPlan: server.premiumPlan,
           premiumUntil: server.premiumUntil?.toISOString() ?? null,
-          trustStatus: server.trustStatus
+          trustStatus: server.trustStatus,
+          bridgeOnline: Boolean(
+            (server.lastConfigSyncAt?.getTime() ?? 0) >= bridgeOnlineCutoff ||
+            (server.lastHeartbeatAt?.getTime() ?? 0) >= bridgeOnlineCutoff
+          ),
+          lastConfigSyncAt: server.lastConfigSyncAt?.toISOString() ?? null,
+          lastPluginVersion: server.lastPluginVersion,
+          riskScore: server.riskScore,
+          integrityFailures: server.integrityFailures,
+          pluginConfigRevision: server.pluginConfigRevision,
+          heartbeatIntervalSeconds: server.heartbeatIntervalSeconds,
+          purchasePollSeconds: server.purchasePollSeconds,
+          afkTimeoutSeconds: server.afkTimeoutSeconds,
+          challengeEnabled: server.challengeEnabled,
+          challengeIntervalSeconds: server.challengeIntervalSeconds,
+          challengeAnswerWindowSeconds: server.challengeAnswerWindowSeconds,
+          challengeRequired: server.challengeRequired,
+          minimumMovementDistance: server.minimumMovementDistance,
+          minimumActivityEvents: server.minimumActivityEvents,
+          botProtectionLevel: server.botProtectionLevel
         }))}
         users={grantUsers.map((account) => ({
           id: account.id,

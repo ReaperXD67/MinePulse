@@ -31,6 +31,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Point package not available" }, { status: 404 });
     }
 
+    if (!cryptoPaymentsAreLive()) {
+      return NextResponse.json(
+        { error: "Purchases are paused during controlled testing. Contact KarixMC support for campaign credits." },
+        { status: 503 }
+      );
+    }
+
     const promoCodeValue = input.promoCode?.trim().toUpperCase();
     const promo = promoCodeValue
       ? await prisma.promoCode.findUnique({ where: { code: promoCodeValue } })

@@ -329,6 +329,7 @@ export default async function AccountPage() {
         pointPackages={pointPackages.map((pack) => ({ id: pack.id, label: pack.label, points: pack.points, priceCents: pack.priceCents }))}
         premiumTiers={premiumTiers.map((tier) => ({ id: tier.id, name: tier.name, priceCents: tier.priceCents, durationDays: tier.durationDays, priority: tier.priority }))}
         paymentMode={cryptoPaymentMode()}
+        discordUrl={process.env.NEXT_PUBLIC_DISCORD_URL || "/plugin#support"}
       />
 
       <section className="panel" id="crypto-payments">

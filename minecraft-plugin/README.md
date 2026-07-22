@@ -33,7 +33,7 @@ For same-machine development, `api-base-url` can be `http://localhost:3000`. On 
 
 ## Website-Managed Policy
 
-Behavioral configuration no longer lives in the plugin YAML. Owners manage it from Creator Studio, and the bridge refreshes it every minute without restarting Paper:
+Behavioral configuration no longer lives in the plugin YAML. Owners manage their policy from Creator Studio, administrators can override it from the fleet console, and the bridge refreshes it every minute without restarting Paper:
 
 - heartbeat interval
 - purchase polling interval

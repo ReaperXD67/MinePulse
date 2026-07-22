@@ -5,16 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { KeyRound, LogIn } from "lucide-react";
 
-const demoAccounts = [
-  ["Control", "admin@minepulse.local", "admin123"],
-  ["Skyforge", "owner@minepulse.local", "owner123"],
-  ["PixelRunner", "player@minepulse.local", "player123"]
-] as const;
-
 export function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("player@minepulse.local");
-  const [password, setPassword] = useState("player123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +43,7 @@ export function LoginForm() {
         </p>
         <h2>Enter the network</h2>
         <p className="lead">
-          Use a seeded identity to test the unified account, server publishing, purchases, and moderation.
+          Sign in with your personal KarixMC account. Wallets, Minecraft links, purchases, and servers stay attached to this identity.
         </p>
       </div>
 
@@ -81,24 +75,7 @@ export function LoginForm() {
       <button className="solid-button" type="submit" disabled={loading}>
         <LogIn size={16} /> {loading ? "Checking..." : "Login"}
       </button>
-      <Link className="ghost-button auth-switch-link" href="/signup">Create a test account</Link>
-
-      <div className="inline-actions" aria-label="Demo accounts">
-        {demoAccounts.map(([label, demoEmail, demoPassword]) => (
-          <button
-            className="ghost-button"
-            key={label}
-            type="button"
-            onClick={() => {
-              setEmail(demoEmail);
-              setPassword(demoPassword);
-              setMessage("");
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Link className="ghost-button auth-switch-link" href="/signup">Create an account</Link>
 
       <p className="toast-line">{message}</p>
     </form>

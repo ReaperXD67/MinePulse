@@ -1,4 +1,4 @@
-import { LedgerType } from "@/lib/generated/prisma/client";
+import { LedgerType, PremiumPlanCode, PurchaseStatus, ReportStatus, ServerStatus, SessionStatus } from "@/lib/generated/prisma/client";
 import { weekdayLabel } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
@@ -10,8 +10,25 @@ export type ChartPoint = {
 
 export async function platformStats() {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const since24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const onlineCutoff = new Date(Date.now() - 2 * 60 * 1000);
-  const [users, activeServers, onlinePlayersNow, purchases, billing, serverPools, walletTotals, ledgers] = await Promise.all([
+  const [
+    users,
+    activeServers,
+    onlinePlayersNow,
+    purchases,
+    billing,
+    serverPools,
+    walletTotals,
+    ledgers,
+    totalServers,
+    bridgeOnlineServers,
+    pendingPurchases,
+    openReports,
+    activePremiumServers,
+    newUsers24Hours,
+    flaggedSessions
+  ] = await Promise.all([
     prisma.user.count(),
     prisma.server.count({ where: { status: "ACTIVE", pointPool: { gt: 0 } } }),
     prisma.serverSession.count({ where: { status: "ACTIVE", lastHeartbeatAt: { gte: onlineCutoff } } }),
@@ -25,7 +42,28 @@ export async function platformStats() {
         type: { in: [LedgerType.PLAYER_REWARD, LedgerType.PLAYER_SPEND] }
       },
       orderBy: { createdAt: "asc" }
-    })
+    }),
+    prisma.server.count({ where: { status: { not: ServerStatus.REMOVED } } }),
+    prisma.server.count({
+      where: {
+        status: ServerStatus.ACTIVE,
+        OR: [
+          { lastConfigSyncAt: { gte: onlineCutoff } },
+          { lastHeartbeatAt: { gte: onlineCutoff } }
+        ]
+      }
+    }),
+    prisma.purchase.count({ where: { status: PurchaseStatus.PENDING } }),
+    prisma.serverReport.count({ where: { status: { in: [ReportStatus.OPEN, ReportStatus.REVIEWING] } } }),
+    prisma.server.count({
+      where: {
+        status: ServerStatus.ACTIVE,
+        premiumPlan: { not: PremiumPlanCode.NONE },
+        premiumUntil: { gt: new Date() }
+      }
+    }),
+    prisma.user.count({ where: { createdAt: { gte: since24Hours } } }),
+    prisma.serverSession.count({ where: { status: SessionStatus.FLAGGED } })
   ]);
 
   return {
@@ -36,6 +74,13 @@ export async function platformStats() {
     revenueCents: billing._sum.moneyCents ?? 0,
     serverPools: serverPools._sum.pointPool ?? 0,
     walletTotals: walletTotals._sum.walletPoints ?? 0,
+    totalServers,
+    bridgeOnlineServers,
+    pendingPurchases,
+    openReports,
+    activePremiumServers,
+    newUsers24Hours,
+    flaggedSessions,
     chart: ledgerChart(ledgers)
   };
 }

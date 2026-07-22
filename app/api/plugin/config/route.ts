@@ -30,6 +30,7 @@ export async function POST(request: Request) {
         challengeRequired: true,
         minimumMovementDistance: true,
         minimumActivityEvents: true,
+        botProtectionLevel: true,
         rewardRatePerSecond: true,
         maxPaidPlayers: true,
         pointPool: true
@@ -65,7 +66,8 @@ export async function POST(request: Request) {
         challengeAnswerWindowSeconds: server.challengeAnswerWindowSeconds,
         challengeRequired: server.challengeRequired,
         minimumMovementDistance: server.minimumMovementDistance,
-        minimumActivityEvents: server.minimumActivityEvents
+        minimumActivityEvents: server.minimumActivityEvents,
+        botProtectionLevel: server.botProtectionLevel
       }
     });
   } catch (error) {

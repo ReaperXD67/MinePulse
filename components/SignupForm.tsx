@@ -43,7 +43,7 @@ export function SignupForm() {
         </p>
         <h2>Create account</h2>
         <p className="lead">
-          Make a separate test identity for wallet rewards, Minecraft linking, purchases, friends, and server publishing.
+          Create your personal identity for wallet rewards, Minecraft linking, purchases, friends, and server publishing.
         </p>
       </div>
 

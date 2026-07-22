@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Gem,
   LifeBuoy,
+  MessageCircle,
   PackagePlus,
   RadioTower,
   RotateCcw,
@@ -20,7 +21,8 @@ import {
   ShieldCheck,
   TicketCheck,
   Timer,
-  Trash2
+  Trash2,
+  X
 } from "lucide-react";
 import { money, points, shortDate } from "@/lib/format";
 import { activePremiumPlan } from "@/lib/premium";
@@ -96,18 +98,21 @@ export function OwnerConsole({
   pointPackages,
   premiumTiers,
   appBaseUrl,
-  paymentMode
+  paymentMode,
+  discordUrl
 }: {
   servers: OwnerServer[];
   pointPackages: PointPackage[];
   premiumTiers: PremiumTier[];
   appBaseUrl: string;
   paymentMode: "test" | "nowpayments";
+  discordUrl: string;
 }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [promoCodes, setPromoCodes] = useState<Record<string, string>>({});
+  const [checkoutNotice, setCheckoutNotice] = useState(false);
   const [serverSecrets, setServerSecrets] = useState<Record<string, string>>(() =>
     Object.fromEntries(servers.map((server) => [server.id, server.pluginSecret]))
   );
@@ -164,6 +169,14 @@ export function OwnerConsole({
     if (ok) {
       formElement.reset();
     }
+  }
+
+  function startCheckout(url: string, body: unknown) {
+    if (paymentMode === "test") {
+      setCheckoutNotice(true);
+      return;
+    }
+    void send(url, body);
   }
 
   async function updateServer(event: React.FormEvent<HTMLFormElement>, serverId: string) {
@@ -260,6 +273,7 @@ export function OwnerConsole({
   }
 
   return (
+    <>
     <div className="creator-studio">
       <p className="global-message" aria-live="polite">{message}</p>
 
@@ -363,7 +377,7 @@ export function OwnerConsole({
                 <p className="supporting-copy">
                   {paymentMode === "nowpayments"
                     ? <><strong>Crypto checkout:</strong> credits are added only after NOWPayments confirms the payment.</>
-                    : <><strong>MVP test mode:</strong> click any package below to add campaign credits immediately. No real payment is taken.</>}
+                    : <><strong>Purchases are paused during testing.</strong> Prices remain visible, but campaign credits must be granted by an admin.</>}
                   {" "}Use <strong>BOOST10</strong> once per server for a 10% bonus.
                 </p>
                 <input
@@ -382,7 +396,7 @@ export function OwnerConsole({
                       data-package-label={pack.label}
                       aria-label={`Fund ${server.name} with ${pack.label}`}
                       disabled={busy}
-                      onClick={() => send(`/api/owner/servers/${server.id}/topup`, { packageId: pack.id, promoCode: promoCodes[server.id] || undefined })}
+                      onClick={() => startCheckout(`/api/owner/servers/${server.id}/topup`, { packageId: pack.id, promoCode: promoCodes[server.id] || undefined })}
                     >
                       <span>{pack.label}</span><strong>{points(pack.points)}</strong><small>{money(pack.priceCents)}</small>
                     </button>
@@ -390,7 +404,7 @@ export function OwnerConsole({
                 </div>
                 <div className="premium-options">
                   {premiumTiers.map((tier) => (
-                    <button className="ghost-button" key={tier.id} type="button" disabled={busy} onClick={() => send(`/api/owner/servers/${server.id}/premium`, { tierId: tier.id })}>
+                    <button className="ghost-button" key={tier.id} type="button" disabled={busy} onClick={() => startCheckout(`/api/owner/servers/${server.id}/premium`, { tierId: tier.id })}>
                       <Gem size={15} /> {tier.name} / {money(tier.priceCents)}
                     </button>
                   ))}
@@ -485,5 +499,20 @@ export function OwnerConsole({
         </article>
       ))}
     </div>
+    {checkoutNotice ? (
+      <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCheckoutNotice(false); }}>
+        <section className="support-dialog" role="dialog" aria-modal="true" aria-labelledby="checkout-notice-title">
+          <button className="icon-button dialog-close" type="button" title="Close" aria-label="Close purchase notice" onClick={() => setCheckoutNotice(false)}><X size={17} /></button>
+          <p className="eyebrow"><LifeBuoy size={14} /> Assisted checkout</p>
+          <h2 id="checkout-notice-title">Purchases are not open yet.</h2>
+          <p>KarixMC is still in controlled testing. Contact platform support for campaign-credit or premium test access. No payment has been taken.</p>
+          <div className="inline-actions">
+            <Link className="solid-button" href="/account#support" onClick={() => setCheckoutNotice(false)}><LifeBuoy size={16} /> Contact support</Link>
+            <a className="ghost-button" href={discordUrl} target={discordUrl.startsWith("http") ? "_blank" : undefined} rel={discordUrl.startsWith("http") ? "noreferrer" : undefined}><MessageCircle size={16} /> Official Discord</a>
+          </div>
+        </section>
+      </div>
+    ) : null}
+    </>
   );
 }

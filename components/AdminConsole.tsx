@@ -1,8 +1,26 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Ban, CirclePause, Coins, Crown, Gem, Gift, RotateCcw, Save, Search, ServerCog, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Ban,
+  ChevronLeft,
+  ChevronRight,
+  CirclePause,
+  Coins,
+  Crown,
+  Gem,
+  Gift,
+  RotateCcw,
+  Save,
+  Search,
+  ServerCog,
+  ShieldCheck,
+  SlidersHorizontal,
+  Trash2,
+  Wifi,
+  WifiOff
+} from "lucide-react";
 import { money, points, shortDate } from "@/lib/format";
 
 type PackageRow = {
@@ -28,11 +46,30 @@ type ServerRow = {
   id: string;
   name: string;
   owner: string;
+  host: string;
+  port: number;
+  tags: string[];
   status: string;
   pointPool: number;
   premiumPlan: string;
   premiumUntil: string | null;
   trustStatus: string;
+  bridgeOnline: boolean;
+  lastConfigSyncAt: string | null;
+  lastPluginVersion: string | null;
+  riskScore: number;
+  integrityFailures: number;
+  pluginConfigRevision: number;
+  heartbeatIntervalSeconds: number;
+  purchasePollSeconds: number;
+  afkTimeoutSeconds: number;
+  challengeEnabled: boolean;
+  challengeIntervalSeconds: number;
+  challengeAnswerWindowSeconds: number;
+  challengeRequired: boolean;
+  minimumMovementDistance: number;
+  minimumActivityEvents: number;
+  botProtectionLevel: number;
 };
 
 type UserRow = {
@@ -56,6 +93,8 @@ type CampaignAccount = {
   }>;
 };
 
+const SERVERS_PER_PAGE = 10;
+
 export function AdminConsole({
   pointPackages,
   premiumTiers,
@@ -76,6 +115,48 @@ export function AdminConsole({
   const [campaignServerId, setCampaignServerId] = useState("");
   const [premiumServerId, setPremiumServerId] = useState("");
   const [searching, setSearching] = useState(false);
+  const [serverQuery, setServerQuery] = useState("");
+  const [serverStatus, setServerStatus] = useState("ALL");
+  const [serverTrust, setServerTrust] = useState("ALL");
+  const [serverBridge, setServerBridge] = useState("ALL");
+  const [serverPremium, setServerPremium] = useState("ALL");
+  const [serverTag, setServerTag] = useState("ALL");
+  const [serverPage, setServerPage] = useState(1);
+
+  const serverTags = useMemo(
+    () => Array.from(new Set(servers.flatMap((server) => server.tags))).sort((a, b) => a.localeCompare(b)),
+    [servers]
+  );
+
+  const filteredServers = useMemo(() => {
+    const query = serverQuery.trim().toLowerCase();
+    return servers.filter((server) => {
+      const matchesQuery = !query || [
+        server.name,
+        server.owner,
+        server.host,
+        `${server.host}:${server.port}`,
+        ...server.tags
+      ].some((value) => value.toLowerCase().includes(query));
+      const matchesStatus = serverStatus === "ALL" || server.status === serverStatus;
+      const matchesTrust = serverTrust === "ALL" || server.trustStatus === serverTrust;
+      const matchesBridge = serverBridge === "ALL" || (serverBridge === "ONLINE" ? server.bridgeOnline : !server.bridgeOnline);
+      const matchesPremium = serverPremium === "ALL" || server.premiumPlan === serverPremium;
+      const matchesTag = serverTag === "ALL" || server.tags.some((tag) => tag.toLowerCase() === serverTag.toLowerCase());
+      return matchesQuery && matchesStatus && matchesTrust && matchesBridge && matchesPremium && matchesTag;
+    });
+  }, [servers, serverBridge, serverPremium, serverQuery, serverStatus, serverTag, serverTrust]);
+
+  const serverPageCount = Math.max(1, Math.ceil(filteredServers.length / SERVERS_PER_PAGE));
+  const visibleServers = filteredServers.slice((serverPage - 1) * SERVERS_PER_PAGE, serverPage * SERVERS_PER_PAGE);
+
+  useEffect(() => {
+    setServerPage(1);
+  }, [serverBridge, serverPremium, serverQuery, serverStatus, serverTag, serverTrust]);
+
+  useEffect(() => {
+    if (serverPage > serverPageCount) setServerPage(serverPageCount);
+  }, [serverPage, serverPageCount]);
 
   useEffect(() => {
     const query = accountQuery.trim();
@@ -163,7 +244,17 @@ export function AdminConsole({
       status: form.get("status"),
       trustStatus: form.get("trustStatus"),
       premiumPlan: form.get("premiumPlan"),
-      premiumDays: form.get("premiumDays") || undefined
+      premiumDays: form.get("premiumDays") || undefined,
+      heartbeatIntervalSeconds: form.get("heartbeatIntervalSeconds"),
+      purchasePollSeconds: form.get("purchasePollSeconds"),
+      afkTimeoutSeconds: form.get("afkTimeoutSeconds"),
+      challengeEnabled: form.get("challengeEnabled") === "on",
+      challengeIntervalSeconds: form.get("challengeIntervalSeconds"),
+      challengeAnswerWindowSeconds: form.get("challengeAnswerWindowSeconds"),
+      challengeRequired: form.get("challengeRequired") === "on",
+      minimumMovementDistance: form.get("minimumMovementDistance"),
+      minimumActivityEvents: form.get("minimumActivityEvents"),
+      botProtectionLevel: form.get("botProtectionLevel")
     });
   }
 
@@ -373,7 +464,7 @@ export function AdminConsole({
         <p className="toast-line global-message" aria-live="polite">{message}</p>
       </section>
 
-      <section className="panel">
+      <section className="panel admin-economy-panel">
         <div className="panel-header">
           <div>
             <h2>Economy pricing</h2>
@@ -381,7 +472,7 @@ export function AdminConsole({
           </div>
         </div>
         <p className="toast-line">{message}</p>
-        <div className="split-list">
+        <div className="split-list admin-pricing-grid package-pricing-grid">
           {pointPackages.map((row) => (
             <form className="shop-card" key={row.id} onSubmit={(event) => updatePointPackage(event, row)}>
               <div className="form-grid">
@@ -416,7 +507,7 @@ export function AdminConsole({
             <p>Premium lanes control top-list placement duration and order weight.</p>
           </div>
         </div>
-        <div className="split-list">
+        <div className="split-list admin-pricing-grid premium-pricing-grid">
           {premiumTiers.map((row) => (
             <form className="shop-card" key={row.id} onSubmit={(event) => updateTier(event, row)}>
               <div className="form-grid">
@@ -447,68 +538,144 @@ export function AdminConsole({
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel admin-fleet-panel">
         <div className="panel-header">
           <div>
             <h2>Server control</h2>
-            <p>Adjust pools, remove listings, or force premium while keeping an audit record.</p>
+            <p>Search the fleet, inspect bridge health, and change economy, trust, or protection policy.</p>
+          </div>
+          <span className="badge">{filteredServers.length} / {servers.length}</span>
+        </div>
+
+        <div className="admin-fleet-toolbar">
+          <label className="admin-fleet-search">
+            <Search size={17} aria-hidden="true" />
+            <input
+              className="field"
+              value={serverQuery}
+              onChange={(event) => setServerQuery(event.target.value)}
+              placeholder="Search server, owner, address, or tag"
+              aria-label="Search servers"
+            />
+          </label>
+          <select className="select" value={serverStatus} onChange={(event) => setServerStatus(event.target.value)} aria-label="Filter by server status">
+            <option value="ALL">All statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="PAUSED">Paused</option>
+            <option value="REMOVED">Removed</option>
+          </select>
+          <select className="select" value={serverBridge} onChange={(event) => setServerBridge(event.target.value)} aria-label="Filter by bridge connection">
+            <option value="ALL">Any connection</option>
+            <option value="ONLINE">Bridge online</option>
+            <option value="OFFLINE">Bridge offline</option>
+          </select>
+          <select className="select" value={serverTag} onChange={(event) => setServerTag(event.target.value)} aria-label="Filter by server tag">
+            <option value="ALL">All tags</option>
+            {serverTags.map((tag) => <option value={tag} key={tag}>{tag}</option>)}
+          </select>
+          <select className="select" value={serverTrust} onChange={(event) => setServerTrust(event.target.value)} aria-label="Filter by trust status">
+            <option value="ALL">Any trust</option>
+            <option value="VERIFIED">Verified</option>
+            <option value="WATCHLIST">Watchlist</option>
+            <option value="SUSPENDED">Suspended</option>
+            <option value="BLACKLISTED">Blacklisted</option>
+          </select>
+          <select className="select" value={serverPremium} onChange={(event) => setServerPremium(event.target.value)} aria-label="Filter by premium plan">
+            <option value="ALL">Any plan</option>
+            <option value="NONE">Standard</option>
+            <option value="GOLD">Gold</option>
+            <option value="DIAMOND">Diamond</option>
+          </select>
+        </div>
+
+        <div className="admin-fleet-list">
+          {visibleServers.map((server) => (
+            <details className="admin-fleet-item" key={server.id}>
+              <summary>
+                <span className={`admin-bridge-orb ${server.bridgeOnline ? "online" : "offline"}`} title={server.bridgeOnline ? "Bridge online" : "Bridge offline"}>
+                  {server.bridgeOnline ? <Wifi size={16} /> : <WifiOff size={16} />}
+                </span>
+                <span className="admin-fleet-identity">
+                  <strong>{server.name}</strong>
+                  <small>{server.host}:{server.port} / {server.owner}</small>
+                </span>
+                <span className="admin-fleet-tags">
+                  {server.tags.slice(0, 3).map((tag) => <i key={tag}>{tag}</i>)}
+                </span>
+                <span className="admin-fleet-balance"><small>Campaign</small><strong>{points(server.pointPool)}</strong></span>
+                <span className={`status-pill status-${server.status.toLowerCase()}`}>{server.status}</span>
+                <span className={`status-pill trust-${server.trustStatus.toLowerCase()}`}>{server.trustStatus}</span>
+              </summary>
+
+              <form className="admin-fleet-form" onSubmit={(event) => updateServer(event, server.id)}>
+                <div className="admin-fleet-overview">
+                  <div><span>Plugin</span><strong>{server.lastPluginVersion || "Not reported"}</strong></div>
+                  <div><span>Last policy sync</span><strong>{server.lastConfigSyncAt ? shortDate(server.lastConfigSyncAt) : "Never"}</strong></div>
+                  <div><span>Policy revision</span><strong>#{server.pluginConfigRevision}</strong></div>
+                  <div><span>Risk / integrity</span><strong>{server.riskScore} / {server.integrityFailures}</strong></div>
+                </div>
+
+                <div className="admin-fleet-settings-grid">
+                  <fieldset>
+                    <legend><Coins size={15} /> Listing and economy</legend>
+                    <div className="form-grid two">
+                      <div className="form-row"><label>Pool adjustment</label><input className="field" name="adjustPoints" type="number" defaultValue="0" /></div>
+                      <div className="form-row"><label>Status</label><select className="select" name="status" defaultValue={server.status}><option value="ACTIVE">Active</option><option value="PAUSED">Paused</option><option value="REMOVED">Removed</option></select></div>
+                      <div className="form-row"><label>Trust</label><select className="select" name="trustStatus" defaultValue={server.trustStatus}><option value="VERIFIED">Verified</option><option value="WATCHLIST">Watchlist</option><option value="SUSPENDED">Suspended</option><option value="BLACKLISTED">Blacklisted</option></select></div>
+                      <div className="form-row"><label>Premium</label><select className="select" name="premiumPlan" defaultValue={server.premiumPlan}><option value="NONE">None</option><option value="GOLD">Gold</option><option value="DIAMOND">Diamond</option></select></div>
+                      <div className="form-row"><label>Premium days</label><input className="field" name="premiumDays" type="number" min="0" max="365" placeholder="Keep current" /></div>
+                      <div className="form-row"><label>Current premium</label><input className="field" value={server.premiumUntil ? `Until ${shortDate(server.premiumUntil)}` : "Not active"} readOnly /></div>
+                    </div>
+                  </fieldset>
+
+                  <fieldset>
+                    <legend><ShieldCheck size={15} /> AFK and activity checks</legend>
+                    <div className="form-grid three">
+                      <div className="form-row"><label>AFK after</label><input className="field" name="afkTimeoutSeconds" type="number" min="60" max="1800" defaultValue={server.afkTimeoutSeconds} /><small>seconds</small></div>
+                      <div className="form-row"><label>Ask /answer every</label><input className="field" name="challengeIntervalSeconds" type="number" min="60" max="3600" defaultValue={server.challengeIntervalSeconds} /><small>seconds</small></div>
+                      <div className="form-row"><label>Answer window</label><input className="field" name="challengeAnswerWindowSeconds" type="number" min="30" max="300" defaultValue={server.challengeAnswerWindowSeconds} /><small>seconds</small></div>
+                      <div className="form-row"><label>Heartbeat</label><input className="field" name="heartbeatIntervalSeconds" type="number" min="10" max="60" defaultValue={server.heartbeatIntervalSeconds} /><small>seconds</small></div>
+                      <div className="form-row"><label>Purchase poll</label><input className="field" name="purchasePollSeconds" type="number" min="10" max="120" defaultValue={server.purchasePollSeconds} /><small>seconds</small></div>
+                      <div className="form-row"><label>Protection</label><select className="select" name="botProtectionLevel" defaultValue={server.botProtectionLevel}><option value="1">Balanced</option><option value="2">Strict</option><option value="3">Maximum</option></select></div>
+                      <div className="form-row"><label>Movement distance</label><input className="field" name="minimumMovementDistance" type="number" min="0.05" max="3" step="0.05" defaultValue={server.minimumMovementDistance} /></div>
+                      <div className="form-row"><label>Activity events</label><input className="field" name="minimumActivityEvents" type="number" min="0" max="20" defaultValue={server.minimumActivityEvents} /></div>
+                    </div>
+                    <div className="policy-toggles">
+                      <label className="toggle-row"><input name="challengeEnabled" type="checkbox" defaultChecked={server.challengeEnabled} /> Enable arithmetic checks</label>
+                      <label className="toggle-row"><input name="challengeRequired" type="checkbox" defaultChecked={server.challengeRequired} /> Pause rewards until correct answer</label>
+                    </div>
+                  </fieldset>
+                </div>
+
+                <div className="admin-fleet-footer">
+                  <div className="admin-server-actions" aria-label={`Quick moderation for ${server.name}`}>
+                    {server.status === "ACTIVE" ? (
+                      <button className="ghost-button" type="button" disabled={busy} onClick={() => quickModerate(server, "pause")}><CirclePause size={15} /> Pause</button>
+                    ) : (
+                      <button className="ghost-button" type="button" disabled={busy} onClick={() => quickModerate(server, "restore")}><RotateCcw size={15} /> Restore</button>
+                    )}
+                    <button className="ghost-button danger-button" type="button" disabled={busy || server.trustStatus === "BLACKLISTED"} onClick={() => quickModerate(server, "blacklist")}><Ban size={15} /> Blacklist</button>
+                    <button className="ghost-button danger-button" type="button" disabled={busy || server.status === "REMOVED"} onClick={() => quickModerate(server, "remove")}><Trash2 size={15} /> Remove</button>
+                  </div>
+                  <button className="solid-button" disabled={busy} type="submit"><ServerCog size={16} /> Save and sync policy</button>
+                </div>
+              </form>
+            </details>
+          ))}
+          {!visibleServers.length ? (
+            <div className="empty-state compact-empty"><SlidersHorizontal size={20} /> No servers match these filters.</div>
+          ) : null}
+        </div>
+
+        <div className="admin-fleet-pagination" aria-label="Server result pages">
+          <span>Showing {filteredServers.length ? (serverPage - 1) * SERVERS_PER_PAGE + 1 : 0}-{Math.min(serverPage * SERVERS_PER_PAGE, filteredServers.length)} of {filteredServers.length}</span>
+          <div>
+            <button className="icon-button" type="button" title="Previous page" aria-label="Previous server page" disabled={serverPage === 1} onClick={() => setServerPage((page) => Math.max(1, page - 1))}><ChevronLeft size={17} /></button>
+            <strong>Page {serverPage} / {serverPageCount}</strong>
+            <button className="icon-button" type="button" title="Next page" aria-label="Next server page" disabled={serverPage === serverPageCount} onClick={() => setServerPage((page) => Math.min(serverPageCount, page + 1))}><ChevronRight size={17} /></button>
           </div>
         </div>
-        <div className="split-list">
-          {servers.map((server) => (
-            <form className="shop-card" key={server.id} onSubmit={(event) => updateServer(event, server.id)}>
-              <div className="form-grid">
-                <strong>{server.name}</strong>
-                <p className="toast-line">
-                  {server.owner} - {points(server.pointPool)} - {server.premiumPlan}
-                  {server.premiumUntil ? ` until ${shortDate(server.premiumUntil)}` : ""}
-                </p>
-                <div className="form-grid two">
-                  <input className="field" name="adjustPoints" type="number" defaultValue="0" aria-label="Point adjustment" />
-                  <select className="select" name="status" defaultValue={server.status} aria-label="Status">
-                    <option value="ACTIVE">Active</option>
-                    <option value="PAUSED">Paused</option>
-                    <option value="REMOVED">Removed</option>
-                  </select>
-                </div>
-                <select className="select" name="trustStatus" defaultValue={server.trustStatus} aria-label="Trust status">
-                  <option value="VERIFIED">Verified</option>
-                  <option value="WATCHLIST">Watchlist</option>
-                  <option value="SUSPENDED">Suspended</option>
-                  <option value="BLACKLISTED">Blacklisted</option>
-                </select>
-                <div className="form-grid two">
-                  <select className="select" name="premiumPlan" defaultValue={server.premiumPlan} aria-label="Premium plan">
-                    <option value="NONE">None</option>
-                    <option value="GOLD">Gold</option>
-                    <option value="DIAMOND">Diamond</option>
-                  </select>
-                  <input className="field" name="premiumDays" type="number" placeholder="Days from now" aria-label="Premium days" />
-                </div>
-                <div className="admin-server-actions" aria-label={`Quick moderation for ${server.name}`}>
-                  {server.status === "ACTIVE" ? (
-                    <button className="ghost-button" type="button" disabled={busy} onClick={() => quickModerate(server, "pause")}>
-                      <CirclePause size={15} /> Pause
-                    </button>
-                  ) : (
-                    <button className="ghost-button" type="button" disabled={busy} onClick={() => quickModerate(server, "restore")}>
-                      <RotateCcw size={15} /> Restore
-                    </button>
-                  )}
-                  <button className="ghost-button danger-button" type="button" disabled={busy || server.trustStatus === "BLACKLISTED"} onClick={() => quickModerate(server, "blacklist")}>
-                    <Ban size={15} /> Blacklist
-                  </button>
-                  <button className="ghost-button danger-button" type="button" disabled={busy || server.status === "REMOVED"} onClick={() => quickModerate(server, "remove")}>
-                    <Trash2 size={15} /> Remove
-                  </button>
-                </div>
-              </div>
-              <button className="icon-button" disabled={busy} title="Save detailed server settings" aria-label={`Save settings for ${server.name}`}>
-                <ServerCog size={16} />
-              </button>
-            </form>
-          ))}
-        </div>
+        <p className="toast-line global-message" aria-live="polite">{message}</p>
       </section>
     </div>
   );

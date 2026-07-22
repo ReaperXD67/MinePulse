@@ -26,6 +26,16 @@ async function auditViewport(name, viewport) {
     await page.screenshot({ path: `${outputDir}/audit-${name}-${route.replaceAll("/", "-") || "home"}.png`, fullPage: true });
   }
 
+  await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
+  const loginEmail = page.getByLabel("Email");
+  const loginPassword = page.getByLabel("Password");
+  if ((await loginEmail.inputValue()) || (await loginPassword.inputValue())) {
+    errors.push(`${name}: login fields expose prefilled credentials`);
+  }
+  if (await page.getByRole("button", { name: /Control|Skyforge|PixelRunner/ }).count()) {
+    errors.push(`${name}: demo account shortcuts are still exposed`);
+  }
+
   await page.goto(baseUrl, { waitUntil: "networkidle" });
   if ((await page.locator('link[rel~="icon"][href="/icon.svg"]').count()) !== 1) {
     errors.push(`${name}: KarixMC favicon is missing`);
@@ -85,6 +95,18 @@ if (!loginResponse.ok()) {
   if (!(await ownerPage.getByText("Website API URL", { exact: true }).first().isVisible())) {
     errors.push("owner account: plugin connection credentials are not visible");
   }
+  if (await ownerPage.getByText("Purchases are paused during testing.", { exact: false }).count()) {
+    const fundingOption = ownerPage.locator(".funding-option").first();
+    if (await fundingOption.isVisible()) {
+      await fundingOption.click();
+      const dialog = ownerPage.getByRole("dialog", { name: "Purchases are not open yet." });
+      await dialog.waitFor({ state: "visible" });
+      if (!(await dialog.getByRole("link", { name: "Contact support" }).isVisible())) {
+        errors.push("owner account: test checkout does not offer support");
+      }
+      await dialog.getByRole("button", { name: "Close purchase notice" }).click();
+    }
+  }
   const linkButton = ownerPage.getByRole("button", { name: /Create link code|Relink Minecraft/ }).first();
   if (await linkButton.isVisible()) {
     await linkButton.click();
@@ -128,6 +150,20 @@ if (!adminLogin.ok()) {
   if ((await premiumDuration.locator("option").allTextContents()).join("|") !== "1 week|2 weeks") {
     errors.push("admin premium grant: expected one-week and two-week durations");
   }
+  const serverFilter = adminPage.getByRole("textbox", { name: "Search servers" });
+  await serverFilter.fill("Survival");
+  await adminPage.waitForTimeout(150);
+  const fleetItems = adminPage.locator(".admin-fleet-item");
+  if (!(await fleetItems.count())) errors.push("admin fleet: tag/address search returned no results");
+  if (await fleetItems.count()) {
+    await fleetItems.first().locator("summary").click();
+    if (!(await fleetItems.first().locator('input[name="afkTimeoutSeconds"]').isVisible())) {
+      errors.push("admin fleet: AFK policy controls are not visible when expanded");
+    }
+    if (!(await fleetItems.first().locator('input[name="challengeIntervalSeconds"]').isVisible())) {
+      errors.push("admin fleet: challenge policy controls are not visible when expanded");
+    }
+  }
   const overflow = await adminPage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (overflow > 1) errors.push(`admin account overflow: ${overflow}px`);
   await adminPage.screenshot({ path: `${outputDir}/audit-admin-campaign-grant.png`, fullPage: true });
@@ -151,6 +187,18 @@ if (!adminMobileLogin.ok()) {
   if (overflow > 1) errors.push(`mobile admin overflow: ${overflow}px`);
   if (!(await adminMobilePage.getByRole("textbox", { name: "Search server owner" }).isVisible())) {
     errors.push("mobile admin server grant search is not visible");
+  }
+  const mobileFleetSearch = adminMobilePage.getByRole("textbox", { name: "Search servers" });
+  if (!(await mobileFleetSearch.isVisible())) {
+    errors.push("mobile admin fleet search is not visible");
+  } else {
+    await mobileFleetSearch.fill("Survival");
+    const mobileFleetItem = adminMobilePage.locator(".admin-fleet-item").first();
+    if (await mobileFleetItem.count()) {
+      await mobileFleetItem.locator("summary").click();
+      const expandedOverflow = await adminMobilePage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      if (expandedOverflow > 1) errors.push(`mobile expanded admin fleet overflow: ${expandedOverflow}px`);
+    }
   }
   await adminMobilePage.screenshot({ path: `${outputDir}/audit-mobile-admin-campaign-grant.png`, fullPage: true });
 }
