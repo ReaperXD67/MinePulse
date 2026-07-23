@@ -5,7 +5,7 @@ import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { currentUser } from "@/lib/auth";
 import { compact, money, points } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { shuffle } from "@/lib/random";
+import { shuffle, weightedShuffle } from "@/lib/random";
 import { activePremiumPlan } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
@@ -128,19 +128,28 @@ export default async function MarketplacePage({
     const matchesQuery = !normalizedQuery || searchableText.includes(normalizedQuery);
     return matchesTag && matchesFavorite && matchesQuery;
   });
-  const premium = shuffle(
+  const premiumWeightByPlan = new Map(
+    premiumTiers.map((tier) => [tier.code, Math.max(1, tier.priority)])
+  );
+  const premium = weightedShuffle(
     filteredServers.filter(
       (server) =>
         server.premiumPlan !== "NONE" &&
         server.premiumUntil &&
         new Date(server.premiumUntil).getTime() > now.getTime()
-    )
+    ),
+    (server) => premiumWeightByPlan.get(server.premiumPlan) ?? 1
   );
   const regular = shuffle(filteredServers.filter((server) => !premium.some((p) => p.id === server.id)));
   const sortedServers = [...premium, ...regular];
   const [usersCount, pools, purchaseCount, playtime] = platform;
-  const cheapestPackage = pointPackages[0];
-  const topPremium = premiumTiers[0];
+  const goldTier = premiumTiers.find((tier) => tier.code === "GOLD");
+  const diamondTier = premiumTiers.find((tier) => tier.code === "DIAMOND");
+  const goldWeight = Math.max(1, goldTier?.priority ?? 1);
+  const diamondWeight = Math.max(1, diamondTier?.priority ?? 2);
+  const headToHeadTotal = goldWeight + diamondWeight;
+  const diamondHeadToHeadChance = (diamondWeight / headToHeadTotal) * 100;
+  const goldHeadToHeadChance = (goldWeight / headToHeadTotal) * 100;
   const canManageServers = Boolean(user);
   const favoriteCount = visibleServers.filter((server) => server.favorited).length;
 
@@ -202,7 +211,7 @@ export default async function MarketplacePage({
       </section>
 
       <section className="container network-rules" aria-label="Network rules">
-        <div><b>01</b><span>Premium worlds shuffle first. Tag filters keep the same fair draw.</span></div>
+        <div><b>01</b><span>Premium worlds draw first. Diamond carries {diamondWeight}x and Gold {goldWeight}x placement weight.</span></div>
         <div><b>02</b><span>Empty campaign pools leave the atlas until the owner funds them again.</span></div>
         <div><b>03</b><span>Signed bridge activity, movement, and challenges decide every reward.</span></div>
       </section>
@@ -327,34 +336,32 @@ export default async function MarketplacePage({
           <div className="panel-header">
             <div>
               <h2>Premium lane</h2>
-              <p>Gold and Diamond stay above the randomized public list for their active duration.</p>
+              <p>Every active premium world stays above standard listings. Diamond then receives twice Gold&apos;s draw weight inside the premium lane.</p>
             </div>
           </div>
-          <div className="metrics-row">
-            {premiumTiers.map((tier) => (
-              <div className="mini-metric" key={tier.id}>
-                <span className="metric-label">{tier.name}</span>
-                <strong>{money(tier.priceCents)}</strong>
-                <p className="toast-line">
-                  {tier.durationDays} days - priority {tier.priority}
-                </p>
-              </div>
-            ))}
-            {topPremium ? (
-              <div className="mini-metric">
-                <span className="metric-label">Top offer</span>
-                <strong>{topPremium.name}</strong>
-                <p className="toast-line">{money(topPremium.priceCents)}</p>
-              </div>
-            ) : null}
-            {cheapestPackage ? (
-              <div className="mini-metric">
-                <span className="metric-label">Entry</span>
-                <strong>{compact(cheapestPackage.points)}</strong>
-                <p className="toast-line">{money(cheapestPackage.priceCents)}</p>
-              </div>
-            ) : null}
+          <div className="premium-benefit-grid">
+            <div className="premium-benefit diamond">
+              <span>Diamond signal</span>
+              <strong>{diamondWeight}x draw weight</strong>
+              <p>{diamondTier ? `${money(diamondTier.priceCents)} for ${diamondTier.durationDays} days` : "Top premium placement"}</p>
+              <small>{diamondHeadToHeadChance.toFixed(1)}% ahead in a one-Diamond vs one-Gold draw</small>
+            </div>
+            <div className="premium-benefit gold">
+              <span>Gold signal</span>
+              <strong>{goldWeight}x draw weight</strong>
+              <p>{goldTier ? `${money(goldTier.priceCents)} for ${goldTier.durationDays} days` : "Premium placement"}</p>
+              <small>{goldHeadToHeadChance.toFixed(1)}% ahead in the same head-to-head draw</small>
+            </div>
+            <div className="premium-benefit standard">
+              <span>Standard signal</span>
+              <strong>After premium</strong>
+              <p>Randomized fairly with every other standard world.</p>
+              <small>Gold and Diamond always appear first while active, online, and funded.</small>
+            </div>
           </div>
+          <p className="premium-formula">
+            <ShieldCheck size={15} /> Each premium slot uses: server weight / total remaining premium weight. More premium worlds change the absolute percentage, but Diamond always keeps {diamondWeight / goldWeight}x Gold&apos;s weight.
+          </p>
         </div>
       </section>
     </main>

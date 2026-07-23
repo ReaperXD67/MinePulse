@@ -91,6 +91,20 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             </nav>
           </TopbarShell>
           {children}
+          <footer className="site-footer">
+            <div className="container site-footer-inner">
+              <div>
+                <strong>KarixMC</strong>
+                <span>Verified worlds. Portable rewards. Clear rules.</span>
+              </div>
+              <nav aria-label="Legal and support">
+                <Link href="/privacy">Privacy</Link>
+                <Link href="/plugin">Plugin</Link>
+                <a href={discordUrl} target={discordUrl.startsWith("http") ? "_blank" : undefined} rel={discordUrl.startsWith("http") ? "noreferrer" : undefined}>Support</a>
+              </nav>
+              <small>&copy; {new Date().getUTCFullYear()} KarixMC</small>
+            </div>
+          </footer>
         </div>
       </body>
     </html>

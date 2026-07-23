@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://localhost:3001";
 const outputDir = ".screenshots";
-const routes = ["/", "/plugin", "/login", "/signup", "/servers/skyforge-economy"];
+const routes = ["/", "/plugin", "/privacy", "/login", "/signup", "/servers/skyforge-economy"];
 const errors = [];
 
 await fs.mkdir(outputDir, { recursive: true });

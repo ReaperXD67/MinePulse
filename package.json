@@ -20,6 +20,7 @@
     "test:admin-campaign-grant": "tsx scripts/admin-campaign-grant-audit.ts",
     "test:admin-fleet": "tsx scripts/admin-fleet-policy-audit.ts",
     "test:plugin-heartbeat": "tsx scripts/plugin-heartbeat-audit.ts",
+    "test:premium-order": "tsx scripts/premium-order-audit.ts",
     "test:crypto-payments": "tsx scripts/crypto-payment-audit.ts"
   },
   "prisma": {
