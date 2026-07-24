@@ -91,7 +91,7 @@ type OwnerServer = {
 };
 
 type PointPackage = { id: string; label: string; points: number; priceCents: number };
-type PremiumTier = { id: string; name: string; priceCents: number; durationDays: number; priority: number };
+type PremiumTier = { id: string; code: string; name: string; priceCents: number; durationDays: number; priority: number };
 
 export function OwnerConsole({
   servers,
@@ -402,10 +402,16 @@ export function OwnerConsole({
                     </button>
                   ))}
                 </div>
-                <div className="premium-options">
+                <div className="premium-shop-heading">
+                  <strong>Boost listing visibility</strong>
+                  <span>Diamond gets 2 chances to load first for every 1 Gold chance. Both tiers stay above standard servers.</span>
+                </div>
+                <div className="premium-options premium-purchase-grid">
                   {premiumTiers.map((tier) => (
-                    <button className="ghost-button" key={tier.id} type="button" disabled={busy} onClick={() => startCheckout(`/api/owner/servers/${server.id}/premium`, { tierId: tier.id })}>
-                      <Gem size={15} /> {tier.name} / {money(tier.priceCents)}
+                    <button className={`premium-purchase-option ${tier.code.toLowerCase()}`} key={tier.id} type="button" disabled={busy} onClick={() => startCheckout(`/api/owner/servers/${server.id}/premium`, { tierId: tier.id })}>
+                      <span><Gem size={15} /> {tier.name}</span>
+                      <strong>{tier.code === "DIAMOND" ? "2x chance to load first" : "1x chance to load first"}</strong>
+                      <small>{tier.durationDays} days / {money(tier.priceCents)}</small>
                     </button>
                   ))}
                 </div>

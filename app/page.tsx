@@ -150,6 +150,8 @@ export default async function MarketplacePage({
   const headToHeadTotal = goldWeight + diamondWeight;
   const diamondHeadToHeadChance = (diamondWeight / headToHeadTotal) * 100;
   const goldHeadToHeadChance = (goldWeight / headToHeadTotal) * 100;
+  const diamondPerHundred = Math.round(diamondHeadToHeadChance);
+  const goldPerHundred = Math.round(goldHeadToHeadChance);
   const canManageServers = Boolean(user);
   const favoriteCount = visibleServers.filter((server) => server.favorited).length;
 
@@ -211,7 +213,7 @@ export default async function MarketplacePage({
       </section>
 
       <section className="container network-rules" aria-label="Network rules">
-        <div><b>01</b><span>Premium worlds draw first. Diamond carries {diamondWeight}x and Gold {goldWeight}x placement weight.</span></div>
+        <div><b>01</b><span>Every refresh reshuffles premium worlds. Each Diamond server is twice as likely as each Gold server to take the next spot.</span></div>
         <div><b>02</b><span>Empty campaign pools leave the atlas until the owner funds them again.</span></div>
         <div><b>03</b><span>Signed bridge activity, movement, and challenges decide every reward.</span></div>
       </section>
@@ -336,31 +338,41 @@ export default async function MarketplacePage({
           <div className="panel-header">
             <div>
               <h2>Premium lane</h2>
-              <p>Every active premium world stays above standard listings. Diamond then receives twice Gold&apos;s draw weight inside the premium lane.</p>
+              <p>Premium servers always appear above standard servers. Diamond is shown first more often than Gold.</p>
             </div>
           </div>
           <div className="premium-benefit-grid">
             <div className="premium-benefit diamond">
-              <span>Diamond signal</span>
-              <strong>{diamondWeight}x draw weight</strong>
+              <span>Diamond visibility</span>
+              <strong>{diamondHeadToHeadChance.toFixed(1)}% chance to be first</strong>
+              <div className="premium-chance-track" aria-hidden="true"><i /></div>
               <p>{diamondTier ? `${money(diamondTier.priceCents)} for ${diamondTier.durationDays} days` : "Top premium placement"}</p>
-              <small>{diamondHeadToHeadChance.toFixed(1)}% ahead in a one-Diamond vs one-Gold draw</small>
+              <small>About {diamondPerHundred} of 100 refreshes when one Diamond competes with one Gold.</small>
             </div>
             <div className="premium-benefit gold">
-              <span>Gold signal</span>
-              <strong>{goldWeight}x draw weight</strong>
+              <span>Gold visibility</span>
+              <strong>{goldHeadToHeadChance.toFixed(1)}% chance to be first</strong>
+              <div className="premium-chance-track" aria-hidden="true"><i /></div>
               <p>{goldTier ? `${money(goldTier.priceCents)} for ${goldTier.durationDays} days` : "Premium placement"}</p>
-              <small>{goldHeadToHeadChance.toFixed(1)}% ahead in the same head-to-head draw</small>
+              <small>About {goldPerHundred} of 100 refreshes in the same one-versus-one example.</small>
             </div>
             <div className="premium-benefit standard">
-              <span>Standard signal</span>
-              <strong>After premium</strong>
-              <p>Randomized fairly with every other standard world.</p>
-              <small>Gold and Diamond always appear first while active, online, and funded.</small>
+              <span>Standard visibility</span>
+              <strong>Always below premium</strong>
+              <div className="premium-chance-track" aria-hidden="true"><i /></div>
+              <p>Standard servers shuffle only after all premium servers are placed.</p>
+              <small>A listing must also be active, online, and funded to appear.</small>
             </div>
           </div>
-          <p className="premium-formula">
-            <ShieldCheck size={15} /> Each premium slot uses: server weight / total remaining premium weight. More premium worlds change the absolute percentage, but Diamond always keeps {diamondWeight / goldWeight}x Gold&apos;s weight.
+          <div className="premium-example">
+            <RefreshCw size={18} />
+            <div>
+              <strong>Simple example: one Diamond server and one Gold server</strong>
+              <p>Refresh the list 100 times and Diamond will load first about {diamondPerHundred} times; Gold will load first about {goldPerHundred} times. It is a new chance on every refresh, not a fixed rotation.</p>
+            </div>
+          </div>
+          <p className="premium-fineprint">
+            <ShieldCheck size={15} /> When more premium servers are online, the exact percentage changes, but every Diamond server always gets {diamondWeight} chances for every {goldWeight} chance given to each Gold server.
           </p>
         </div>
       </section>
