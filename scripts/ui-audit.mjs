@@ -43,10 +43,13 @@ async function auditViewport(name, viewport) {
   if ((await page.locator(".server-card .bridge-offline, .server-card .bridge-stale").count()) !== 0) {
     errors.push(`${name}: an offline or stale server is visible in the marketplace`);
   }
-  if ((await page.getByText("66.7% chance to be first", { exact: true }).count()) !== 1) {
+  if ((await page.getByText("66.7% to lead premium", { exact: true }).count()) !== 1) {
     errors.push(`${name}: Diamond first-position chance is not explained clearly`);
   }
-  if ((await page.getByText("Simple example: one Diamond server and one Gold server", { exact: true }).count()) !== 1) {
+  if ((await page.getByText("15% chance at #1", { exact: true }).count()) !== 1) {
+    errors.push(`${name}: standard-server organic spotlight is not explained clearly`);
+  }
+  if ((await page.getByText("Simple example: one Diamond, one Gold, and one standard server", { exact: true }).count()) !== 1) {
     errors.push(`${name}: premium placement example is missing`);
   }
   const canvas = page.locator(".voxel-scene canvas");
@@ -101,7 +104,7 @@ if (!loginResponse.ok()) {
   if (!(await ownerPage.getByText("Website API URL", { exact: true }).first().isVisible())) {
     errors.push("owner account: plugin connection credentials are not visible");
   }
-  if (!(await ownerPage.getByText("Diamond gets 2 chances to load first for every 1 Gold chance. Both tiers stay above standard servers.", { exact: true }).count())) {
+  if (!(await ownerPage.getByText("Premium leads 85% of refreshes. Diamond gets 2 chances to lead that lane for every 1 Gold chance; 15% remains a fair community spotlight for standard servers.", { exact: true }).count())) {
     errors.push("owner account: premium purchase benefits are not explained");
   }
   if (await ownerPage.getByText("Purchases are paused during testing.", { exact: false }).count()) {

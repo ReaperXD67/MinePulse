@@ -404,13 +404,13 @@ export function OwnerConsole({
                 </div>
                 <div className="premium-shop-heading">
                   <strong>Boost listing visibility</strong>
-                  <span>Diamond gets 2 chances to load first for every 1 Gold chance. Both tiers stay above standard servers.</span>
+                  <span>Premium leads 85% of refreshes. Diamond gets 2 chances to lead that lane for every 1 Gold chance; 15% remains a fair community spotlight for standard servers.</span>
                 </div>
                 <div className="premium-options premium-purchase-grid">
                   {premiumTiers.map((tier) => (
                     <button className={`premium-purchase-option ${tier.code.toLowerCase()}`} key={tier.id} type="button" disabled={busy} onClick={() => startCheckout(`/api/owner/servers/${server.id}/premium`, { tierId: tier.id })}>
                       <span><Gem size={15} /> {tier.name}</span>
-                      <strong>{tier.code === "DIAMOND" ? "2x chance to load first" : "1x chance to load first"}</strong>
+                      <strong>{tier.code === "DIAMOND" ? "2x premium-lane chance" : "1x premium-lane chance"}</strong>
                       <small>{tier.durationDays} days / {money(tier.priceCents)}</small>
                     </button>
                   ))}

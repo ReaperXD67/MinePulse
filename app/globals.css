@@ -957,6 +957,12 @@ h1 {
   box-shadow: 0 0 14px rgba(247, 201, 72, 0.62);
 }
 
+.premium-benefit.standard .premium-chance-track i {
+  width: 15%;
+  background: var(--lime);
+  box-shadow: 0 0 14px rgba(155, 255, 91, 0.46);
+}
+
 .premium-example {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);

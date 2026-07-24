@@ -3,9 +3,9 @@ import Link from "next/link";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
 import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { currentUser } from "@/lib/auth";
+import { ORGANIC_SPOTLIGHT_CHANCE, orderDirectory } from "@/lib/directory-order";
 import { compact, money, points } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { shuffle, weightedShuffle } from "@/lib/random";
 import { activePremiumPlan } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
@@ -131,17 +131,20 @@ export default async function MarketplacePage({
   const premiumWeightByPlan = new Map(
     premiumTiers.map((tier) => [tier.code, Math.max(1, tier.priority)])
   );
-  const premium = weightedShuffle(
-    filteredServers.filter(
+  const premiumCandidates = filteredServers.filter(
       (server) =>
         server.premiumPlan !== "NONE" &&
         server.premiumUntil &&
         new Date(server.premiumUntil).getTime() > now.getTime()
-    ),
-    (server) => premiumWeightByPlan.get(server.premiumPlan) ?? 1
   );
-  const regular = shuffle(filteredServers.filter((server) => !premium.some((p) => p.id === server.id)));
-  const sortedServers = [...premium, ...regular];
+  const standardCandidates = filteredServers.filter(
+    (server) => !premiumCandidates.some((premiumServer) => premiumServer.id === server.id)
+  );
+  const { servers: sortedServers } = orderDirectory({
+    premium: premiumCandidates,
+    standard: standardCandidates,
+    premiumWeightFor: (server) => premiumWeightByPlan.get(server.premiumPlan) ?? 1
+  });
   const [usersCount, pools, purchaseCount, playtime] = platform;
   const goldTier = premiumTiers.find((tier) => tier.code === "GOLD");
   const diamondTier = premiumTiers.find((tier) => tier.code === "DIAMOND");
@@ -150,8 +153,10 @@ export default async function MarketplacePage({
   const headToHeadTotal = goldWeight + diamondWeight;
   const diamondHeadToHeadChance = (diamondWeight / headToHeadTotal) * 100;
   const goldHeadToHeadChance = (goldWeight / headToHeadTotal) * 100;
-  const diamondPerHundred = Math.round(diamondHeadToHeadChance);
-  const goldPerHundred = Math.round(goldHeadToHeadChance);
+  const organicSpotlightPercent = ORGANIC_SPOTLIGHT_CHANCE * 100;
+  const premiumLeadPercent = 100 - organicSpotlightPercent;
+  const diamondOverallPerHundred = Math.round((premiumLeadPercent * diamondHeadToHeadChance) / 100);
+  const goldOverallPerHundred = Math.round((premiumLeadPercent * goldHeadToHeadChance) / 100);
   const canManageServers = Boolean(user);
   const favoriteCount = visibleServers.filter((server) => server.favorited).length;
 
@@ -213,7 +218,7 @@ export default async function MarketplacePage({
       </section>
 
       <section className="container network-rules" aria-label="Network rules">
-        <div><b>01</b><span>Every refresh reshuffles premium worlds. Each Diamond server is twice as likely as each Gold server to take the next spot.</span></div>
+        <div><b>01</b><span>{premiumLeadPercent}% premium-led. {organicSpotlightPercent}% gives the first slot to a standard world, with balanced boosts from likes and favorites.</span></div>
         <div><b>02</b><span>Empty campaign pools leave the atlas until the owner funds them again.</span></div>
         <div><b>03</b><span>Signed bridge activity, movement, and challenges decide every reward.</span></div>
       </section>
@@ -337,42 +342,42 @@ export default async function MarketplacePage({
         <div className="panel">
           <div className="panel-header">
             <div>
-              <h2>Premium lane</h2>
-              <p>Premium servers always appear above standard servers. Diamond is shown first more often than Gold.</p>
+              <h2>Visibility balance</h2>
+              <p>Premium keeps a strong advantage, while a community spotlight gives standard servers a real path to the first position.</p>
             </div>
           </div>
           <div className="premium-benefit-grid">
             <div className="premium-benefit diamond">
               <span>Diamond visibility</span>
-              <strong>{diamondHeadToHeadChance.toFixed(1)}% chance to be first</strong>
+              <strong>{diamondHeadToHeadChance.toFixed(1)}% to lead premium</strong>
               <div className="premium-chance-track" aria-hidden="true"><i /></div>
               <p>{diamondTier ? `${money(diamondTier.priceCents)} for ${diamondTier.durationDays} days` : "Top premium placement"}</p>
-              <small>About {diamondPerHundred} of 100 refreshes when one Diamond competes with one Gold.</small>
+              <small>Gets {diamondWeight} chances for each {goldWeight} Gold chance inside the premium lane.</small>
             </div>
             <div className="premium-benefit gold">
               <span>Gold visibility</span>
-              <strong>{goldHeadToHeadChance.toFixed(1)}% chance to be first</strong>
+              <strong>{goldHeadToHeadChance.toFixed(1)}% to lead premium</strong>
               <div className="premium-chance-track" aria-hidden="true"><i /></div>
               <p>{goldTier ? `${money(goldTier.priceCents)} for ${goldTier.durationDays} days` : "Premium placement"}</p>
-              <small>About {goldPerHundred} of 100 refreshes in the same one-versus-one example.</small>
+              <small>Still appears before the standard lane on {premiumLeadPercent}% of refreshes.</small>
             </div>
             <div className="premium-benefit standard">
-              <span>Standard visibility</span>
-              <strong>Always below premium</strong>
+              <span>Community spotlight</span>
+              <strong>{organicSpotlightPercent}% chance at #1</strong>
               <div className="premium-chance-track" aria-hidden="true"><i /></div>
-              <p>Standard servers shuffle only after all premium servers are placed.</p>
-              <small>A listing must also be active, online, and funded to appear.</small>
+              <p>One standard server moves above premium when the spotlight activates.</p>
+              <small>Every standard server gets a base chance; genuine engagement adds a limited boost.</small>
             </div>
           </div>
           <div className="premium-example">
             <RefreshCw size={18} />
             <div>
-              <strong>Simple example: one Diamond server and one Gold server</strong>
-              <p>Refresh the list 100 times and Diamond will load first about {diamondPerHundred} times; Gold will load first about {goldPerHundred} times. It is a new chance on every refresh, not a fixed rotation.</p>
+              <strong>Simple example: one Diamond, one Gold, and one standard server</strong>
+              <p>Across 100 refreshes, the standard server reaches #1 about {organicSpotlightPercent} times. Of the other {premiumLeadPercent}, Diamond leads about {diamondOverallPerHundred} and Gold about {goldOverallPerHundred}. Every refresh is a new chance, not a fixed rotation.</p>
             </div>
           </div>
           <p className="premium-fineprint">
-            <ShieldCheck size={15} /> When more premium servers are online, the exact percentage changes, but every Diamond server always gets {diamondWeight} chances for every {goldWeight} chance given to each Gold server.
+            <ShieldCheck size={15} /> Standard worlds start with 100 visibility points. Likes add up to 30, favorites up to 40, and comments up to 10. Popularity helps, but the capped 180 maximum stops one server from owning the list.
           </p>
         </div>
       </section>
