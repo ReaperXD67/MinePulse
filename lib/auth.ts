@@ -7,8 +7,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole, type User } from "@/lib/generated/prisma/client";
 
-const COOKIE_NAME = "minepulse_session";
 const DEFAULT_SECRET = "minepulse-local-development-secret-change-before-production";
+
+function authCookieName() {
+  return process.env.AUTH_COOKIE_NAME?.trim() || "minepulse_session";
+}
 
 type SessionPayload = {
   userId: string;
@@ -82,7 +85,7 @@ export async function signSession(payload: SessionPayload) {
 
 export async function readSession() {
   const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const token = cookieStore.get(authCookieName())?.value;
 
   if (!token) {
     return null;
@@ -142,7 +145,7 @@ export async function requireMember() {
 }
 
 export function setSessionCookie(response: NextResponse, token: string) {
-  response.cookies.set(COOKIE_NAME, token, {
+  response.cookies.set(authCookieName(), token, {
     httpOnly: true,
     sameSite: "lax",
     secure: secureAuthCookie(),
@@ -152,7 +155,7 @@ export function setSessionCookie(response: NextResponse, token: string) {
 }
 
 export function clearSessionCookie(response: NextResponse) {
-  response.cookies.set(COOKIE_NAME, "", {
+  response.cookies.set(authCookieName(), "", {
     httpOnly: true,
     sameSite: "lax",
     secure: secureAuthCookie(),

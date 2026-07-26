@@ -23,7 +23,7 @@ async function auditViewport(name, viewport) {
     await page.waitForTimeout(600);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     if (overflow > 1) errors.push(`${name} overflow ${route}: ${overflow}px`);
-    await page.screenshot({ path: `${outputDir}/audit-${name}-${route.replaceAll("/", "-") || "home"}.png`, fullPage: true });
+    await page.screenshot({ path: `${outputDir}/audit-${name}-${route.replaceAll("/", "-") || "home"}.png`, fullPage: true, caret: "initial" });
   }
 
   await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
@@ -131,7 +131,7 @@ if (!loginResponse.ok()) {
       errors.push("owner account: Minecraft link command did not copy");
     }
   }
-  await ownerPage.screenshot({ path: `${outputDir}/audit-owner-account.png`, fullPage: true });
+  await ownerPage.screenshot({ path: `${outputDir}/audit-owner-account.png`, fullPage: true, caret: "initial" });
 }
 
 await ownerContext.close();
@@ -178,7 +178,7 @@ if (!adminLogin.ok()) {
   }
   const overflow = await adminPage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (overflow > 1) errors.push(`admin account overflow: ${overflow}px`);
-  await adminPage.screenshot({ path: `${outputDir}/audit-admin-campaign-grant.png`, fullPage: true });
+  await adminPage.screenshot({ path: `${outputDir}/audit-admin-campaign-grant.png`, fullPage: true, caret: "initial" });
 }
 await adminContext.close();
 
@@ -212,7 +212,7 @@ if (!adminMobileLogin.ok()) {
       if (expandedOverflow > 1) errors.push(`mobile expanded admin fleet overflow: ${expandedOverflow}px`);
     }
   }
-  await adminMobilePage.screenshot({ path: `${outputDir}/audit-mobile-admin-campaign-grant.png`, fullPage: true });
+  await adminMobilePage.screenshot({ path: `${outputDir}/audit-mobile-admin-campaign-grant.png`, fullPage: true, caret: "initial" });
 }
 await adminMobileContext.close();
 await browser.close();
