@@ -464,6 +464,14 @@ strong {
   display: block;
 }
 
+.voxel-scene-poster {
+  background-color: #040805;
+  background-image: url("/voxel-network.png");
+  background-position: 68% center;
+  background-size: cover;
+  filter: saturate(0.86) contrast(1.08) brightness(0.62);
+}
+
 .cinematic-world {
   z-index: -3;
   transform-origin: center;

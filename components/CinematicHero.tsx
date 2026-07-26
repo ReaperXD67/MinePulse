@@ -1,11 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { ArrowDownRight, ArrowUpRight, RadioTower, Server, ShieldCheck, WalletCards } from "lucide-react";
 import { useRef } from "react";
-import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { compact, points } from "@/lib/format";
+
+const VoxelHeroScene = dynamic(
+  () => import("@/components/VoxelHeroScene").then((module) => module.VoxelHeroScene),
+  {
+    ssr: false,
+    loading: () => <div className="voxel-scene voxel-scene-poster" aria-hidden="true" />
+  }
+);
 
 type CinematicHeroProps = {
   liveWorlds: number;
