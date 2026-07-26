@@ -1,4 +1,4 @@
-import { Coins, Crosshair, LayoutGrid, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
+import { Activity, ChevronDown, Coins, Crosshair, LayoutGrid, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
 import Link from "next/link";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
 import { VoxelHeroScene } from "@/components/VoxelHeroScene";
@@ -177,6 +177,7 @@ export default async function MarketplacePage({
         <div className="hero-noise" aria-hidden="true" />
         <div className="container arena-layer">
           <div className="headline-copy">
+            <div className="hero-frequency" aria-hidden="true"><span>KX-01</span><i /><b>TRANSMISSION STABLE</b></div>
             <p className="eyebrow">
               <ShieldCheck size={15} /> Verified Minecraft reward network
             </p>
@@ -202,12 +203,17 @@ export default async function MarketplacePage({
                 </Link>
               )}
             </div>
+            <div className="hero-proofline" aria-label="KarixMC network benefits">
+              <span><i /> Anti-AFK verified</span>
+              <span><i /> Portable wallet</span>
+              <span><i /> Live item delivery</span>
+            </div>
           </div>
 
           <aside className="network-beacon" aria-label="Live network signal">
-            <div className="beacon-orbit" aria-hidden="true"><i /><i /><i /><strong>KX</strong></div>
+            <div className="beacon-header"><span><Activity size={13} /> Live telemetry</span><b>{visibleServers.length.toString().padStart(2, "0")} worlds</b></div>
+            <div className="beacon-orbit" aria-hidden="true"><i /><i /><i /><strong>KX</strong><small>SYNC</small></div>
             <div className="beacon-readout">
-              <p>Network telemetry</p>
               <div><span>Campaign signal</span><strong>{points(pools._sum.pointPool ?? 0)}</strong></div>
               <div><span>Linked members</span><strong>{usersCount}</strong></div>
               <div><span>Verified play</span><strong>{compact(playtime._sum.activeSeconds ?? 0)}s</strong></div>
@@ -215,6 +221,7 @@ export default async function MarketplacePage({
             </div>
           </aside>
         </div>
+        <a className="hero-scroll-cue" href="#servers" aria-label="Continue to live servers"><span>Find a world</span><ChevronDown size={16} /></a>
       </section>
 
       <section className="container network-rules" aria-label="Network rules">

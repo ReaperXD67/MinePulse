@@ -14,9 +14,10 @@ export function VoxelHeroScene() {
       return;
     }
     const host = currentHost;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x05080a, 0.045);
+    scene.fog = new THREE.FogExp2(0x030608, 0.04);
 
     const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 100);
     camera.position.set(0, 5.2, 13);
@@ -28,13 +29,16 @@ export function VoxelHeroScene() {
       powerPreference: "high-performance"
     });
     renderer.setClearColor(0x000000, 0);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.55));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     host.appendChild(renderer.domElement);
 
     const group = new THREE.Group();
     scene.add(group);
+
+    const architecture = new THREE.Group();
+    group.add(architecture);
 
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(42, 42, 36, 36),
@@ -96,6 +100,37 @@ export function VoxelHeroScene() {
     );
     group.add(core);
 
+    const haloMaterial = new THREE.MeshBasicMaterial({
+      color: 0x55dffc,
+      transparent: true,
+      opacity: 0.34,
+      blending: THREE.AdditiveBlending
+    });
+    const haloGeometry = new THREE.TorusGeometry(2.05, 0.018, 8, 96);
+    const halos = Array.from({ length: 3 }, (_, index) => {
+      const halo = new THREE.Mesh(haloGeometry, haloMaterial.clone());
+      halo.rotation.set(index === 0 ? Math.PI / 2 : index * 0.78, index * 0.42, index * 0.3);
+      halo.scale.setScalar(1 + index * 0.42);
+      architecture.add(halo);
+      return halo;
+    });
+
+    const frameMaterial = new THREE.LineBasicMaterial({
+      color: 0xa8ff60,
+      transparent: true,
+      opacity: 0.15,
+      blending: THREE.AdditiveBlending
+    });
+    const frameBoxGeometry = new THREE.BoxGeometry(2.6, 2.6, 2.6);
+    const frameGeometry = new THREE.EdgesGeometry(frameBoxGeometry);
+    const frames = Array.from({ length: 4 }, (_, index) => {
+      const frameMesh = new THREE.LineSegments(frameGeometry, frameMaterial.clone());
+      frameMesh.scale.setScalar(1 + index * 0.82);
+      frameMesh.rotation.set(index * 0.2, index * 0.32, index * 0.12);
+      architecture.add(frameMesh);
+      return frameMesh;
+    });
+
     const pointsGeometry = new THREE.BufferGeometry();
     const pointCount = 260;
     const positions = new Float32Array(pointCount * 3);
@@ -131,6 +166,7 @@ export function VoxelHeroScene() {
     let width = 0;
     let height = 0;
     let frame = 0;
+    let running = !document.hidden;
     const pointer = new THREE.Vector2();
 
     function resize() {
@@ -141,6 +177,7 @@ export function VoxelHeroScene() {
       camera.aspect = width / height;
       group.position.x = width < 760 ? 0 : 2.7;
       camera.updateProjectionMatrix();
+      if (reducedMotion) renderer.render(scene, camera);
     }
 
     function onPointerMove(event: PointerEvent) {
@@ -155,6 +192,7 @@ export function VoxelHeroScene() {
     resize();
 
     function animate(time: number) {
+      if (!running) return;
       frame = requestAnimationFrame(animate);
       const t = time * 0.001;
       group.rotation.y = t * 0.16 + pointer.x * 0.08;
@@ -164,6 +202,15 @@ export function VoxelHeroScene() {
       core.scale.setScalar(1 + Math.sin(t * 2.4) * 0.045);
       particles.rotation.y = t * 0.028;
       pulse.intensity = 2.4 + Math.sin(t * 3) * 1.4;
+      architecture.rotation.x = Math.sin(t * 0.34) * 0.08;
+      architecture.rotation.y = -t * 0.08;
+      halos.forEach((halo, index) => {
+        halo.rotation.z += 0.0015 + index * 0.0008;
+        (halo.material as THREE.MeshBasicMaterial).opacity = 0.2 + Math.sin(t * 1.4 + index) * 0.08;
+      });
+      frames.forEach((frameMesh, index) => {
+        frameMesh.rotation.y += 0.0008 + index * 0.00025;
+      });
 
       cubes.forEach((cube, index) => {
         cube.position.y += Math.sin(t * 1.7 + index) * 0.0018;
@@ -177,10 +224,21 @@ export function VoxelHeroScene() {
       renderer.render(scene, camera);
     }
 
-    frame = requestAnimationFrame(animate);
+    function onVisibilityChange() {
+      running = !document.hidden;
+      if (running && !reducedMotion) frame = requestAnimationFrame(animate);
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    if (reducedMotion) {
+      renderer.render(scene, camera);
+    } else {
+      frame = requestAnimationFrame(animate);
+    }
 
     return () => {
       cancelAnimationFrame(frame);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       resizeObserver.disconnect();
       host.removeEventListener("pointermove", onPointerMove);
       renderer.dispose();
@@ -188,6 +246,13 @@ export function VoxelHeroScene() {
       floor.geometry.dispose();
       floor.material.dispose();
       pointsGeometry.dispose();
+      haloGeometry.dispose();
+      halos.forEach((halo) => (halo.material as THREE.Material).dispose());
+      frameGeometry.dispose();
+      frameBoxGeometry.dispose();
+      frames.forEach((frameMesh) => (frameMesh.material as THREE.Material).dispose());
+      core.geometry.dispose();
+      (core.material as THREE.Material).dispose();
       materials.forEach((material) => material.dispose());
       host.removeChild(renderer.domElement);
     };

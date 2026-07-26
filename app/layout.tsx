@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@fontsource-variable/space-grotesk";
+import "@fontsource-variable/jetbrains-mono";
+import "lenis/dist/lenis.css";
 import {
   ArrowUpRight,
   Coins,
@@ -13,6 +16,8 @@ import {
   WalletCards
 } from "lucide-react";
 import "./globals.css";
+import "./experience.css";
+import { ExperienceLayer } from "@/components/ExperienceLayer";
 import { TopbarShell } from "@/components/TopbarShell";
 import { currentUser } from "@/lib/auth";
 import { UserRole } from "@/lib/generated/prisma/client";
@@ -48,8 +53,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   );
 
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en">
       <body>
+        <ExperienceLayer />
         <div className="page-shell">
           <TopbarShell account={accountControl}>
             <nav className="world-route-grid" aria-label="World navigator">

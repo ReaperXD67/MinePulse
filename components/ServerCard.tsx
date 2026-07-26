@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { PointerEvent } from "react";
 import { useState } from "react";
+import { motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
 import { ArrowUpRight, Coins, Crown, Gem, Heart, MessageSquare, RadioTower, ShieldCheck, Star } from "lucide-react";
 import { compact, daysLeft, points } from "@/lib/format";
 import { serverJoinAddress } from "@/lib/server-address";
@@ -38,6 +40,11 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const rawRotateX = useMotionValue(0);
+  const rawRotateY = useMotionValue(0);
+  const rotateX = useSpring(rawRotateX, { stiffness: 260, damping: 28 });
+  const rotateY = useSpring(rawRotateY, { stiffness: 260, damping: 28 });
 
   async function interact(type: "like" | "favorite") {
     setBusy(true);
@@ -58,8 +65,34 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
   const premiumClass = server.premiumPlan === "DIAMOND" ? "diamond" : server.premiumPlan === "GOLD" ? "gold" : "";
   const teaser = server.items[0];
 
+  function trackCard(event: PointerEvent<HTMLElement>) {
+    if (reduceMotion || event.pointerType !== "mouse") return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
+    const y = Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height));
+    rawRotateX.set((0.5 - y) * 3.5);
+    rawRotateY.set((x - 0.5) * 4.5);
+    event.currentTarget.style.setProperty("--card-pointer-x", `${x * 100}%`);
+    event.currentTarget.style.setProperty("--card-pointer-y", `${y * 100}%`);
+  }
+
+  function resetCard() {
+    rawRotateX.set(0);
+    rawRotateY.set(0);
+  }
+
   return (
-    <article className={`server-card ${premiumClass ? `premium-${premiumClass}` : ""}`}>
+    <motion.article
+      className={`server-card ${premiumClass ? `premium-${premiumClass}` : ""}`}
+      data-tier={server.premiumPlan.toLowerCase()}
+      style={reduceMotion ? undefined : { rotateX, rotateY, transformPerspective: 1200 }}
+      onPointerMove={trackCard}
+      onPointerLeave={resetCard}
+      whileHover={reduceMotion ? undefined : { y: -6 }}
+      transition={{ type: "spring", stiffness: 320, damping: 26 }}
+    >
+      <span className="server-card-proximity" aria-hidden="true" />
+      <span className="server-card-tierline" aria-hidden="true"><i /><i /><i /></span>
       <Link className="server-card-image" href={`/servers/${server.slug}`} style={{ "--image": `url(${server.bannerImage})` } as React.CSSProperties} aria-label={`View ${server.name}`}>
         <div className="card-signal-row">
           <span className={`status-pill trust-${server.trustStatus.toLowerCase()}`}><ShieldCheck size={12} /> {server.trustStatus}</span>
@@ -106,6 +139,6 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
         </div>
         <p className="toast-line" aria-live="polite">{message}</p>
       </div>
-    </article>
+    </motion.article>
   );
 }
