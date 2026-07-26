@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import type { MouseEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Menu, RadioTower, X } from "lucide-react";
+import { ArrowDownRight, Menu, X } from "lucide-react";
 
 export function TopbarShell({ account, children }: { account: ReactNode; children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -26,16 +27,13 @@ export function TopbarShell({ account, children }: { account: ReactNode; childre
     function onScroll() {
       const next = window.scrollY;
       const delta = next - lastScroll.current;
-      if (next < 84 || delta < -8 || open) {
-        setHidden(false);
-      } else if (delta > 8 && next > 150) {
-        setHidden(true);
-      }
+      if (next < 72 || delta < -7 || open) setHidden(false);
+      else if (delta > 7 && next > 140) setHidden(true);
       lastScroll.current = next;
     }
 
     function onPointerMove(event: PointerEvent) {
-      if (event.clientY < 28) setHidden(false);
+      if (event.clientY < 26) setHidden(false);
     }
 
     window.addEventListener("keydown", onKeyDown);
@@ -49,68 +47,68 @@ export function TopbarShell({ account, children }: { account: ReactNode; childre
   }, [open]);
 
   function closeFromLink(event: MouseEvent<HTMLElement>) {
-    if ((event.target as HTMLElement).closest("a")) {
-      setOpen(false);
-    }
+    if ((event.target as HTMLElement).closest("a")) setOpen(false);
   }
 
   return (
     <motion.header
-      className={`navigation-shell ${open ? "navigator-open" : ""} ${hidden ? "navigator-hidden" : ""}`}
+      className={`navigation-shell nav-v2 ${open ? "navigator-open" : ""} ${hidden ? "navigator-hidden" : ""}`}
       initial={false}
-      animate={{ y: hidden && !open ? -78 : 0, opacity: hidden && !open ? 0.2 : 1 }}
-      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 38 }}
+      animate={{ y: hidden && !open ? -88 : 0 }}
+      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 40 }}
     >
-      <div className="navigator-dock">
+      <div className="nav-v2-line">
+        <Link className="nav-v2-brand" href="/" aria-label="KarixMC home">
+          <span className="nav-v2-mark" aria-hidden="true">K</span>
+          <span><strong>KARIX</strong><em>MC</em></span>
+        </Link>
+
+        <nav className="nav-v2-shortcuts" aria-label="Primary navigation">
+          <Link href="/#servers">Worlds</Link>
+          <Link href="/plugin">Bridge</Link>
+          <Link href="/account">Wallet</Link>
+        </nav>
+
+        <div className="nav-v2-status" aria-hidden="true"><i /><span>Network live</span></div>
+        <div className="navigator-account-anchor">{account}</div>
         <button
-          className="navigator-launcher"
+          className="nav-v2-menu navigator-launcher"
           type="button"
           aria-label={open ? "Close world navigator" : "Open world navigator"}
           aria-expanded={open}
           aria-controls="world-navigator"
           onClick={() => setOpen((current) => !current)}
         >
-          <span className="launcher-core" aria-hidden="true">
-            {Array.from({ length: 9 }, (_, index) => <i key={index} />)}
-          </span>
-          <span className="launcher-copy"><strong>KarixMC</strong><small><i className="live-pip" /> Network live</small></span>
-          <span className="navigator-command"><RadioTower size={14} /><b>{open ? "Close" : "Explore"}</b>{open ? <X size={18} /> : <Menu size={18} />}</span>
+          <span>{open ? "Close" : "Index"}</span>
+          {open ? <X size={20} /> : <Menu size={20} />}
         </button>
-
-        <div className="navigator-scanline" aria-hidden="true"><i /></div>
-        <div className="navigator-account-anchor">{account}</div>
       </div>
 
       <AnimatePresence>
         {open ? (
-          <>
-            <motion.button
-              className="navigator-scrim"
-              type="button"
-              aria-label="Close world navigator"
-              onClick={() => setOpen(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
-            <motion.section
-              id="world-navigator"
-              className="world-navigator"
-              aria-label="World navigator"
-              onClick={closeFromLink}
-              initial={reduceMotion ? false : { opacity: 0, y: -24, scale: 0.985 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -18, scale: 0.99 }}
-              transition={{ type: "spring", stiffness: 260, damping: 30 }}
-            >
-              <div className="navigator-frame">
-                <div className="navigator-kicker"><span>KX // REWARD NETWORK</span><i /> <b>LIVE DIRECTORY</b></div>
-                <div className="navigator-title"><span>Navigator</span><h2>Pick your next signal.</h2><p>One identity across every verified Minecraft world.</p></div>
-                {children}
-                <footer className="navigator-footer"><strong>Verified worlds. Shared rewards.</strong><span><i /> Systems operational</span></footer>
+          <motion.section
+            id="world-navigator"
+            className="world-navigator nav-v2-overlay"
+            aria-label="World navigator"
+            onClick={closeFromLink}
+            initial={reduceMotion ? false : { clipPath: "inset(0 0 100% 0)" }}
+            animate={{ clipPath: "inset(0 0 0% 0)" }}
+            exit={reduceMotion ? { opacity: 0 } : { clipPath: "inset(0 0 100% 0)" }}
+            transition={{ duration: reduceMotion ? 0 : 0.65, ease: [0.76, 0, 0.24, 1] }}
+          >
+            <div className="nav-v2-ambient" aria-hidden="true"><i /><i /><i /></div>
+            <div className="navigator-frame">
+              <div className="nav-v2-overlay-head">
+                <span>KX / NETWORK INDEX</span>
+                <p>Pick a destination.</p>
               </div>
-            </motion.section>
-          </>
+              {children}
+              <footer className="navigator-footer">
+                <strong>One identity. Every verified world.</strong>
+                <a href="#servers">Start exploring <ArrowDownRight size={18} /></a>
+              </footer>
+            </div>
+          </motion.section>
         ) : null}
       </AnimatePresence>
     </motion.header>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "@fontsource-variable/space-grotesk";
 import "@fontsource-variable/jetbrains-mono";
+import "@fontsource-variable/syne";
 import "lenis/dist/lenis.css";
 import {
   ArrowUpRight,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import "./globals.css";
 import "./experience.css";
+import "./revolution.css";
 import { ExperienceLayer } from "@/components/ExperienceLayer";
 import { TopbarShell } from "@/components/TopbarShell";
 import { currentUser } from "@/lib/auth";

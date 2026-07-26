@@ -1,10 +1,10 @@
-import { Activity, ChevronDown, Coins, Crosshair, LayoutGrid, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
+import { ArrowDownRight, LayoutGrid, RadioTower, RefreshCw, Search, ShieldCheck, Star, X } from "lucide-react";
 import Link from "next/link";
+import { CinematicHero } from "@/components/CinematicHero";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
-import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { currentUser } from "@/lib/auth";
 import { ORGANIC_SPOTLIGHT_CHANCE, orderDirectory } from "@/lib/directory-order";
-import { compact, money, points } from "@/lib/format";
+import { compact, money } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { activePremiumPlan } from "@/lib/premium";
 
@@ -172,77 +172,46 @@ export default async function MarketplacePage({
 
   return (
     <main>
-      <section className="arena-hero">
-        <VoxelHeroScene />
-        <div className="hero-noise" aria-hidden="true" />
-        <div className="container arena-layer">
-          <div className="headline-copy">
-            <div className="hero-frequency" aria-hidden="true"><span>KX-01</span><i /><b>TRANSMISSION STABLE</b></div>
-            <p className="eyebrow">
-              <ShieldCheck size={15} /> Verified Minecraft reward network
-            </p>
-            <h1 className="karix-wordmark"><span>Karix</span><em>MC</em></h1>
-            <p className="hero-manifesto"><span>Play any world.</span><strong>Earn on one network.</strong></p>
-            <p className="lead">
-              Real play becomes a portable balance. Discover funded servers, earn while active, and unlock ranks or items across the network without paying cash.
-            </p>
-            <div className="command-strip">
-              <Link className="solid-button" href="#servers">
-                <Crosshair size={16} /> Browse servers
-              </Link>
-              <Link className="ghost-button" href="/account">
-                <WalletCards size={16} /> Open wallet
-              </Link>
-              {canManageServers ? (
-                <Link className="ghost-button" href="/account#servers">
-                  <Server size={16} /> Creator studio
-                </Link>
-              ) : (
-                <Link className="ghost-button" href="/login">
-                  <RadioTower size={16} /> List a server
-                </Link>
-              )}
-            </div>
-            <div className="hero-proofline" aria-label="KarixMC network benefits">
-              <span><i /> Anti-AFK verified</span>
-              <span><i /> Portable wallet</span>
-              <span><i /> Live item delivery</span>
-            </div>
-          </div>
+      <CinematicHero
+        liveWorlds={visibleServers.length}
+        campaignPoints={pools._sum.pointPool ?? 0}
+        members={usersCount}
+        verifiedSeconds={playtime._sum.activeSeconds ?? 0}
+        queuedPerks={purchaseCount}
+        canManageServers={canManageServers}
+      />
 
-          <aside className="network-beacon" aria-label="Live network signal">
-            <div className="beacon-header"><span><Activity size={13} /> Live telemetry</span><b>{visibleServers.length.toString().padStart(2, "0")} worlds</b></div>
-            <div className="beacon-orbit" aria-hidden="true"><i /><i /><i /><strong>KX</strong><small>SYNC</small></div>
-            <div className="beacon-readout">
-              <div><span>Campaign signal</span><strong>{points(pools._sum.pointPool ?? 0)}</strong></div>
-              <div><span>Linked members</span><strong>{usersCount}</strong></div>
-              <div><span>Verified play</span><strong>{compact(playtime._sum.activeSeconds ?? 0)}s</strong></div>
-              <div><span>Queued perks</span><strong>{purchaseCount}</strong></div>
-            </div>
-          </aside>
+      <section className="network-protocol" aria-label="Network rules">
+        <div className="protocol-rail" aria-hidden="true">
+          <span>KX PROTOCOL</span><i /><span>VERIFIED TIME IS THE CURRENCY</span><i /><span>KX PROTOCOL</span><i /><span>VERIFIED TIME IS THE CURRENCY</span>
         </div>
-        <a className="hero-scroll-cue" href="#servers" aria-label="Continue to live servers"><span>Find a world</span><ChevronDown size={16} /></a>
+        <div className="container protocol-grid">
+          <p><b>01 / DISCOVERY</b><span>{premiumLeadPercent}% premium-led. {organicSpotlightPercent}% still gives community worlds a clean shot at the first signal.</span></p>
+          <p><b>02 / ECONOMY</b><span>Empty campaign pools disappear from the atlas until their owner transmits value again.</span></p>
+          <p><b>03 / PROOF</b><span>Signed bridge activity, movement, and challenges decide every reward.</span></p>
+        </div>
       </section>
 
-      <section className="container network-rules" aria-label="Network rules">
-        <div><b>01</b><span>{premiumLeadPercent}% premium-led. {organicSpotlightPercent}% gives the first slot to a standard world, with balanced boosts from likes and favorites.</span></div>
-        <div><b>02</b><span>Empty campaign pools leave the atlas until the owner funds them again.</span></div>
-        <div><b>03</b><span>Signed bridge activity, movement, and challenges decide every reward.</span></div>
-      </section>
+      <section className="world-atlas" id="servers">
+        <div className="container atlas-heading">
+          <div className="atlas-index">02 / WORLD ATLAS <i /></div>
+          <div className="atlas-title-lockup">
+            <h2>CHOOSE YOUR<br /><em>NEXT OBSESSION.</em></h2>
+            <p>Every signal below is live, funded, and connected to KarixMC. Pick a world for the game. Stay because your time has value.</p>
+          </div>
+        </div>
 
-      <section className="container" id="servers">
-        <div className="section-bar">
+        <div className="container section-bar atlas-commandbar">
           <div>
             <p className="eyebrow"><RadioTower size={14} /> Live directory</p>
-            <h2>Worlds transmitting now</h2>
-            <p>{favoritesOnly ? "Your saved worlds, ready for another session." : "Funded worlds and their live reward stores."}</p>
+            <strong>{favoritesOnly ? "Your saved transmissions" : `${sortedServers.length} worlds transmitting now`}</strong>
           </div>
           <Link className="ghost-button" href={directoryHref({ tag: selectedTag, query, favorites: favoritesOnly, shuffle: true })}>
             <RefreshCw size={16} /> Refresh list
           </Link>
         </div>
 
-        <div className="directory-toolbar">
+        <div className="container directory-toolbar atlas-toolbar">
           <form className={`server-search-form ${query ? "has-query" : ""}`} action="/#servers" method="get" role="search">
             <div className="server-search-field">
               <Search size={18} aria-hidden="true" />
@@ -286,7 +255,7 @@ export default async function MarketplacePage({
           </div>
         </div>
 
-        <div className="tag-filter-row" aria-label="Server tag filters">
+        <div className="container tag-filter-row" aria-label="Server tag filters">
           <Link
             className={`tag-filter ${!selectedTag ? "active" : ""}`}
             href={directoryHref({ query, favorites: favoritesOnly })}
@@ -306,25 +275,29 @@ export default async function MarketplacePage({
 
         {sortedServers.length ? (
           <>
-            <div className="directory-result-line" aria-live="polite">
+            <div className="container directory-result-line" aria-live="polite">
               <strong>{sortedServers.length}</strong>
               <span>{favoritesOnly ? "favorite" : "matching"} {sortedServers.length === 1 ? "world" : "worlds"}</span>
               {query ? <small>for &ldquo;{query}&rdquo;</small> : null}
             </div>
-            <div className="server-grid">
-              {sortedServers.map((server) => (
-                <ServerCard key={server.id} server={server} />
+            <div className="container server-grid broadcast-grid">
+              {sortedServers.map((server, index) => (
+                <ServerCard key={server.id} server={server} featured={index === 0} />
               ))}
             </div>
           </>
         ) : (
-          <div className="empty-state directory-empty-state">
+          <div className="container empty-state directory-empty-state">
             <Search size={24} />
             <strong>{favoritesOnly ? "No favorite worlds are online" : "No live funded worlds match"}</strong>
             <span>Try another name, address, tag, or check back when a server reconnects.</span>
             {(query || selectedTag || favoritesOnly) ? <Link className="ghost-button" href="/#servers">Reset directory</Link> : null}
           </div>
         )}
+        <div className="atlas-exit container">
+          <span>THE ATLAS NEVER RANKS BY POPULARITY ALONE.</span>
+          <Link href="/plugin">How the bridge proves play <ArrowDownRight size={17} /></Link>
+        </div>
       </section>
 
       <section className="container dashboard-grid economy-band" style={{ paddingBottom: 56 }}>
