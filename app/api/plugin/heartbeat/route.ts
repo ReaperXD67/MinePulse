@@ -11,6 +11,7 @@ import {
 } from "@/lib/plugin-security";
 import { claimableLevelRewards } from "@/lib/progression";
 import { prisma } from "@/lib/prisma";
+import { cappedRewardRate } from "@/lib/reward-rate";
 import { routeError } from "@/lib/api";
 
 export const runtime = "nodejs";
@@ -267,12 +268,13 @@ export async function POST(request: Request) {
         .slice(0, freshServer.maxPaidPlayers)
         .some((activeSession) => activeSession.id === session.id);
       const verifiedActive = elapsed > 0 && !input.afk && (strictMovement || activeInteraction) && challengeOk;
+      const effectiveRewardRate = cappedRewardRate(freshServer.rewardRatePerSecond);
       const rewardable =
-        verifiedActive && withinPaidCap && freshServer.pointPool > 0 && freshServer.rewardRatePerSecond > 0;
+        verifiedActive && withinPaidCap && freshServer.pointPool > 0 && effectiveRewardRate > 0;
 
       const rewardState = freshServer.pointPool <= 0
         ? "EMPTY_POOL"
-        : freshServer.rewardRatePerSecond <= 0
+        : effectiveRewardRate <= 0
           ? "REWARDS_DISABLED"
           : !withinPaidCap
             ? "PAID_CAP"
@@ -295,10 +297,10 @@ export async function POST(request: Request) {
                 ? "Rewards are paused until you answer the activity check with /answer <value>."
                 : rewardState === "INACTIVE"
                   ? "Rewards are paused because no meaningful activity was detected. Move, chat, or interact to continue."
-                  : `Verified play active. Earning ${freshServer.rewardRatePerSecond} point(s) per second.`;
+                  : `Verified play active. Earning ${effectiveRewardRate} point(s) per second.`;
 
       const preciseEarned = rewardable
-        ? Math.min(freshServer.pointPool, session.rewardCarryPoints + elapsed * freshServer.rewardRatePerSecond)
+        ? Math.min(freshServer.pointPool, session.rewardCarryPoints + elapsed * effectiveRewardRate)
         : session.rewardCarryPoints;
       const earned = rewardable ? Math.floor(preciseEarned) : 0;
       const rewardCarryPoints = rewardable ? Math.max(0, preciseEarned - earned) : session.rewardCarryPoints;

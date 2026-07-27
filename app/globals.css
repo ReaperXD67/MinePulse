@@ -7168,3 +7168,76 @@ button.icon-stat-button:hover {
 .command-grid {
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
+
+/* v8 marketplace tuning: reward signal tiers and cleaner premium corner rails. */
+.server-grid .server-card.premium-gold::before {
+  background:
+    linear-gradient(90deg, #ffe295, transparent 32%) top left / 46% 1px no-repeat,
+    linear-gradient(180deg, #ffe295, transparent 32%) top left / 1px 46% no-repeat;
+}
+
+.server-grid .server-card.premium-diamond::before {
+  background:
+    linear-gradient(90deg, #effdff, #6ddfff 45%, transparent 72%) top left / 52% 2px no-repeat,
+    linear-gradient(180deg, #effdff, #6ddfff 45%, transparent 72%) top left / 2px 52% no-repeat;
+}
+
+.server-card .mini-metric.reward-boosted,
+.server-card .mini-metric.reward-high,
+.server-card .mini-metric.reward-apex {
+  position: relative;
+  overflow: hidden;
+}
+
+.server-card .mini-metric.reward-boosted {
+  border-color: rgba(93, 255, 179, 0.34);
+  background: linear-gradient(145deg, rgba(93, 255, 179, 0.1), rgba(72, 227, 255, 0.045));
+  box-shadow: inset 0 0 18px rgba(93, 255, 179, 0.06);
+}
+
+.server-card .mini-metric.reward-high {
+  border-color: rgba(72, 227, 255, 0.58);
+  background: linear-gradient(145deg, rgba(72, 227, 255, 0.16), rgba(139, 124, 255, 0.08));
+  box-shadow: inset 0 0 22px rgba(72, 227, 255, 0.1), 0 0 16px rgba(72, 227, 255, 0.08);
+}
+
+.server-card .mini-metric.reward-apex {
+  border-color: rgba(255, 219, 109, 0.72);
+  background:
+    linear-gradient(120deg, rgba(255, 219, 109, 0.2), rgba(72, 227, 255, 0.13) 55%, rgba(184, 167, 255, 0.13));
+  box-shadow: inset 0 0 24px rgba(255, 219, 109, 0.11), 0 0 20px rgba(255, 219, 109, 0.1);
+}
+
+.server-card .mini-metric[class*="reward-"] .metric-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.server-card .mini-metric[class*="reward-"] .metric-label em {
+  color: var(--lime);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.server-card .mini-metric[class*="reward-"] strong {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #dfffee;
+}
+
+.server-card .mini-metric.reward-high strong {
+  color: #91edff;
+  font-size: 19px;
+  text-shadow: 0 0 16px rgba(72, 227, 255, 0.42);
+}
+
+.server-card .mini-metric.reward-apex strong {
+  color: #ffe89b;
+  font-size: 21px;
+  text-shadow: 0 0 18px rgba(255, 219, 109, 0.5);
+}

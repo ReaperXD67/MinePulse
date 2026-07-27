@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {
-  ORGANIC_SPOTLIGHT_CHANCE,
+  FIRST_POSITION_CHANCES,
   orderDirectory,
   standardVisibilityWeight
 } from "../lib/directory-order";
@@ -13,11 +13,20 @@ function seededRandom(seed: number) {
   };
 }
 
-const competitors = [
-  { name: "Diamond", weight: 2, likes: 0, favorites: 0, comments: 0 },
-  { name: "Gold", weight: 1, likes: 0, favorites: 0, comments: 0 }
+type AuditServer = {
+  name: string;
+  tier: "DIAMOND" | "GOLD" | "STANDARD";
+  weight: number;
+  likes: number;
+  favorites: number;
+  comments: number;
+};
+
+const competitors: AuditServer[] = [
+  { name: "Diamond", tier: "DIAMOND", weight: 2, likes: 0, favorites: 0, comments: 0 },
+  { name: "Gold", tier: "GOLD", weight: 1, likes: 0, favorites: 0, comments: 0 }
 ];
-const standard = { name: "Standard", weight: 0, likes: 0, favorites: 0, comments: 0 };
+const standard: AuditServer = { name: "Standard", tier: "STANDARD", weight: 0, likes: 0, favorites: 0, comments: 0 };
 const random = seededRandom(0x4b415249);
 const draws = 90000;
 let diamondFirst = 0;
@@ -29,6 +38,7 @@ for (let draw = 0; draw < draws; draw += 1) {
     premium: competitors,
     standard: [standard],
     premiumWeightFor: (entry) => entry.weight,
+    premiumTierFor: (entry) => entry.tier === "DIAMOND" ? "DIAMOND" : "GOLD",
     random
   }).servers;
   assert.deepEqual(result.map((entry) => entry.name).sort(), ["Diamond", "Gold", "Standard"]);
@@ -41,11 +51,11 @@ const observedDiamondChance = diamondFirst / draws;
 const observedGoldChance = goldFirst / draws;
 const observedStandardChance = standardFirst / draws;
 assert.ok(
-  observedDiamondChance > 0.55 && observedDiamondChance < 0.585,
-  `Expected Diamond near 56.7% overall, observed ${(observedDiamondChance * 100).toFixed(2)}%`
+  observedDiamondChance > 0.44 && observedDiamondChance < 0.46,
+  `Expected Diamond near 45% overall, observed ${(observedDiamondChance * 100).toFixed(2)}%`
 );
-assert.ok(observedGoldChance > 0.27 && observedGoldChance < 0.30);
-assert.ok(observedStandardChance > 0.14 && observedStandardChance < 0.16);
+assert.ok(observedGoldChance > 0.34 && observedGoldChance < 0.36);
+assert.ok(observedStandardChance > 0.19 && observedStandardChance < 0.21);
 
 const newServer = { likes: 0, favorites: 0, comments: 0 };
 const popularServer = { likes: 999, favorites: 999, comments: 999 };
@@ -60,7 +70,11 @@ console.log(JSON.stringify({
     gold: Number((observedGoldChance * 100).toFixed(2)),
     standard: Number((observedStandardChance * 100).toFixed(2))
   },
-  expectedFirstPlacePercent: { diamond: 56.67, gold: 28.33, standard: ORGANIC_SPOTLIGHT_CHANCE * 100 },
+  expectedFirstPlacePercent: {
+    diamond: FIRST_POSITION_CHANCES.DIAMOND * 100,
+    gold: FIRST_POSITION_CHANCES.GOLD * 100,
+    standard: FIRST_POSITION_CHANCES.STANDARD * 100
+  },
   standardVisibilityWeight: { newServer: 100, cappedPopularServer: 180 },
-  rule: "Premium leads 85% of refreshes; a balanced standard-server spotlight leads 15%."
+  rule: "Diamond leads 45%, Gold leads 35%, and a balanced standard server leads 20%."
 }, null, 2));

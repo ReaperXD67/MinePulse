@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ServerStatus, UserRole } from "@/lib/generated/prisma/client";
 import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { MAX_REWARD_RATE_PER_SECOND } from "@/lib/reward-rate";
 import { normalizeServerTags } from "@/lib/server-tags";
 import { routeError } from "@/lib/api";
 import { normalizeServerAddress } from "@/lib/server-address";
@@ -26,7 +27,7 @@ const schema = z.object({
   rewardRatePerSecond: z.coerce
     .number()
     .min(1)
-    .max(100)
+    .max(MAX_REWARD_RATE_PER_SECOND)
     .refine((value) => Number.isInteger(value * 2), "Reward rate must use 0.5 point steps")
     .optional(),
   maxPaidPlayers: z.coerce.number().int().min(1).max(500).optional(),

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
 import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { currentUser } from "@/lib/auth";
-import { ORGANIC_SPOTLIGHT_CHANCE, orderDirectory } from "@/lib/directory-order";
+import { FIRST_POSITION_CHANCES, orderDirectory } from "@/lib/directory-order";
 import { compact, money, points } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { activePremiumPlan } from "@/lib/premium";
@@ -143,20 +143,15 @@ export default async function MarketplacePage({
   const { servers: sortedServers } = orderDirectory({
     premium: premiumCandidates,
     standard: standardCandidates,
-    premiumWeightFor: (server) => premiumWeightByPlan.get(server.premiumPlan) ?? 1
+    premiumWeightFor: (server) => premiumWeightByPlan.get(server.premiumPlan) ?? 1,
+    premiumTierFor: (server) => server.premiumPlan === "DIAMOND" ? "DIAMOND" : "GOLD"
   });
   const [usersCount, pools, purchaseCount, playtime] = platform;
   const goldTier = premiumTiers.find((tier) => tier.code === "GOLD");
   const diamondTier = premiumTiers.find((tier) => tier.code === "DIAMOND");
-  const goldWeight = Math.max(1, goldTier?.priority ?? 1);
-  const diamondWeight = Math.max(1, diamondTier?.priority ?? 2);
-  const headToHeadTotal = goldWeight + diamondWeight;
-  const diamondHeadToHeadChance = (diamondWeight / headToHeadTotal) * 100;
-  const goldHeadToHeadChance = (goldWeight / headToHeadTotal) * 100;
-  const organicSpotlightPercent = ORGANIC_SPOTLIGHT_CHANCE * 100;
-  const premiumLeadPercent = 100 - organicSpotlightPercent;
-  const diamondOverallPerHundred = Math.round((premiumLeadPercent * diamondHeadToHeadChance) / 100);
-  const goldOverallPerHundred = Math.round((premiumLeadPercent * goldHeadToHeadChance) / 100);
+  const diamondFirstPercent = FIRST_POSITION_CHANCES.DIAMOND * 100;
+  const goldFirstPercent = FIRST_POSITION_CHANCES.GOLD * 100;
+  const standardFirstPercent = FIRST_POSITION_CHANCES.STANDARD * 100;
   const canManageServers = Boolean(user);
   const favoriteCount = visibleServers.filter((server) => server.favorited).length;
 
@@ -218,7 +213,7 @@ export default async function MarketplacePage({
       </section>
 
       <section className="container network-rules" aria-label="Network rules">
-        <div><b>01</b><span>{premiumLeadPercent}% premium-led. {organicSpotlightPercent}% gives the first slot to a standard world, with balanced boosts from likes and favorites.</span></div>
+        <div><b>01</b><span>Top signal draw: Diamond {diamondFirstPercent}%, Gold {goldFirstPercent}%, standard {standardFirstPercent}%. Likes and favorites balance worlds inside each lane.</span></div>
         <div><b>02</b><span>Empty campaign pools leave the atlas until the owner funds them again.</span></div>
         <div><b>03</b><span>Signed bridge activity, movement, and challenges decide every reward.</span></div>
       </section>
@@ -349,23 +344,23 @@ export default async function MarketplacePage({
           <div className="premium-benefit-grid">
             <div className="premium-benefit diamond">
               <span>Diamond visibility</span>
-              <strong>{diamondHeadToHeadChance.toFixed(1)}% to lead premium</strong>
+              <strong>{diamondFirstPercent}% chance at #1</strong>
               <div className="premium-chance-track" aria-hidden="true"><i /></div>
               <p>{diamondTier ? `${money(diamondTier.priceCents)} for ${diamondTier.durationDays} days` : "Top premium placement"}</p>
-              <small>Gets {diamondWeight} chances for each {goldWeight} Gold chance inside the premium lane.</small>
+              <small>The strongest top-slot signal, with engagement balancing Diamond servers against each other.</small>
             </div>
             <div className="premium-benefit gold">
               <span>Gold visibility</span>
-              <strong>{goldHeadToHeadChance.toFixed(1)}% to lead premium</strong>
+              <strong>{goldFirstPercent}% chance at #1</strong>
               <div className="premium-chance-track" aria-hidden="true"><i /></div>
               <p>{goldTier ? `${money(goldTier.priceCents)} for ${goldTier.durationDays} days` : "Premium placement"}</p>
-              <small>Still appears before the standard lane on {premiumLeadPercent}% of refreshes.</small>
+              <small>A clear visibility advantage while leaving room for Diamond and community discovery.</small>
             </div>
             <div className="premium-benefit standard">
               <span>Community spotlight</span>
-              <strong>{organicSpotlightPercent}% chance at #1</strong>
+              <strong>{standardFirstPercent}% chance at #1</strong>
               <div className="premium-chance-track" aria-hidden="true"><i /></div>
-              <p>One standard server moves above premium when the spotlight activates.</p>
+              <p>A standard server can still lead the directory on every refresh.</p>
               <small>Every standard server gets a base chance; genuine engagement adds a limited boost.</small>
             </div>
           </div>
@@ -373,7 +368,7 @@ export default async function MarketplacePage({
             <RefreshCw size={18} />
             <div>
               <strong>Simple example: one Diamond, one Gold, and one standard server</strong>
-              <p>Across 100 refreshes, the standard server reaches #1 about {organicSpotlightPercent} times. Of the other {premiumLeadPercent}, Diamond leads about {diamondOverallPerHundred} and Gold about {goldOverallPerHundred}. Every refresh is a new chance, not a fixed rotation.</p>
+              <p>Across 100 refreshes, Diamond leads about {diamondFirstPercent} times, Gold about {goldFirstPercent}, and standard about {standardFirstPercent}. Every refresh is a new chance, not a fixed rotation.</p>
             </div>
           </div>
           <p className="premium-fineprint">

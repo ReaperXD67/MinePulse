@@ -27,6 +27,7 @@ import {
 import { money, points, shortDate } from "@/lib/format";
 import { activePremiumPlan } from "@/lib/premium";
 import { serverJoinAddress } from "@/lib/server-address";
+import { MAX_REWARD_RATE_PER_SECOND } from "@/lib/reward-rate";
 
 type OwnerServer = {
   id: string;
@@ -305,7 +306,7 @@ export function OwnerConsole({
             <div className="form-row"><label>Support URL</label><input className="field" name="supportUrl" type="url" /></div>
           </div>
           <div className="form-grid three">
-            <div className="form-row"><label>Reward per second</label><input className="field" name="rewardRatePerSecond" type="number" min="1" max="100" step="0.5" defaultValue="1" /></div>
+            <div className="form-row"><label>Reward per second</label><input className="field" name="rewardRatePerSecond" type="number" min="1" max={MAX_REWARD_RATE_PER_SECOND} step="0.5" defaultValue="1" /></div>
             <div className="form-row"><label>Paid player cap</label><input className="field" name="maxPaidPlayers" type="number" defaultValue="20" /></div>
             <div className="form-row"><label>Seconds before reviews</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue="1800" /></div>
           </div>
@@ -363,7 +364,7 @@ export function OwnerConsole({
                   <div className="form-row"><label>Support</label><input className="field" name="supportUrl" type="url" defaultValue={server.supportUrl || ""} /></div>
                 </div>
                 <div className="form-grid three">
-                  <div className="form-row"><label>Reward/s</label><input className="field" name="rewardRatePerSecond" type="number" min="1" max="100" step="0.5" defaultValue={server.rewardRatePerSecond} /></div>
+                  <div className="form-row"><label>Reward/s</label><input className="field" name="rewardRatePerSecond" type="number" min="1" max={MAX_REWARD_RATE_PER_SECOND} step="0.5" defaultValue={server.rewardRatePerSecond} /></div>
                   <div className="form-row"><label>Paid cap</label><input className="field" name="maxPaidPlayers" type="number" defaultValue={server.maxPaidPlayers} /></div>
                   <div className="form-row"><label>Review seconds</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue={server.minPlaySecondsForComment} /></div>
                 </div>
@@ -404,7 +405,7 @@ export function OwnerConsole({
                 </div>
                 <div className="premium-shop-heading">
                   <strong>Boost listing visibility</strong>
-                  <span>Premium leads 85% of refreshes. Diamond gets 2 chances to lead that lane for every 1 Gold chance; 15% remains a fair community spotlight for standard servers.</span>
+                  <span>Each refresh gives Diamond a 45% chance to lead, Gold 35%, and a standard server 20%. Likes and favorites still help balance servers inside each tier.</span>
                 </div>
                 <div className="premium-options premium-purchase-grid">
                   {premiumTiers.map((tier) => (

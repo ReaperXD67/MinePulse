@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowUpRight, Coins, Crown, Gem, Heart, MessageSquare, RadioTower, ShieldCheck, Star } from "lucide-react";
+import { ArrowUpRight, Coins, Crown, Gem, Heart, MessageSquare, RadioTower, ShieldCheck, Star, Zap } from "lucide-react";
 import { compact, daysLeft, points } from "@/lib/format";
+import { rewardRateVisualTier } from "@/lib/reward-rate";
 import { serverJoinAddress } from "@/lib/server-address";
 
 export type MarketplaceServer = {
@@ -56,6 +57,8 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
   }
 
   const premiumClass = server.premiumPlan === "DIAMOND" ? "diamond" : server.premiumPlan === "GOLD" ? "gold" : "";
+  const rewardTier = rewardRateVisualTier(server.rewardRatePerSecond);
+  const rewardLabel = rewardTier === "apex" ? "Apex" : rewardTier === "high" ? "High yield" : "Boosted";
   const teaser = server.items[0];
 
   return (
@@ -89,7 +92,10 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
 
         <div className="metric-grid">
           <div className="mini-metric"><span className="metric-label">Campaign</span><strong>{compact(server.pointPool)}</strong></div>
-          <div className="mini-metric"><span className="metric-label">Earn</span><strong>{server.rewardRatePerSecond}/s</strong></div>
+          <div className={rewardTier === "standard" ? "mini-metric" : `mini-metric reward-${rewardTier}`}>
+            <span className="metric-label">Earn {rewardTier === "standard" ? null : <em>{rewardLabel}</em>}</span>
+            <strong>{rewardTier === "standard" ? null : <Zap size={15} />} {server.rewardRatePerSecond}/s</strong>
+          </div>
           <div className="mini-metric"><span className="metric-label">Avg online</span><strong>{server.averageOnline}</strong></div>
         </div>
 

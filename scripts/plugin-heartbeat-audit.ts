@@ -131,6 +131,13 @@ async function main() {
   assert(earning.rewardState === "EARNING", `Expected EARNING, received ${earning.rewardState}`);
   assert(earning.earned === 30, `Expected 30 points, received ${JSON.stringify(earning)}`);
 
+  await prisma.server.update({ where: { id: serverId }, data: { rewardRatePerSecond: 9 } });
+  const cappedRate = await heartbeat({});
+  assert(cappedRate.rewardState === "EARNING", `Expected capped rate to remain EARNING, received ${cappedRate.rewardState}`);
+  assert(cappedRate.earned === 60, `Expected the stale 9/s value to be capped at 60 points for 20 seconds, received ${cappedRate.earned}`);
+  assert(cappedRate.rewardMessage.includes("3 point(s) per second"), `Expected capped reward message, received ${cappedRate.rewardMessage}`);
+  await prisma.server.update({ where: { id: serverId }, data: { rewardRatePerSecond: 1.5 } });
+
   const afk = await heartbeat({ afk: true, movementScore: 0, activityEvents: 0 });
   assert(afk.rewardState === "AFK", `Expected AFK, received ${afk.rewardState}`);
   assert(afk.earned === 0, `AFK heartbeat unexpectedly earned ${afk.earned}`);
@@ -149,12 +156,13 @@ async function main() {
   assert(paidCap.earned === 0, `Paid-cap heartbeat unexpectedly earned ${paidCap.earned}`);
 
   const storedPlayer = await prisma.user.findUniqueOrThrow({ where: { id: player.id } });
-  assert(storedPlayer.walletPoints === 30, `Expected wallet balance 30, received ${storedPlayer.walletPoints}`);
+  assert(storedPlayer.walletPoints === 90, `Expected wallet balance 90, received ${storedPlayer.walletPoints}`);
 
   console.log(JSON.stringify({
     ok: true,
     checks: {
       earning: { state: earning.rewardState, earned: earning.earned },
+      cappedRate: { state: cappedRate.rewardState, earned: cappedRate.earned },
       afk: { state: afk.rewardState, earned: afk.earned },
       emptyPool: { state: emptyPool.rewardState, earned: emptyPool.earned },
       paidCap: { state: paidCap.rewardState, earned: paidCap.earned },
