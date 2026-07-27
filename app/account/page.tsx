@@ -48,7 +48,7 @@ export default async function AccountPage() {
         take: 10
       }),
       prisma.server.findMany({
-        where: { ownerId: user.id },
+        where: { ownerId: user.id, status: { not: "REMOVED" } },
         include: {
           items: { orderBy: { createdAt: "desc" } },
           supportTickets: {

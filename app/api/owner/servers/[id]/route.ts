@@ -118,7 +118,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
       data: { status: ServerStatus.REMOVED }
     });
 
-    return NextResponse.json({ message: "Server removed" });
+    return NextResponse.json({ message: "Listing removed from Creator Studio and the marketplace" });
   } catch (error) {
     return routeError(error);
   }

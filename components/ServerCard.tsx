@@ -58,7 +58,7 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
 
   const premiumClass = server.premiumPlan === "DIAMOND" ? "diamond" : server.premiumPlan === "GOLD" ? "gold" : "";
   const rewardTier = rewardRateVisualTier(server.rewardRatePerSecond);
-  const rewardLabel = rewardTier === "apex" ? "Apex" : rewardTier === "high" ? "High yield" : "Boosted";
+  const rewardLabel = rewardTier === "maximum" ? "Maximum" : rewardTier === "apex" ? "Apex" : rewardTier === "high" ? "High yield" : "Boosted";
   const teaser = server.items[0];
 
   return (

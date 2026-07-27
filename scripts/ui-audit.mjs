@@ -117,6 +117,19 @@ if (!loginResponse.ok()) {
       break;
     }
   }
+  const rewardGuide = ownerPage.locator(".reward-rate-guide");
+  const expectedRewardTiers = [
+    ["1.5/s", "reward-boosted"],
+    ["2/s", "reward-high"],
+    ["2.5/s", "reward-apex"],
+    ["3/s", "reward-maximum"]
+  ];
+  for (const [rate, className] of expectedRewardTiers) {
+    const swatch = rewardGuide.locator(`.${className}`, { hasText: rate });
+    if ((await swatch.count()) !== 1) {
+      errors.push(`owner account: ${rate} reward appearance preview is missing`);
+    }
+  }
   if (await ownerPage.getByText("Purchases are paused during testing.", { exact: false }).count()) {
     const fundingOption = ownerPage.locator(".funding-option").first();
     if (await fundingOption.isVisible()) {

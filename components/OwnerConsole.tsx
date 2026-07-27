@@ -22,12 +22,13 @@ import {
   TicketCheck,
   Timer,
   Trash2,
+  Zap,
   X
 } from "lucide-react";
 import { money, points, shortDate } from "@/lib/format";
 import { activePremiumPlan } from "@/lib/premium";
 import { serverJoinAddress } from "@/lib/server-address";
-import { MAX_REWARD_RATE_PER_SECOND } from "@/lib/reward-rate";
+import { MAX_REWARD_RATE_PER_SECOND, rewardRateVisualTier } from "@/lib/reward-rate";
 
 type OwnerServer = {
   id: string;
@@ -94,6 +95,13 @@ type OwnerServer = {
 type PointPackage = { id: string; label: string; points: number; priceCents: number };
 type PremiumTier = { id: string; code: string; name: string; priceCents: number; durationDays: number; priority: number };
 
+const rewardRateExamples = [
+  { rate: 1.5, label: "Boosted" },
+  { rate: 2, label: "High yield" },
+  { rate: 2.5, label: "Apex" },
+  { rate: 3, label: "Maximum" }
+];
+
 export function OwnerConsole({
   servers,
   pointPackages,
@@ -112,11 +120,13 @@ export function OwnerConsole({
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [removedServerIds, setRemovedServerIds] = useState<Set<string>>(() => new Set());
   const [promoCodes, setPromoCodes] = useState<Record<string, string>>({});
   const [checkoutNotice, setCheckoutNotice] = useState(false);
   const [serverSecrets, setServerSecrets] = useState<Record<string, string>>(() =>
     Object.fromEntries(servers.map((server) => [server.id, server.pluginSecret]))
   );
+  const visibleServers = servers.filter((server) => !removedServerIds.has(server.id));
 
   async function send(url: string, body: unknown, method = "POST") {
     setBusy(true);
@@ -247,6 +257,18 @@ export function OwnerConsole({
     }, "PATCH");
   }
 
+  async function removeServer(serverId: string, serverName: string) {
+    if (!window.confirm(`Remove ${serverName}? It will disappear from Creator Studio and the public marketplace.`)) {
+      return;
+    }
+
+    const removed = await send(`/api/owner/servers/${serverId}`, {}, "DELETE");
+    if (removed) {
+      setRemovedServerIds((current) => new Set(current).add(serverId));
+      setMessage(`${serverName} was removed. Admin audit history was preserved.`);
+    }
+  }
+
   async function copy(value: string, label: string) {
     const copied = await copyText(value);
     setMessage(copied ? `${label} copied` : "Copy was blocked. Select the value and copy it manually.");
@@ -278,7 +300,22 @@ export function OwnerConsole({
     <div className="creator-studio">
       <p className="global-message" aria-live="polite">{message}</p>
 
-      <details className="panel disclosure-panel" open={!servers.length}>
+      <section className="reward-rate-guide" aria-labelledby="reward-rate-guide-title">
+        <header>
+          <span id="reward-rate-guide-title"><Zap size={16} /> Reward signal preview</span>
+          <small>Marketplace appearance</small>
+        </header>
+        <div className="reward-rate-preview-grid">
+          {rewardRateExamples.map((example) => (
+            <div className={`reward-rate-swatch reward-${rewardRateVisualTier(example.rate)}`} key={example.rate}>
+              <span>{example.label}</span>
+              <strong><Zap size={15} /> {example.rate}/s</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <details className="panel disclosure-panel" open={!visibleServers.length}>
         <summary>
           <span><Server size={18} /><strong>List a new server</strong></span>
           <small>Every member can create a listing</small>
@@ -314,11 +351,11 @@ export function OwnerConsole({
         </form>
       </details>
 
-      {!servers.length ? (
+      {!visibleServers.length ? (
         <div className="empty-state rich-empty"><RadioTower size={28} /><strong>No servers yet</strong><span>Publish a listing, connect the plugin, then fund its campaign to enter the marketplace.</span></div>
       ) : null}
 
-      {servers.map((server) => (
+      {visibleServers.map((server) => (
         <article className="management-card" key={server.id}>
           <header className="management-card-header">
             <div>
@@ -501,7 +538,7 @@ export function OwnerConsole({
 
           <footer className="management-card-footer">
             <span>{server.likeCount} likes / {server.favoriteCount} favorites</span>
-            <button className="ghost-button danger-button" type="button" disabled={busy} onClick={() => send(`/api/owner/servers/${server.id}`, {}, "DELETE")}><Trash2 size={15} /> Remove listing</button>
+            <button className="ghost-button danger-button" type="button" disabled={busy} onClick={() => removeServer(server.id, server.name)}><Trash2 size={15} /> Remove listing</button>
           </footer>
         </article>
       ))}
