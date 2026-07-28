@@ -35,9 +35,21 @@ const commands = [
   { command: "/karixmc help", detail: "Show the available bridge commands in game." }
 ];
 
+function requiresInsecureHttpOptIn(value: string) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    const loopback = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    return url.protocol === "http:" && !loopback;
+  } catch {
+    return false;
+  }
+}
+
 export default async function PluginPage() {
   const discordUrl = process.env.NEXT_PUBLIC_DISCORD_URL || "#support";
   const appBaseUrl = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const insecureHttpOptIn = requiresInsecureHttpOptIn(appBaseUrl);
   const member = await currentUser();
   const supportHref = member ? "/account#support" : "/login?next=%2Faccount%23support";
 
@@ -92,10 +104,11 @@ export default async function PluginPage() {
             <pre><code>{`api-base-url: "${appBaseUrl}"
 server-id: "from-creator-studio"
 plugin-secret: "keep-this-private"
-allow-insecure-http: false`}</code></pre>
+allow-insecure-http: ${insecureHttpOptIn}`}</code></pre>
             <footer><CheckCircle2 size={15} /> Policy, AFK rules, reward rate, and delivery polling sync from KarixMC</footer>
           </div>
         </div>
+        {insecureHttpOptIn ? <div className="container plugin-http-warning"><strong>Temporary HTTP test mode</strong><span>This IP-based VPS requires <code>allow-insecure-http: true</code>. Use HTTPS and change it to <code>false</code> before production.</span></div> : null}
       </section>
 
       <section className="plugin-band config-explainer-band">

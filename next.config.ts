@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   output: "standalone",
   typedRoutes: false,
   async headers() {
+    const developmentScripts = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
+    const developmentConnections = process.env.NODE_ENV === "development" ? " ws: wss:" : "";
     return [
       {
         source: "/(.*)",
@@ -13,7 +15,7 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-          { key: "Content-Security-Policy", value: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'" },
+          { key: "Content-Security-Policy", value: `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self' data:; script-src 'self' 'unsafe-inline'${developmentScripts}; style-src 'self' 'unsafe-inline'; connect-src 'self'${developmentConnections}` },
           ...(process.env.APP_BASE_URL?.startsWith("https://")
             ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }]
             : [])

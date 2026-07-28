@@ -29,7 +29,7 @@ import {
 import { money, points, shortDate } from "@/lib/format";
 import { activePremiumPlan } from "@/lib/premium";
 import { serverJoinAddress } from "@/lib/server-address";
-import { MAX_REWARD_RATE_PER_SECOND, rewardRateVisualTier } from "@/lib/reward-rate";
+import { rewardRateVisualTier } from "@/lib/reward-rate";
 import { MINECRAFT_VERSIONS, parseVersionRange, SERVER_REGIONS } from "@/lib/server-profile";
 
 type OwnerServer = {
@@ -104,6 +104,35 @@ const rewardRateExamples = [
   { rate: 3, label: "Maximum" }
 ];
 
+const rewardRateChoices = [1, 1.5, 2, 2.5, 3] as const;
+
+function RewardRatePicker({ defaultValue }: { defaultValue: number }) {
+  return (
+    <fieldset className="reward-rate-picker">
+      <legend>Reward per second</legend>
+      <div className="reward-rate-options">
+        {rewardRateChoices.map((rate) => (
+          <label className={`reward-rate-option reward-${rewardRateVisualTier(rate)}`} key={rate}>
+            <input defaultChecked={rate === defaultValue} name="rewardRatePerSecond" type="radio" value={rate} />
+            <span><strong>{rate}</strong><small>pt/s</small></span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function requiresInsecureHttpOptIn(value: string) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    const loopback = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    return url.protocol === "http:" && !loopback;
+  } catch {
+    return false;
+  }
+}
+
 export function OwnerConsole({
   servers,
   pointPackages,
@@ -128,6 +157,12 @@ export function OwnerConsole({
   const [serverSecrets, setServerSecrets] = useState<Record<string, string>>({});
   const [oneTimeCredential, setOneTimeCredential] = useState<{ serverId: string; pluginSecret: string } | null>(null);
   const visibleServers = servers.filter((server) => !removedServerIds.has(server.id));
+  const insecureHttpOptIn = requiresInsecureHttpOptIn(appBaseUrl);
+
+  function reportInvalid(event: React.FormEvent<HTMLFormElement>) {
+    const field = event.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+    setMessage(field.validationMessage || "Check the highlighted field and try again.");
+  }
 
   async function send(url: string, body: unknown, method = "POST") {
     setBusy(true);
@@ -419,7 +454,7 @@ export function OwnerConsole({
           <span><Server size={18} /><strong>List a new server</strong></span>
           <small>Every member can create a listing</small>
         </summary>
-        <form className="form-grid form-section" onSubmit={createServer}>
+        <form className="form-grid form-section" onInvalid={reportInvalid} onSubmit={createServer}>
           <div className="form-grid two">
             <div className="form-row"><label htmlFor="new-server-name">Name</label><input className="field" id="new-server-name" name="name" placeholder="Crystal SMP" required /></div>
             <div className="form-row"><label htmlFor="new-server-host">Host</label><input className="field" id="new-server-host" name="host" placeholder="play.example.com" required /></div>
@@ -444,7 +479,7 @@ export function OwnerConsole({
             <div className="form-row"><label>Support URL</label><input className="field" name="supportUrl" type="url" /></div>
           </div>
           <div className="form-grid three">
-            <div className="form-row"><label>Reward per second</label><input className="field" name="rewardRatePerSecond" type="number" min="1" max={MAX_REWARD_RATE_PER_SECOND} step="0.5" defaultValue="1" /></div>
+            <RewardRatePicker defaultValue={1} />
             <div className="form-row"><label>Paid player cap</label><input className="field" name="maxPaidPlayers" type="number" defaultValue="20" /></div>
             <div className="form-row"><label>Seconds before reviews</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue="1800" /></div>
           </div>
@@ -481,7 +516,7 @@ export function OwnerConsole({
           <div className="management-grid">
             <details className="subpanel-disclosure" open>
               <summary><span><Save size={16} /> Profile and reward rules</span></summary>
-              <form className="form-grid form-section" onSubmit={(event) => updateServer(event, server.id)}>
+              <form className="form-grid form-section" onInvalid={reportInvalid} onSubmit={(event) => updateServer(event, server.id)}>
                 <div className="form-grid two">
                   <div className="form-row"><label>Name</label><input className="field" name="name" defaultValue={server.name} /></div>
                   <div className="form-row"><label>Host</label><input className="field" name="host" defaultValue={server.host} /></div>
@@ -507,11 +542,14 @@ export function OwnerConsole({
                   <div className="form-row"><label>Support</label><input className="field" name="supportUrl" type="url" defaultValue={server.supportUrl || ""} /></div>
                 </div>
                 <div className="form-grid three">
-                  <div className="form-row"><label>Reward/s</label><input className="field" name="rewardRatePerSecond" type="number" min="1" max={MAX_REWARD_RATE_PER_SECOND} step="0.5" defaultValue={server.rewardRatePerSecond} /></div>
+                  <RewardRatePicker defaultValue={server.rewardRatePerSecond} />
                   <div className="form-row"><label>Paid cap</label><input className="field" name="maxPaidPlayers" type="number" defaultValue={server.maxPaidPlayers} /></div>
                   <div className="form-row"><label>Review seconds</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue={server.minPlaySecondsForComment} /></div>
                 </div>
-                <button className="solid-button" disabled={busy} type="submit"><Save size={16} /> Save profile</button>
+                <div className="form-footer">
+                  <p className="toast-line" aria-live="polite">{message}</p>
+                  <button className="solid-button" disabled={busy} type="submit"><Save size={16} /> {busy ? "Saving..." : "Save profile"}</button>
+                </div>
               </form>
             </details>
 
@@ -573,7 +611,9 @@ export function OwnerConsole({
                 <div className="credential-row"><div><span>Website API URL</span><code>{appBaseUrl}</code></div><button className="icon-button" type="button" title="Copy website API URL" onClick={() => copy(appBaseUrl, "Website API URL")}><Copy size={15} /></button></div>
                 <div className="credential-row"><div><span>Server ID - public identifier</span><code>{server.id}</code></div><button className="icon-button" type="button" title="Copy server ID" onClick={() => copy(server.id, "Server ID")}><Copy size={15} /></button></div>
                 <div className="credential-row"><div><span>Plugin secret - private</span><code>{serverSecrets[server.id] || "Hidden after creation"}</code></div><div className="credential-actions">{serverSecrets[server.id] ? <button className="icon-button" type="button" title="Copy plugin secret" onClick={() => copy(serverSecrets[server.id], "Plugin secret")}><Copy size={15} /></button> : null}<button className="icon-button danger-button" type="button" title="Generate a new one-time plugin secret" disabled={busy} onClick={() => rotateSecret(server.id)}><RotateCcw size={15} /></button></div></div>
+                <div className="credential-row"><div><span>HTTP test-mode setting</span><code>allow-insecure-http: {insecureHttpOptIn ? "true" : "false"}</code></div><button className="icon-button" type="button" title="Copy HTTP setting" onClick={() => copy(`allow-insecure-http: ${insecureHttpOptIn}`, "HTTP setting")}><Copy size={15} /></button></div>
                 <p className="credential-help">The Server ID may be visible publicly and grants no access by itself. The secret is shown only after creation or rotation and signs every plugin request. Put both in <code>plugins/KarixMCBridge/config.yml</code>, then restart Paper.</p>
+                {insecureHttpOptIn ? <p className="credential-help bridge-http-warning"><strong>Required on this test VPS:</strong> set <code>allow-insecure-http: true</code>. Change it back to <code>false</code> as soon as the production domain uses HTTPS.</p> : null}
                 <div className="integrity-grid">
                   <div><span>Last player activity</span><strong>{server.lastHeartbeatAt ? shortDate(server.lastHeartbeatAt) : "Waiting for an online player"}</strong></div>
                   <div><span>Plugin connection</span><strong>{server.lastConfigSyncAt ? `Synced ${shortDate(server.lastConfigSyncAt)}` : "Not connected"}</strong></div>
