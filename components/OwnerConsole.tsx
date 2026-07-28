@@ -133,6 +133,15 @@ function requiresInsecureHttpOptIn(value: string) {
   }
 }
 
+function createMediaScope() {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+
+  // This groups owner-authenticated media; it is not a credential or access token.
+  return `scope-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}-${Math.random().toString(36).slice(2, 14)}`;
+}
+
 export function OwnerConsole({
   servers,
   pointPackages,
@@ -237,7 +246,7 @@ export function OwnerConsole({
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
-    const mediaScope = crypto.randomUUID();
+    const mediaScope = createMediaScope();
     setBusy(true);
     const bannerFile = form.get("bannerFile");
     const bannerImage = bannerFile instanceof File && bannerFile.size > 0
@@ -293,7 +302,7 @@ export function OwnerConsole({
   async function updateServer(event: React.FormEvent<HTMLFormElement>, serverId: string) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const mediaScope = crypto.randomUUID();
+    const mediaScope = createMediaScope();
     setBusy(true);
     const files = form.getAll("galleryFiles").filter((entry): entry is File => entry instanceof File && entry.size > 0);
     const uploaded = await uploadGallery(files, mediaScope);
