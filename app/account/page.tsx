@@ -6,7 +6,8 @@ import { ProfileForm } from "@/components/ProfileForm";
 import { MinecraftLinkPanel } from "@/components/MinecraftLinkPanel";
 import { FriendPanel } from "@/components/FriendPanel";
 import { DailyRewardPanel } from "@/components/DailyRewardPanel";
-import { currentUser } from "@/lib/auth";
+import { SecurityPanel } from "@/components/SecurityPanel";
+import { currentAuthContext, listActiveSessions } from "@/lib/auth";
 import { cryptoPaymentMode } from "@/lib/crypto-payments";
 import { minutesLabel, money, points, shortDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -15,10 +16,12 @@ import { serverJoinAddress } from "@/lib/server-address";
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
-  const user = await currentUser();
-  if (!user) {
+  const auth = await currentAuthContext();
+  if (!auth) {
     redirect("/login");
   }
+  const user = auth.user;
+  const activeAuthSessions = await listActiveSessions(user.id, auth.sessionId);
 
   const [profile, purchases, sessions, favorites, ledger, servers, pointPackages, premiumTiers, billing, cryptoPayments, tickets, friendships] =
     await Promise.all([
@@ -140,6 +143,7 @@ export default async function AccountPage() {
         </div>
         <nav className="account-nav" aria-label="Account sections">
           <a href="#overview">Overview</a>
+          <a href="#security">Security</a>
           <a href="#friends">Friends</a>
           <a href="#servers">Servers</a>
           <a href="#crypto-payments">Payments</a>
@@ -253,6 +257,15 @@ export default async function AccountPage() {
         />
         <MinecraftLinkPanel minecraftName={profile?.minecraftName || null} isLinked={Boolean(profile?.minecraftUuid)} />
       </section>
+
+      <SecurityPanel
+        initialSessions={activeAuthSessions.map((session) => ({
+          ...session,
+          createdAt: session.createdAt.toISOString(),
+          lastSeenAt: session.lastSeenAt.toISOString(),
+          expiresAt: session.expiresAt.toISOString()
+        }))}
+      />
 
       <section id="friends">
         <FriendPanel friends={friendRows} />

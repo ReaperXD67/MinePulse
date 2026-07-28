@@ -127,6 +127,8 @@ model User {
   friendsPrivate       Boolean   @default(false)
   bio                  String    @default("")
   avatarUrl            String?
+  lastLoginAt          DateTime?
+  passwordChangedAt    DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -146,6 +148,36 @@ model User {
   cryptoPayments     CryptoPayment[]
   enforcementActions EnforcementAction[] @relation("AdminEnforcement")
   minecraftLinkCodes MinecraftLinkCode[]
+  authSessions       AuthSession[]
+}
+
+model AuthSession {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String    @unique
+  userAgent  String?
+  ipHash     String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt, revokedAt])
+}
+
+model AuthThrottle {
+  key             String    @id
+  scope           String
+  failures        Int       @default(0)
+  windowStartedAt DateTime
+  blockedUntil    DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  @@index([scope, updatedAt])
+  @@index([blockedUntil])
 }
 
 model MinecraftLinkCode {

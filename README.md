@@ -50,7 +50,7 @@ Testers can create their own accounts at `http://localhost:3000/signup`. Use sep
 
 `db:apply` applies the generated SQLite migration directly. The Prisma schema and generated client still remain the source of truth; this command exists because Prisma 7's schema engine can be opaque on some local Windows SQLite setups.
 
-Seeded accounts:
+Local seeded accounts (development and automated testing only; do not run `db:seed` on production):
 
 | Demo | Email | Password |
 | --- | --- | --- |
@@ -135,7 +135,11 @@ For local testing where Paper and the website run on the same machine, keep `api
 
 - Copy `.env.example` to `.env` locally, and set the same variables in your host.
 - `AUTH_SECRET` must be a strong unique value of at least 32 characters. Production will refuse to boot with the demo secret.
+- Authentication uses opaque, hashed, database-backed sessions. Users can review and revoke devices from Account > Security, and password changes revoke every other session.
+- New passwords require a passphrase of at least 15 characters. Login is throttled by account and connection, and public registration cannot assign privileged roles.
 - Set `APP_BASE_URL` to the public website URL testers open in the browser, for example `http://51.83.180.202:3000` during temporary VPS testing. This prevents redirects from using the internal bind address `0.0.0.0`.
 - `AUTH_COOKIE_SECURE="false"` is allowed only for temporary HTTP/IP-based VPS testing. Use HTTPS and remove it or set it to `"true"` before real public launch.
 - Crypto checkout is implemented for campaign packages and Gold/Diamond through NOWPayments. Keep `CRYPTO_PAYMENTS_MODE="test"` until the HTTPS domain, merchant API key, IPN secret, PostgreSQL migration, backups, and launch checks are complete. See [CRYPTO_PAYMENT_SETUP.md](CRYPTO_PAYMENT_SETUP.md).
 - SQLite is fine for local MVP testing. Use Postgres before handling real money or large traffic.
+
+Run `npm run test:auth` against a local production server on port 3001 to verify registration, password hashing, session revocation, logout, password rotation, and brute-force throttling.

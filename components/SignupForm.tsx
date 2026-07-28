@@ -39,7 +39,7 @@ export function SignupForm() {
     <form className="auth-form" onSubmit={submit}>
       <div>
         <p className="eyebrow">
-          <Sparkles size={14} /> Tester access
+          <Sparkles size={14} /> Secure registration
         </p>
         <h2>Create account</h2>
         <p className="lead">
@@ -79,7 +79,8 @@ export function SignupForm() {
             className="field"
             id="password"
             type="password"
-            minLength={8}
+            minLength={15}
+            maxLength={64}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="new-password"
@@ -89,7 +90,7 @@ export function SignupForm() {
       </div>
 
       <button className="solid-button" type="submit" disabled={loading}>
-        <UserPlus size={16} /> {loading ? "Creating..." : "Create test account"}
+        <UserPlus size={16} /> {loading ? "Creating..." : "Create account"}
       </button>
       <Link className="ghost-button auth-switch-link" href="/login">Already have an account</Link>
       <p className="toast-line" aria-live="polite">{message}</p>

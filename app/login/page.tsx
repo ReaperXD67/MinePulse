@@ -1,6 +1,10 @@
 import { LoginForm } from "@/components/LoginForm";
+import { redirect } from "next/navigation";
+import { currentUser } from "@/lib/auth";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  if (await currentUser()) redirect("/account");
+
   return (
     <main className="auth-page">
       <section className="auth-panel">

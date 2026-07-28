@@ -7366,3 +7366,128 @@ button.icon-stat-button:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.security-panel {
+  display: grid;
+  gap: 18px;
+  scroll-margin-top: 24px;
+}
+
+.security-panel-header {
+  align-items: flex-start;
+}
+
+.security-panel-header > div:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.security-panel-header p:last-child,
+.password-change-form p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.security-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.session-list {
+  display: grid;
+  border-top: 1px solid rgba(224, 238, 246, 0.12);
+}
+
+.session-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  gap: 12px;
+  align-items: center;
+  min-height: 74px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(224, 238, 246, 0.1);
+}
+
+.session-device-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(72, 227, 255, 0.35);
+  border-radius: 4px;
+  color: var(--cyan);
+  background: rgba(72, 227, 255, 0.08);
+}
+
+.session-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.session-copy strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.session-copy strong em {
+  padding: 3px 6px;
+  border: 1px solid rgba(93, 255, 179, 0.35);
+  border-radius: 3px;
+  color: var(--lime);
+  font-size: 8px;
+  font-style: normal;
+  text-transform: uppercase;
+}
+
+.session-copy small {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.password-change-form {
+  display: grid;
+  gap: 10px;
+  padding-left: 22px;
+  border-left: 1px solid rgba(224, 238, 246, 0.12);
+}
+
+.password-change-form > div {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.password-change-form h3 {
+  color: var(--text);
+  font-size: 18px;
+}
+
+.password-change-form label {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+@media (max-width: 860px) {
+  .security-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .password-change-form {
+    padding-top: 18px;
+    padding-left: 0;
+    border-top: 1px solid rgba(224, 238, 246, 0.12);
+    border-left: 0;
+  }
+}

@@ -107,6 +107,12 @@ if (!loginResponse.ok()) {
   if (!(await ownerPage.getByText("Website API URL", { exact: true }).first().isVisible())) {
     errors.push("owner account: plugin connection credentials are not visible");
   }
+  if (!(await ownerPage.getByRole("heading", { name: "Sessions and password" }).isVisible())) {
+    errors.push("owner account: security session panel is not visible");
+  }
+  if (!(await ownerPage.getByText("Current device", { exact: true }).count())) {
+    errors.push("owner account: current authenticated device is not identified");
+  }
   if (!(await ownerPage.getByText("Each refresh gives Diamond a 45% chance to lead, Gold 35%, and a standard server 20%. Likes and favorites still help balance servers inside each tier.", { exact: true }).count())) {
     errors.push("owner account: premium purchase benefits are not explained");
   }
@@ -157,6 +163,7 @@ if (!loginResponse.ok()) {
   await ownerPage.screenshot({ path: `${outputDir}/audit-owner-account.png`, fullPage: true });
 }
 
+if (loginResponse.ok()) await ownerContext.request.post(`${baseUrl}/api/auth/logout`, { maxRedirects: 0 });
 await ownerContext.close();
 
 const adminContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -203,6 +210,7 @@ if (!adminLogin.ok()) {
   if (overflow > 1) errors.push(`admin account overflow: ${overflow}px`);
   await adminPage.screenshot({ path: `${outputDir}/audit-admin-campaign-grant.png`, fullPage: true });
 }
+if (adminLogin.ok()) await adminContext.request.post(`${baseUrl}/api/auth/logout`, { maxRedirects: 0 });
 await adminContext.close();
 
 const adminMobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -237,6 +245,7 @@ if (!adminMobileLogin.ok()) {
   }
   await adminMobilePage.screenshot({ path: `${outputDir}/audit-mobile-admin-campaign-grant.png`, fullPage: true });
 }
+if (adminMobileLogin.ok()) await adminMobileContext.request.post(`${baseUrl}/api/auth/logout`, { maxRedirects: 0 });
 await adminMobileContext.close();
 await browser.close();
 
