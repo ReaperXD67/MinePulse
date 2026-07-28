@@ -1,19 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { copyText } from "@/lib/copy-text";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Activity,
   Coins,
   Copy,
   Download,
   ExternalLink,
-  Gem,
   ImageUp,
   LifeBuoy,
-  MessageCircle,
   PackagePlus,
   RadioTower,
   RotateCcw,
@@ -26,76 +23,12 @@ import {
   Zap,
   X
 } from "lucide-react";
-import { money, points, shortDate } from "@/lib/format";
+import { points, shortDate } from "@/lib/format";
+import type { OwnerServerView } from "@/lib/owner-server-view";
 import { activePremiumPlan } from "@/lib/premium";
 import { serverJoinAddress } from "@/lib/server-address";
 import { rewardRateVisualTier } from "@/lib/reward-rate";
 import { MINECRAFT_VERSIONS, parseVersionRange, SERVER_REGIONS } from "@/lib/server-profile";
-
-type OwnerServer = {
-  id: string;
-  slug: string;
-  name: string;
-  host: string;
-  port: number;
-  version: string;
-  region: string;
-  tags: string;
-  description: string;
-  longDescription: string;
-  rules: string;
-  bannerImage: string;
-  galleryImages: string;
-  websiteUrl: string | null;
-  discordUrl: string | null;
-  supportUrl: string | null;
-  status: string;
-  trustStatus: string;
-  riskScore: number;
-  pointPool: number;
-  rewardRatePerSecond: number;
-  maxPaidPlayers: number;
-  minPlaySecondsForComment: number;
-  premiumPlan: string;
-  premiumUntil: string | null;
-  lastHeartbeatAt: string | null;
-  lastPluginVersion: string | null;
-  pluginConfigRevision: number;
-  heartbeatIntervalSeconds: number;
-  purchasePollSeconds: number;
-  afkTimeoutSeconds: number;
-  challengeEnabled: boolean;
-  challengeIntervalSeconds: number;
-  challengeAnswerWindowSeconds: number;
-  challengeRequired: boolean;
-  minimumMovementDistance: number;
-  minimumActivityEvents: number;
-  botProtectionLevel: number;
-  lastConfigSyncAt: string | null;
-  reportCount: number;
-  favoriteCount: number;
-  likeCount: number;
-  items: Array<{
-    id: string;
-    name: string;
-    description: string;
-    pricePoints: number;
-    command: string;
-    requiresOnline: boolean;
-    status: string;
-  }>;
-  supportTickets: Array<{
-    id: string;
-    requester: string;
-    subject: string;
-    body: string;
-    status: string;
-    ownerNote: string;
-  }>;
-};
-
-type PointPackage = { id: string; label: string; points: number; priceCents: number };
-type PremiumTier = { id: string; code: string; name: string; priceCents: number; durationDays: number; priority: number };
 
 const rewardRateExamples = [
   { rate: 1.5, label: "Boosted" },
@@ -144,38 +77,75 @@ function createMediaScope() {
 
 export function OwnerConsole({
   servers,
-  pointPackages,
-  premiumTiers,
-  appBaseUrl,
-  paymentMode,
-  discordUrl
+  appBaseUrl
 }: {
-  servers: OwnerServer[];
-  pointPackages: PointPackage[];
-  premiumTiers: PremiumTier[];
+  servers: OwnerServerView[];
   appBaseUrl: string;
-  paymentMode: "test" | "nowpayments";
-  discordUrl: string;
 }) {
-  const router = useRouter();
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info");
   const [busy, setBusy] = useState(false);
-  const [removedServerIds, setRemovedServerIds] = useState<Set<string>>(() => new Set());
-  const [promoCodes, setPromoCodes] = useState<Record<string, string>>({});
-  const [checkoutNotice, setCheckoutNotice] = useState(false);
+  const [serverState, setServerState] = useState(servers);
   const [serverSecrets, setServerSecrets] = useState<Record<string, string>>({});
   const [oneTimeCredential, setOneTimeCredential] = useState<{ serverId: string; pluginSecret: string } | null>(null);
-  const visibleServers = servers.filter((server) => !removedServerIds.has(server.id));
+  const refreshSequence = useRef(0);
+  const visibleServers = serverState;
   const insecureHttpOptIn = requiresInsecureHttpOptIn(appBaseUrl);
+
+  const refreshServers = useCallback(async (showError = false) => {
+    const requestId = ++refreshSequence.current;
+    try {
+      const response = await fetch("/api/owner/servers", { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(payload.servers)) {
+        if (showError) {
+          setMessageTone("error");
+          setMessage(payload.error || `Could not refresh servers (HTTP ${response.status})`);
+        }
+        return false;
+      }
+      if (requestId === refreshSequence.current) {
+        setServerState(payload.servers as OwnerServerView[]);
+      }
+      return true;
+    } catch {
+      if (showError) {
+        setMessageTone("error");
+        setMessage("Could not refresh Creator Studio. Check the connection and try again.");
+      }
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    setServerState(servers);
+  }, [servers]);
+
+  useEffect(() => {
+    const syncVisibleServers = () => {
+      if (document.visibilityState === "visible") void refreshServers();
+    };
+    void refreshServers();
+    const timer = window.setInterval(syncVisibleServers, 10_000);
+    window.addEventListener("focus", syncVisibleServers);
+    document.addEventListener("visibilitychange", syncVisibleServers);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", syncVisibleServers);
+      document.removeEventListener("visibilitychange", syncVisibleServers);
+    };
+  }, [refreshServers]);
 
   function reportInvalid(event: React.FormEvent<HTMLFormElement>) {
     const field = event.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+    setMessageTone("error");
     setMessage(field.validationMessage || "Check the highlighted field and try again.");
   }
 
   async function send(url: string, body: unknown, method = "POST") {
     setBusy(true);
     setMessage("");
+    setMessageTone("info");
     try {
       const response = await fetch(url, {
         method,
@@ -185,19 +155,19 @@ export function OwnerConsole({
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        setMessageTone("error");
         setMessage(payload.error || `Action failed (HTTP ${response.status})`);
         return null;
       }
 
-      if (payload.checkoutUrl) {
-        window.location.assign(payload.checkoutUrl);
-        return payload;
-      }
-
-      setMessage(payload.message || "Saved");
-      router.refresh();
+      const refreshed = await refreshServers();
+      setMessageTone(refreshed ? "success" : "error");
+      setMessage(refreshed
+        ? payload.message || "Saved"
+        : `${payload.message || "Saved"}, but Creator Studio could not reload the current data.`);
       return payload;
     } catch {
+      setMessageTone("error");
       setMessage("KarixMC could not reach the website service. Check the connection and try again.");
       return null;
     } finally {
@@ -214,6 +184,7 @@ export function OwnerConsole({
       const response = await fetch("/api/account/media", { method: "POST", body });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
+        setMessageTone("error");
         setMessage(payload.error || (response.status === 413
           ? "The image upload is too large for the website proxy"
           : `Could not upload ${file.name} (HTTP ${response.status})`));
@@ -221,6 +192,7 @@ export function OwnerConsole({
       }
       return String(payload.url || "");
     } catch {
+      setMessageTone("error");
       setMessage(`Could not upload ${file.name}. Check the connection and try again.`);
       return null;
     }
@@ -229,6 +201,7 @@ export function OwnerConsole({
   async function uploadGallery(files: File[], scopeId: string) {
     if (!files.length) return [];
     if (files.length > 5) {
+      setMessageTone("error");
       setMessage("A server can upload a maximum of 5 gallery images");
       return null;
     }
@@ -248,55 +221,50 @@ export function OwnerConsole({
     const form = new FormData(formElement);
     const mediaScope = createMediaScope();
     setBusy(true);
-    const bannerFile = form.get("bannerFile");
-    const bannerImage = bannerFile instanceof File && bannerFile.size > 0
-      ? await uploadMedia(bannerFile, "banner", mediaScope)
-      : "/voxel-network.png";
-    if (!bannerImage) {
-      setBusy(false);
-      return;
-    }
-    const gallery = await uploadGallery(
-      form.getAll("galleryFiles").filter((entry): entry is File => entry instanceof File && entry.size > 0),
-      mediaScope
-    );
-    if (gallery === null) {
-      setBusy(false);
-      return;
-    }
-    const result = await send("/api/owner/servers", {
-      name: form.get("name"),
-      host: form.get("host"),
-      port: form.get("port"),
-      minVersion: form.get("minVersion"),
-      maxVersion: form.get("maxVersion"),
-      region: form.get("region"),
-      tags: form.get("tags"),
-      description: form.get("description"),
-      longDescription: form.get("longDescription"),
-      rules: form.get("rules"),
-      bannerImage,
-      galleryImages: gallery.join(","),
-      websiteUrl: form.get("websiteUrl"),
-      discordUrl: form.get("discordUrl"),
-      supportUrl: form.get("supportUrl"),
-      rewardRatePerSecond: form.get("rewardRatePerSecond"),
-      maxPaidPlayers: form.get("maxPaidPlayers"),
-      minPlaySecondsForComment: form.get("minPlaySecondsForComment")
-    });
+    setMessageTone("info");
+    setMessage("Publishing your server...");
+    try {
+      const bannerFile = form.get("bannerFile");
+      const bannerImage = bannerFile instanceof File && bannerFile.size > 0
+        ? await uploadMedia(bannerFile, "banner", mediaScope)
+        : "/voxel-network.png";
+      if (!bannerImage) return;
+      const gallery = await uploadGallery(
+        form.getAll("galleryFiles").filter((entry): entry is File => entry instanceof File && entry.size > 0),
+        mediaScope
+      );
+      if (gallery === null) return;
+      const result = await send("/api/owner/servers", {
+        name: form.get("name"),
+        host: form.get("host"),
+        port: form.get("port"),
+        minVersion: form.get("minVersion"),
+        maxVersion: form.get("maxVersion"),
+        region: form.get("region"),
+        tags: form.get("tags"),
+        description: form.get("description"),
+        longDescription: form.get("longDescription"),
+        rules: form.get("rules"),
+        bannerImage,
+        galleryImages: gallery.join(","),
+        websiteUrl: form.get("websiteUrl"),
+        discordUrl: form.get("discordUrl"),
+        supportUrl: form.get("supportUrl"),
+        rewardRatePerSecond: form.get("rewardRatePerSecond"),
+        maxPaidPlayers: form.get("maxPaidPlayers"),
+        minPlaySecondsForComment: form.get("minPlaySecondsForComment")
+      });
 
-    if (result) {
-      setOneTimeCredential({ serverId: result.serverId, pluginSecret: result.pluginSecret });
-      formElement.reset();
+      if (result) {
+        setOneTimeCredential({ serverId: result.serverId, pluginSecret: result.pluginSecret });
+        formElement.reset();
+      }
+    } catch {
+      setMessageTone("error");
+      setMessage("The server could not be published. Check the fields and try again.");
+    } finally {
+      setBusy(false);
     }
-  }
-
-  function startCheckout(url: string, body: unknown) {
-    if (paymentMode === "test") {
-      setCheckoutNotice(true);
-      return;
-    }
-    void send(url, body);
   }
 
   async function updateServer(event: React.FormEvent<HTMLFormElement>, serverId: string) {
@@ -398,7 +366,8 @@ export function OwnerConsole({
 
     const removed = await send(`/api/owner/servers/${serverId}`, {}, "DELETE");
     if (removed) {
-      setRemovedServerIds((current) => new Set(current).add(serverId));
+      setServerState((current) => current.filter((server) => server.id !== serverId));
+      setMessageTone("success");
       setMessage(`${serverName} was removed. Admin audit history was preserved.`);
     }
   }
@@ -426,14 +395,15 @@ export function OwnerConsole({
 
     setServerSecrets((current) => ({ ...current, [serverId]: payload.pluginSecret }));
     setOneTimeCredential({ serverId, pluginSecret: payload.pluginSecret });
+    setMessageTone("success");
     setMessage(payload.message);
-    router.refresh();
+    await refreshServers();
   }
 
   return (
     <>
     <div className="creator-studio">
-      <p className="global-message" aria-live="polite">{message}</p>
+      <p className={`global-message message-${messageTone}`} aria-live="polite">{message}</p>
       {oneTimeCredential ? (
         <section className="panel one-time-secret" aria-label="One-time plugin credential">
           <div><ShieldCheck size={18} /><span><strong>Copy this plugin secret now</strong><small>It is shown only once. Server IDs are public identifiers; this secret is private.</small></span></div>
@@ -564,51 +534,15 @@ export function OwnerConsole({
 
             <div className="management-side-stack">
               <section className="subpanel">
-                <div className="panel-header compact-heading"><div><p className="eyebrow"><Coins size={14} /> Campaign</p><h4>Fund player rewards</h4></div></div>
-                <p className="supporting-copy">
-                  {paymentMode === "nowpayments"
-                    ? <><strong>Crypto checkout:</strong> credits are added only after NOWPayments confirms the payment.</>
-                    : <><strong>Purchases are paused during testing.</strong> Prices remain visible, but campaign credits must be granted by an admin.</>}
-                  {" "}Use <strong>BOOST10</strong> once per server for a 10% bonus.
-                </p>
-                <input
-                  className="field mono"
-                  aria-label={`Promo code for ${server.name}`}
-                  placeholder="Promo code"
-                  value={promoCodes[server.id] || ""}
-                  onChange={(event) => setPromoCodes((current) => ({ ...current, [server.id]: event.target.value.toUpperCase() }))}
-                />
-                <div className="funding-options">
-                  {pointPackages.map((pack) => (
-                    <button
-                      className="funding-option"
-                      key={pack.id}
-                      type="button"
-                      data-package-label={pack.label}
-                      aria-label={`Fund ${server.name} with ${pack.label}`}
-                      disabled={busy}
-                      onClick={() => startCheckout(`/api/owner/servers/${server.id}/topup`, { packageId: pack.id, promoCode: promoCodes[server.id] || undefined })}
-                    >
-                      <span>{pack.label}</span><strong>{points(pack.points)}</strong><small>{money(pack.priceCents)}</small>
-                    </button>
-                  ))}
-                </div>
-                <div className="premium-shop-heading">
-                  <strong>Boost listing visibility</strong>
-                  <span>Each refresh gives Diamond a 45% chance to lead, Gold 35%, and a standard server 20%. Likes and favorites still help balance servers inside each tier.</span>
-                </div>
-                <div className="premium-options premium-purchase-grid">
-                  {premiumTiers.map((tier) => (
-                    <button className={`premium-purchase-option ${tier.code.toLowerCase()}`} key={tier.id} type="button" disabled={busy} onClick={() => startCheckout(`/api/owner/servers/${server.id}/premium`, { tierId: tier.id })}>
-                      <span><Gem size={15} /> {tier.name}</span>
-                      <strong>{tier.code === "DIAMOND" ? "2x premium-lane chance" : "1x premium-lane chance"}</strong>
-                      <small>{tier.durationDays} days / {money(tier.priceCents)}</small>
-                    </button>
-                  ))}
+                <div className="panel-header compact-heading"><div><p className="eyebrow"><Coins size={14} /> Campaign</p><h4>Testing access</h4></div><span className="status-pill">Admin managed</span></div>
+                <p className="supporting-copy"><strong>No payment method is connected.</strong> KarixMC does not collect money or open a mock checkout during testing. An administrator can grant campaign credits or premium time from the admin panel.</p>
+                <div className="integrity-grid campaign-access-grid">
+                  <div><span>Campaign pool</span><strong>{points(server.pointPool)} credits</strong></div>
+                  <div><span>Visibility</span><strong>{activePremiumPlan(server.premiumPlan as "NONE" | "GOLD" | "DIAMOND", server.premiumUntil) === "NONE" ? "Standard" : server.premiumPlan}</strong></div>
                 </div>
                 {activePremiumPlan(server.premiumPlan as "NONE" | "GOLD" | "DIAMOND", server.premiumUntil) !== "NONE" ? (
                   <p className="toast-line">{server.premiumPlan} active until {shortDate(server.premiumUntil!)}</p>
-                ) : <p className="toast-line">No active premium placement</p>}
+                ) : <p className="toast-line">Contact an administrator when this server needs testing credits or premium placement.</p>}
               </section>
 
               <section className="subpanel">
@@ -698,20 +632,6 @@ export function OwnerConsole({
         </article>
       ))}
     </div>
-    {checkoutNotice ? (
-      <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCheckoutNotice(false); }}>
-        <section className="support-dialog" role="dialog" aria-modal="true" aria-labelledby="checkout-notice-title">
-          <button className="icon-button dialog-close" type="button" title="Close" aria-label="Close purchase notice" onClick={() => setCheckoutNotice(false)}><X size={17} /></button>
-          <p className="eyebrow"><LifeBuoy size={14} /> Assisted checkout</p>
-          <h2 id="checkout-notice-title">Purchases are not open yet.</h2>
-          <p>KarixMC is still in controlled testing. Contact platform support for campaign-credit or premium test access. No payment has been taken.</p>
-          <div className="inline-actions">
-            <Link className="solid-button" href="/account#support" onClick={() => setCheckoutNotice(false)}><LifeBuoy size={16} /> Contact support</Link>
-            <a className="ghost-button" href={discordUrl} target={discordUrl.startsWith("http") ? "_blank" : undefined} rel={discordUrl.startsWith("http") ? "noreferrer" : undefined}><MessageCircle size={16} /> Official Discord</a>
-          </div>
-        </section>
-      </div>
-    ) : null}
     </>
   );
 }

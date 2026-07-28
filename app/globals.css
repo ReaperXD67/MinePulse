@@ -5028,6 +5028,14 @@ summary:focus-visible {
   font-size: 13px;
 }
 
+.global-message.message-success {
+  color: var(--ok);
+}
+
+.global-message.message-error {
+  color: #ff91a3;
+}
+
 .amount-positive {
   color: var(--ok);
   font-weight: 800;
@@ -5226,6 +5234,10 @@ summary:focus-visible {
 .creator-studio {
   display: grid;
   gap: 18px;
+}
+
+.campaign-access-grid {
+  margin-top: 14px;
 }
 
 .disclosure-panel,

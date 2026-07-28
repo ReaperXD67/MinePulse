@@ -19,7 +19,7 @@ The current deployment uses temporary HTTP/IP access for beta testing. Before ac
 ## Two Separate Currencies
 
 - **Wallet points** live in a member wallet. Verified play is the main source; level rewards, the 20-hour claim, and documented admin grants also add wallet points. Wallet points can buy server store items.
-- **Campaign credits** live in a server reward pool. Test mode adds them without charging money; live mode uses a hosted, signed crypto checkout. Campaign credits can only pay verified player rewards.
+- **Campaign credits** live in a server reward pool and can only pay verified player rewards. During controlled testing, administrators grant them with an audit reason; no payment checkout is connected.
 
 Buying a store item never refills a server campaign. Promo codes such as `BOOST10` add bonus campaign credits without discounting the purchase price.
 
@@ -142,7 +142,7 @@ For local testing where Paper and the website run on the same machine, keep `api
 - New passwords require a passphrase of at least 15 characters. Login is throttled by account and connection, and public registration cannot assign privileged roles.
 - Set `APP_BASE_URL` to the public website URL testers open in the browser, for example `http://51.83.180.202` during temporary VPS testing. This prevents redirects from using an internal bind address.
 - `AUTH_COOKIE_SECURE="false"` is allowed only for temporary HTTP/IP-based VPS testing. Use HTTPS and remove it or set it to `"true"` before real public launch.
-- Crypto checkout is implemented for campaign packages and Gold/Diamond through NOWPayments. Keep `CRYPTO_PAYMENTS_MODE="test"` until the HTTPS domain, merchant API key, IPN secret, PostgreSQL migration, backups, and launch checks are complete. See [CRYPTO_PAYMENT_SETUP.md](CRYPTO_PAYMENT_SETUP.md).
+- No payment method is connected in the testing build. Campaign credits and premium time are granted by an administrator. Select and security-review a payment provider only after HTTPS, PostgreSQL, backups, refund rules, merchant verification, and signed webhook tests are ready.
 - SQLite is fine for local MVP testing. Use Postgres before handling real money or large traffic.
 
 Run `npm run test:auth` against a local production server on port 3001 to verify registration, password hashing, session revocation, logout, password rotation, and brute-force throttling.

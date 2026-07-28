@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bitcoin, Coins, ExternalLink, Heart, RadioTower, ReceiptText, Server, ShieldCheck, Timer } from "lucide-react";
+import { Coins, ExternalLink, Heart, RadioTower, ReceiptText, Server, ShieldCheck, Timer } from "lucide-react";
 import { OwnerConsole } from "@/components/OwnerConsole";
 import { ProfileForm } from "@/components/ProfileForm";
 import { MinecraftLinkPanel } from "@/components/MinecraftLinkPanel";
@@ -8,8 +8,8 @@ import { FriendPanel } from "@/components/FriendPanel";
 import { DailyRewardPanel } from "@/components/DailyRewardPanel";
 import { SecurityPanel } from "@/components/SecurityPanel";
 import { currentAuthContext, listActiveSessions } from "@/lib/auth";
-import { cryptoPaymentMode } from "@/lib/crypto-payments";
 import { minutesLabel, money, points, shortDate } from "@/lib/format";
+import { ownerServerInclude, serializeOwnerServer } from "@/lib/owner-server-view";
 import { prisma } from "@/lib/prisma";
 import { serverJoinAddress } from "@/lib/server-address";
 import { safeMediaPath } from "@/lib/server-profile";
@@ -24,7 +24,7 @@ export default async function AccountPage() {
   const user = auth.user;
   const activeAuthSessions = await listActiveSessions(user.id, auth.sessionId);
 
-  const [profile, purchases, sessions, favorites, ledger, servers, pointPackages, premiumTiers, billing, cryptoPayments, tickets, friendships] =
+  const [profile, purchases, sessions, favorites, ledger, servers, billing, tickets, friendships] =
     await Promise.all([
       prisma.user.findUnique({ where: { id: user.id } }),
       prisma.purchase.findMany({
@@ -53,26 +53,10 @@ export default async function AccountPage() {
       }),
       prisma.server.findMany({
         where: { ownerId: user.id, status: { not: "REMOVED" } },
-        include: {
-          items: { orderBy: { createdAt: "desc" } },
-          supportTickets: {
-            include: { requester: { select: { username: true } } },
-            orderBy: { updatedAt: "desc" },
-            take: 12
-          },
-          _count: { select: { reports: true, favorites: true, likes: true } }
-        },
+        include: ownerServerInclude,
         orderBy: { createdAt: "desc" }
       }),
-      prisma.pointPackage.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
-      prisma.premiumTier.findMany({ where: { active: true }, orderBy: { priority: "desc" } }),
       prisma.billingLedger.aggregate({ where: { ownerId: user.id }, _sum: { moneyCents: true, bonusPoints: true } }),
-      prisma.cryptoPayment.findMany({
-        where: { ownerId: user.id },
-        include: { server: { select: { name: true } } },
-        orderBy: { createdAt: "desc" },
-        take: 8
-      }),
       prisma.supportTicket.findMany({
         where: { requesterId: user.id },
         include: { server: true },
@@ -147,7 +131,6 @@ export default async function AccountPage() {
           <a href="#security">Security</a>
           <a href="#friends">Friends</a>
           <a href="#servers">Servers</a>
-          <a href="#crypto-payments">Payments</a>
           <a href="#support">Support</a>
         </nav>
       </section>
@@ -279,100 +262,8 @@ export default async function AccountPage() {
 
       <OwnerConsole
         appBaseUrl={process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}
-        servers={servers.map((server) => ({
-          id: server.id,
-          slug: server.slug,
-          name: server.name,
-          host: server.host,
-          port: server.port,
-          version: server.version,
-          region: server.region,
-          tags: server.tags,
-          description: server.description,
-          longDescription: server.longDescription,
-          rules: server.rules,
-          bannerImage: server.bannerImage || "/voxel-network.png",
-          galleryImages: server.galleryImages,
-          websiteUrl: server.websiteUrl,
-          discordUrl: server.discordUrl,
-          supportUrl: server.supportUrl,
-          status: server.status,
-          trustStatus: server.trustStatus,
-          riskScore: server.riskScore,
-          pointPool: server.pointPool,
-          rewardRatePerSecond: server.rewardRatePerSecond,
-          maxPaidPlayers: server.maxPaidPlayers,
-          minPlaySecondsForComment: server.minPlaySecondsForComment,
-          premiumPlan: server.premiumPlan,
-          premiumUntil: server.premiumUntil?.toISOString() ?? null,
-          lastHeartbeatAt: server.lastHeartbeatAt?.toISOString() ?? null,
-          lastPluginVersion: server.lastPluginVersion,
-          pluginConfigRevision: server.pluginConfigRevision,
-          heartbeatIntervalSeconds: server.heartbeatIntervalSeconds,
-          purchasePollSeconds: server.purchasePollSeconds,
-          afkTimeoutSeconds: server.afkTimeoutSeconds,
-          challengeEnabled: server.challengeEnabled,
-          challengeIntervalSeconds: server.challengeIntervalSeconds,
-          challengeAnswerWindowSeconds: server.challengeAnswerWindowSeconds,
-          challengeRequired: server.challengeRequired,
-          minimumMovementDistance: server.minimumMovementDistance,
-          minimumActivityEvents: server.minimumActivityEvents,
-          botProtectionLevel: server.botProtectionLevel,
-          lastConfigSyncAt: server.lastConfigSyncAt?.toISOString() ?? null,
-          reportCount: server._count.reports,
-          favoriteCount: server._count.favorites,
-          likeCount: server._count.likes,
-          items: server.items.map((item) => ({
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            pricePoints: item.pricePoints,
-            command: item.command,
-            requiresOnline: item.requiresOnline,
-            status: item.status
-          })),
-          supportTickets: server.supportTickets.map((ticket) => ({
-            id: ticket.id,
-            requester: ticket.requester.username,
-            subject: ticket.subject,
-            body: ticket.body,
-            status: ticket.status,
-            ownerNote: ticket.ownerNote
-          }))
-        }))}
-        pointPackages={pointPackages.map((pack) => ({ id: pack.id, label: pack.label, points: pack.points, priceCents: pack.priceCents }))}
-        premiumTiers={premiumTiers.map((tier) => ({ id: tier.id, code: tier.code, name: tier.name, priceCents: tier.priceCents, durationDays: tier.durationDays, priority: tier.priority }))}
-        paymentMode={cryptoPaymentMode()}
-        discordUrl={process.env.NEXT_PUBLIC_DISCORD_URL || "/plugin#support"}
+        servers={servers.map(serializeOwnerServer)}
       />
-
-      <section className="panel" id="crypto-payments">
-        <div className="panel-header compact-heading">
-          <div><p className="eyebrow"><Bitcoin size={14} /> Crypto funding</p><h2>Payment status</h2></div>
-          <span className="badge">{cryptoPaymentMode() === "nowpayments" ? "Live checkout" : "Test mode"}</span>
-        </div>
-        <div className="activity-list">
-          {cryptoPayments.map((payment) => (
-            <div className="activity-row" key={payment.id}>
-              <div>
-                <strong>{payment.packageLabel}</strong>
-                <span>{payment.server?.name || "Removed server"} / {money(payment.priceCents)} / {shortDate(payment.createdAt)}</span>
-              </div>
-              <div className="inline-actions">
-                {payment.checkoutUrl && ["PENDING", "PROCESSING"].includes(payment.status) ? (
-                  <a className="ghost-button" href={payment.checkoutUrl} target="_blank" rel="noreferrer">Resume checkout</a>
-                ) : null}
-                <span className={`status-pill status-${payment.status.toLowerCase()}`}>
-                  {payment.status === "PAID" && payment.totalPoints > 0
-                    ? `PAID +${points(payment.totalPoints)}`
-                    : payment.status}
-                </span>
-              </div>
-            </div>
-          ))}
-          {!cryptoPayments.length ? <div className="empty-state compact-empty">Crypto invoices and their confirmation status will appear here.</div> : null}
-        </div>
-      </section>
 
       <section className="panel" id="support">
         <div className="panel-header compact-heading">

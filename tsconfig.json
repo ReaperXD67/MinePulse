@@ -37,6 +37,9 @@
   ],
   "exclude": [
     "node_modules",
-    "minecraft-plugin"
+    "minecraft-plugin",
+    "output",
+    "reports",
+    "tmp"
   ]
 }

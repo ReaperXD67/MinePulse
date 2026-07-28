@@ -8,6 +8,8 @@ import { normalizeServerTags } from "@/lib/server-tags";
 import { routeError } from "@/lib/api";
 import { normalizeServerAddress } from "@/lib/server-address";
 import { protectPluginSecret } from "@/lib/plugin-credentials";
+import { ownerServerInclude, serializeOwnerServer } from "@/lib/owner-server-view";
+import { deleteManagedMedia } from "@/lib/media-storage";
 import {
   minecraftVersionSchema,
   normalizeBannerImage,
@@ -18,6 +20,24 @@ import {
 } from "@/lib/server-profile";
 
 export const runtime = "nodejs";
+
+export async function GET() {
+  try {
+    const user = await requireMember();
+    const servers = await prisma.server.findMany({
+      where: { ownerId: user.id, status: { not: "REMOVED" } },
+      include: ownerServerInclude,
+      orderBy: { createdAt: "desc" }
+    });
+
+    return NextResponse.json(
+      { servers: servers.map(serializeOwnerServer) },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  } catch (error) {
+    return routeError(error);
+  }
+}
 
 const schema = z.object({
   name: z.string().trim().min(3).max(80),
@@ -68,41 +88,75 @@ export async function POST(request: Request) {
     const bannerImage = normalizeBannerImage(input.bannerImage, user.id);
     const address = normalizeServerAddress(input.host, input.port);
     const existing = await prisma.server.findFirst({
-      where: {
-        host: address.host,
-        port: address.port,
-        status: { not: "REMOVED" }
-      },
-      select: { id: true }
+      where: { host: address.host, port: address.port }
     });
 
-    if (existing) {
+    if (existing && existing.status !== "REMOVED") {
       throw new Response("That Minecraft server is already registered. Contact support if you own it.", {
+        status: 409
+      });
+    }
+
+    if (existing && existing.ownerId !== user.id) {
+      throw new Response("That Minecraft server was registered by another account. Contact support to verify ownership.", {
+        status: 409
+      });
+    }
+
+    if (existing && existing.trustStatus !== "VERIFIED") {
+      throw new Response("This removed server cannot be restored automatically. Contact support for a trust review.", {
         status: 409
       });
     }
 
     const pluginSecret = makePluginSecret();
     const { minVersion: _minVersion, maxVersion: _maxVersion, ...serverInput } = input;
-    const server = await prisma.server.create({
-      data: {
-        ...serverInput,
-        ...address,
-        version,
-        galleryImages,
-        tags,
-        ownerId: user.id,
-        slug: await uniqueSlug(input.name),
-        pointPool: 0,
-        pluginSecret: protectPluginSecret(pluginSecret),
-        bannerImage
-      }
-    });
+    const serverData = {
+      ...serverInput,
+      ...address,
+      version,
+      galleryImages,
+      tags,
+      pluginSecret: protectPluginSecret(pluginSecret),
+      bannerImage
+    };
+    const server = existing
+      ? await prisma.server.update({
+          where: { id: existing.id },
+          data: {
+            ...serverData,
+            status: "ACTIVE",
+            lastHeartbeatAt: null,
+            lastConfigSyncAt: null,
+            lastPluginVersion: null,
+            pluginConfigRevision: { increment: 1 }
+          }
+        })
+      : await prisma.server.create({
+          data: {
+            ...serverData,
+            ownerId: user.id,
+            slug: await uniqueSlug(input.name),
+            pointPool: 0
+          }
+        });
+
+    if (existing) {
+      const oldGallery = existing.galleryImages.split(",").map((value) => value.trim()).filter(Boolean);
+      const nextGallery = new Set(galleryImages.split(",").map((value) => value.trim()).filter(Boolean));
+      await deleteManagedMedia([
+        ...(existing.bannerImage !== bannerImage ? [existing.bannerImage] : []),
+        ...oldGallery.filter((value) => !nextGallery.has(value))
+      ]);
+    }
 
     return NextResponse.json({
       serverId: server.id,
       pluginSecret,
-      message: "Server created. Copy the plugin secret now; KarixMC will not display it again."
+      restored: Boolean(existing),
+      message: existing
+        ? "Removed listing restored with a fresh plugin secret. Copy it now; KarixMC will not display it again."
+        : "Server created. Copy the plugin secret now; KarixMC will not display it again."
     });
   } catch (error) {
     return routeError(error);

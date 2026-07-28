@@ -97,16 +97,14 @@ Important:
 
 The campaign pool belongs to one server and pays players for verified seconds.
 
-1. Sign in as the server owner.
-2. Open `Account -> Your servers`.
-3. Find `Campaign -> Fund player rewards`.
-4. Optionally enter promo code `BOOST10` for 10% extra campaign credits.
-5. Select a package such as 250K, 1M, or 5M.
-6. Confirm that Campaign credits increased.
+1. Sign in as an administrator.
+2. Open `Admin -> Campaign credit grant`.
+3. Search the owner by email, username, or Minecraft name.
+4. Select one of that account's servers.
+5. Enter the test credit amount and an audit reason.
+6. Submit the grant and confirm that the server's campaign pool updates.
 
-With `CRYPTO_PAYMENTS_MODE="test"`, package buttons simulate a successful purchase and credit the pool immediately without charging money. In `nowpayments` mode, the same buttons open hosted crypto checkout and credits appear only after a signed payment confirmation. Keep test mode enabled for the current Minecraft acceptance test; see `CRYPTO_PAYMENT_SETUP.md` before enabling real money.
-
-Administrators can also use `Admin -> Campaign credit grant` to search an account by email, username, or Minecraft name, select a server owned by that account, and add test/event/support campaign credits with an audit reason. This changes only the selected server pool, never the member's spendable wallet.
+No payment method or simulated checkout is connected during testing. The admin grant changes only the selected server pool, never the member's spendable wallet.
 
 When the campaign pool reaches zero:
 

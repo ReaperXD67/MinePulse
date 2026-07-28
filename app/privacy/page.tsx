@@ -93,7 +93,7 @@ export default function PrivacyPage() {
               </div>
               <div>
                 <h3>Rewards and purchases</h3>
-                <p>Wallet and campaign balances, point ledger, level and claim rewards, store purchases, delivery status, promo use, payment amount and status, and payment-provider invoice identifiers.</p>
+                <p>Wallet and campaign balances, point ledger, level and claim rewards, store purchases, delivery status, and administrator-issued campaign or premium grants.</p>
               </div>
               <div>
                 <h3>Servers and support</h3>
@@ -101,8 +101,8 @@ export default function PrivacyPage() {
               </div>
             </div>
             <p className="policy-note">
-              We receive most data directly from you, from the KarixMC plugin installed by participating server owners,
-              or from a payment provider when an owner starts a purchase. Please do not place sensitive personal information in comments or support tickets.
+              We receive most data directly from you or from the KarixMC plugin installed by participating server owners.
+              Please do not place sensitive personal information in comments or support tickets.
             </p>
             <p className="policy-note">
               Plugin activity sharing starts only after a player runs the short-lived link command. Use <code>/karixmc privacy</code> to review the status and <code>/karixmc forget</code> to stop future activity sharing on that server. The server may still process ordinary gameplay under its own policy.
@@ -114,9 +114,9 @@ export default function PrivacyPage() {
             <div className="legal-basis-list">
               <div><strong>Provide the service</strong><span>Contract</span><p>Create accounts, link Minecraft identities, award and spend points, deliver server items, manage friends, and operate support.</p></div>
               <div><strong>Verify linked play</strong><span>Consent and contract</span><p>After an in-game link command, receive limited activity counters needed to verify play and calculate rewards. Players can stop future sharing from the plugin.</p></div>
-              <div><strong>Keep rewards fair</strong><span>Legitimate interests</span><p>Detect AFK sessions, replayed heartbeats, bots, plugin tampering, fake activity, abuse, and payment or reward fraud.</p></div>
+              <div><strong>Keep rewards fair</strong><span>Legitimate interests</span><p>Detect AFK sessions, replayed heartbeats, bots, plugin tampering, fake activity, abuse, and reward fraud.</p></div>
               <div><strong>Operate the marketplace</strong><span>Contract and legitimate interests</span><p>Publish server listings, calculate live status, rank premium listings, show average activity, process reports, and enforce network rules.</p></div>
-              <div><strong>Payments and records</strong><span>Contract and legal obligation</span><p>Open checkout, reconcile payment status, credit campaigns or premium time, issue corrections, resolve disputes, and keep required financial records.</p></div>
+              <div><strong>Administrative grants</strong><span>Contract and legitimate interests</span><p>Credit testing campaigns or premium time, record the administrator and reason, issue corrections, and resolve disputes.</p></div>
             </div>
             <p>We do not sell personal data and we do not use it for third-party behavioral advertising.</p>
           </section>
@@ -138,7 +138,6 @@ export default function PrivacyPage() {
             <div className="policy-heading"><Network size={20} /><span>05</span><h2>When data is shared</h2></div>
             <ul>
               <li><strong>Participating Minecraft servers:</strong> receive the Minecraft identity and purchase-delivery information needed to verify play and deliver a selected reward.</li>
-              <li><strong>Payment providers:</strong> receive purchase information needed to create and confirm checkout. If NOWPayments is enabled, its own privacy terms also apply. KarixMC does not store private crypto wallet keys.</li>
               <li><strong>Infrastructure providers:</strong> may process data to host the website, database, backups, email, monitoring, and security services under appropriate contractual controls.</li>
               <li><strong>Legal and safety disclosures:</strong> may occur when required by law or reasonably necessary to protect users, the service, or others from fraud, abuse, or security threats.</li>
               <li><strong>Business changes:</strong> data may transfer as part of a merger, financing, acquisition, or sale, subject to this policy and applicable law.</li>
@@ -154,8 +153,8 @@ export default function PrivacyPage() {
             <p>
               Account and profile data is kept while the account is active. Gameplay, reward, integrity, report, and support
               records are kept only as long as needed to operate balances, investigate abuse, resolve disputes, and maintain
-              network reliability. Payment and ledger records may be retained longer where tax, accounting, fraud-prevention,
-              or other legal rules require it. Backup copies are removed through the normal backup rotation.
+              network reliability. Reward and audit ledgers may be retained longer where fraud-prevention, dispute, or other legal
+              rules require it. Backup copies are removed through the normal backup rotation.
             </p>
             <p>
               We use password hashing, HTTP-only session cookies, encrypted plugin secrets, signed plugin requests and responses,

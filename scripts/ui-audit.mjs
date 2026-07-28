@@ -113,15 +113,19 @@ if (!loginResponse.ok()) {
   if (!(await ownerPage.getByText("Current device", { exact: true }).count())) {
     errors.push("owner account: current authenticated device is not identified");
   }
-  if (!(await ownerPage.getByText("Each refresh gives Diamond a 45% chance to lead, Gold 35%, and a standard server 20%. Likes and favorites still help balance servers inside each tier.", { exact: true }).count())) {
-    errors.push("owner account: premium purchase benefits are not explained");
+  if (!(await ownerPage.getByText("No payment method is connected.", { exact: true }).count())) {
+    errors.push("owner account: admin-managed testing access is not explained");
+  }
+  if (await ownerPage.getByText("Crypto funding", { exact: true }).count()) {
+    errors.push("owner account: removed crypto funding UI is still visible");
+  }
+  if (await ownerPage.getByText("Payment status", { exact: true }).count()) {
+    errors.push("owner account: removed payment status UI is still visible");
   }
   const rewardInputs = ownerPage.locator('input[name="rewardRatePerSecond"]');
-  for (let index = 0; index < await rewardInputs.count(); index += 1) {
-    if (await rewardInputs.nth(index).getAttribute("max") !== "3") {
-      errors.push("owner account: reward rate input is not capped at 3/s");
-      break;
-    }
+  const rewardValues = await rewardInputs.evaluateAll((inputs) => Array.from(new Set(inputs.map((input) => input.value))).sort());
+  if (rewardValues.join("|") !== "1|1.5|2|2.5|3") {
+    errors.push(`owner account: reward choices are invalid (${rewardValues.join("|")})`);
   }
   const rewardGuide = ownerPage.locator(".reward-rate-guide");
   const expectedRewardTiers = [
@@ -134,18 +138,6 @@ if (!loginResponse.ok()) {
     const swatch = rewardGuide.locator(`.${className}`, { hasText: rate });
     if ((await swatch.count()) !== 1) {
       errors.push(`owner account: ${rate} reward appearance preview is missing`);
-    }
-  }
-  if (await ownerPage.getByText("Purchases are paused during testing.", { exact: false }).count()) {
-    const fundingOption = ownerPage.locator(".funding-option").first();
-    if (await fundingOption.isVisible()) {
-      await fundingOption.click();
-      const dialog = ownerPage.getByRole("dialog", { name: "Purchases are not open yet." });
-      await dialog.waitFor({ state: "visible" });
-      if (!(await dialog.getByRole("link", { name: "Contact support" }).isVisible())) {
-        errors.push("owner account: test checkout does not offer support");
-      }
-      await dialog.getByRole("button", { name: "Close purchase notice" }).click();
     }
   }
   const linkButton = ownerPage.getByRole("button", { name: /Create link code|Relink Minecraft/ }).first();
