@@ -4,6 +4,18 @@ KarixMC is a production-style MVP for a Minecraft server marketplace where verif
 
 Members earn points on funded servers, then spend those earned points on ranks, crates, cosmetics, or any server-configured item. The same account can also publish servers, buy campaign credits with real money, choose reward rates per second, cap paid players, and buy Gold or Diamond placement. Admins control pricing, bonus promo codes, reports, punishments, campaign pools, premium state, server visibility, and platform statistics.
 
+## Live VPS Deployment (Controlled Beta)
+
+The hosted web platform is available for controlled testing:
+
+- **Live website:** [http://51.83.180.202:3000](http://51.83.180.202:3000)
+- **Create an account:** [http://51.83.180.202:3000/signup](http://51.83.180.202:3000/signup)
+- **Plugin download and setup:** [http://51.83.180.202:3000/plugin](http://51.83.180.202:3000/plugin)
+
+This VPS URL is the KarixMC website and plugin API, not automatically the Minecraft join address. A Paper server can run on another host; its `KarixMCBridge` config should use `api-base-url: "http://51.83.180.202:3000"`, while players join the hostname and port configured for that Minecraft server.
+
+The current deployment uses temporary HTTP/IP access for beta testing. Before accepting public users or real payments, move to a domain with HTTPS, production secrets, PostgreSQL, backups, and the launch checks documented below.
+
 ## Two Separate Currencies
 
 - **Wallet points** live in a member wallet. Verified play is the main source; level rewards, the 20-hour claim, and documented admin grants also add wallet points. Wallet points can buy server store items.
