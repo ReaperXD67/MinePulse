@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
+import { deleteManagedMedia } from "@/lib/media-storage";
 import { safeMediaPath } from "@/lib/server-profile";
 
 export const runtime = "nodejs";
@@ -18,6 +19,7 @@ export async function PATCH(request: Request) {
   try {
     const user = await requireMember();
     const input = schema.parse(await request.json());
+    const previous = await prisma.user.findUnique({ where: { id: user.id }, select: { avatarUrl: true } });
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -27,6 +29,9 @@ export async function PATCH(request: Request) {
         avatarUrl: input.avatarUrl || null
       }
     });
+    if (previous?.avatarUrl && previous.avatarUrl !== input.avatarUrl) {
+      await deleteManagedMedia([previous.avatarUrl]);
+    }
 
     return NextResponse.json({ message: "Profile updated" });
   } catch (error) {

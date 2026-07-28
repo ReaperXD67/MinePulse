@@ -291,6 +291,7 @@ export default async function AccountPage() {
           description: server.description,
           longDescription: server.longDescription,
           rules: server.rules,
+          bannerImage: server.bannerImage || "/voxel-network.png",
           galleryImages: server.galleryImages,
           websiteUrl: server.websiteUrl,
           discordUrl: server.discordUrl,

@@ -1,61 +1,79 @@
 import crypto from "node:crypto";
 import path from "node:path";
-import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
+import { z } from "zod";
 import { requireMember } from "@/lib/auth";
 import { mediaUploadRateLimitStatus, recordMediaUploadAttempt } from "@/lib/auth-rate-limit";
 import { routeError } from "@/lib/api";
+import { prisma } from "@/lib/prisma";
+import {
+  MAX_ACCOUNT_MEDIA_BYTES,
+  accountMediaUsage,
+  managedMediaUrl,
+  mediaDirectory,
+  mediaDirectoryUsage
+} from "@/lib/media-storage";
 import { readRequestBytes } from "@/lib/request-body";
 
 export const runtime = "nodejs";
 
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-const MAX_IMAGE_DIMENSION = 4096;
-const MAX_ACCOUNT_MEDIA_BYTES = 100 * 1024 * 1024;
-const MAX_ACCOUNT_MEDIA_FILES = 100;
+const MAX_INPUT_BYTES = 4 * 1024 * 1024;
+const MAX_INPUT_DIMENSION = 4096;
+const scopeSchema = z.string().trim().regex(/^[a-z0-9-]{20,80}$/i, "Invalid media upload scope");
+const kindSchema = z.enum(["avatar", "banner", "gallery"]);
+const limits = {
+  avatar: { bytes: 256 * 1024, width: 512, height: 512, count: 1 },
+  banner: { bytes: 750 * 1024, width: 1920, height: 1080, count: 1 },
+  gallery: { bytes: 500 * 1024, width: 1600, height: 1200, count: 5 }
+} as const;
 
-async function accountMediaUsage(directory: string) {
-  try {
-    const entries = await readdir(directory, { withFileTypes: true });
-    const files = entries.filter((entry) => entry.isFile());
-    const sizes = await Promise.all(files.map((entry) => stat(path.join(directory, entry.name))));
-    return { files: files.length, bytes: sizes.reduce((total, file) => total + file.size, 0) };
-  } catch (error) {
-    if (typeof error === "object" && error && "code" in error && error.code === "ENOENT") {
-      return { files: 0, bytes: 0 };
-    }
-    throw error;
+async function optimizeImage(bytes: Buffer, kind: keyof typeof limits) {
+  const metadata = await sharp(bytes, {
+    failOn: "error",
+    limitInputPixels: MAX_INPUT_DIMENSION * MAX_INPUT_DIMENSION,
+    sequentialRead: true
+  }).metadata().catch(() => null);
+
+  if (!metadata?.width || !metadata.height || !["png", "jpeg"].includes(metadata.format || "") || (metadata.pages || 1) !== 1) {
+    throw new Response("Only valid single-frame PNG and JPEG images are accepted", { status: 400 });
   }
+  if (metadata.width > MAX_INPUT_DIMENSION || metadata.height > MAX_INPUT_DIMENSION) {
+    throw new Response("Image dimensions must not exceed 4096 by 4096 pixels", { status: 400 });
+  }
+
+  const limit = limits[kind];
+  let smallest: Buffer | null = null;
+  for (const scale of [1, 0.85, 0.7, 0.55]) {
+    const width = Math.max(320, Math.round(limit.width * scale));
+    const height = Math.max(320, Math.round(limit.height * scale));
+    for (const quality of [84, 76, 68, 60, 52, 44]) {
+      const output = await sharp(bytes, {
+        failOn: "error",
+        limitInputPixels: MAX_INPUT_DIMENSION * MAX_INPUT_DIMENSION,
+        sequentialRead: true
+      })
+        .rotate()
+        .resize({ width, height, fit: "inside", withoutEnlargement: true })
+        .webp({ quality, effort: 6, smartSubsample: true })
+        .toBuffer();
+      if (!smallest || output.length < smallest.length) smallest = output;
+      if (output.length <= limit.bytes) return output;
+    }
+  }
+
+  throw new Response(
+    `This image cannot be compressed below ${Math.round(limit.bytes / 1024)} KB without unacceptable quality loss`,
+    { status: 400 }
+  );
 }
 
-async function sanitizeImage(bytes: Buffer) {
-  try {
-    const decoder = sharp(bytes, {
-      failOn: "error",
-      limitInputPixels: MAX_IMAGE_DIMENSION * MAX_IMAGE_DIMENSION,
-      sequentialRead: true
-    });
-    const metadata = await decoder.metadata();
-    if (!metadata.width || !metadata.height || !["png", "jpeg"].includes(metadata.format || "") || (metadata.pages || 1) !== 1) {
-      throw new Response("Only valid PNG and JPEG images are accepted", { status: 400 });
-    }
-    if (metadata.width > MAX_IMAGE_DIMENSION || metadata.height > MAX_IMAGE_DIMENSION) {
-      throw new Response("Image dimensions must not exceed 4096 by 4096 pixels", { status: 400 });
-    }
-
-    const extension = metadata.format === "png" ? "png" : "jpg";
-    const sanitized = extension === "png"
-      ? await decoder.rotate().resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true }).png({ compressionLevel: 9 }).toBuffer()
-      : await decoder.rotate().resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 88, mozjpeg: true }).toBuffer();
-    if (sanitized.length > MAX_IMAGE_BYTES) {
-      throw new Response("The sanitized image is too large; reduce its dimensions or complexity", { status: 400 });
-    }
-    return { extension, sanitized };
-  } catch (error) {
-    if (error instanceof Response) throw error;
-    throw new Response("The image could not be decoded safely", { status: 400 });
-  }
+async function removeOtherFiles(directory: string, keepFilename: string) {
+  const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+  await Promise.all(entries
+    .filter((entry) => entry.isFile() && entry.name !== keepFilename)
+    .map((entry) => rm(path.join(directory, entry.name), { force: true })));
 }
 
 export async function POST(request: Request) {
@@ -74,27 +92,40 @@ export async function POST(request: Request) {
       throw new Response("Image upload must use multipart form data", { status: 415 });
     }
 
-    const body = await readRequestBytes(request, MAX_IMAGE_BYTES + 64 * 1024);
+    const body = await readRequestBytes(request, MAX_INPUT_BYTES + 64 * 1024);
     const form = await new Response(body, { headers: { "Content-Type": contentType } }).formData();
     const file = form.get("image");
-    if (!(file instanceof File) || file.size === 0 || file.size > MAX_IMAGE_BYTES) {
+    const kind = kindSchema.parse(form.get("kind") || "avatar");
+    const scopeId = kind === "avatar" ? "profile" : scopeSchema.parse(form.get("scopeId"));
+    if (!(file instanceof File) || file.size === 0 || file.size > MAX_INPUT_BYTES) {
       throw new Response("Choose a PNG or JPEG image no larger than 4 MB", { status: 400 });
     }
 
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const { extension, sanitized } = await sanitizeImage(bytes);
-    const filename = `${crypto.randomUUID()}.${extension}`;
-    const directory = path.join(process.cwd(), "public", "uploads", user.id);
-    const usage = await accountMediaUsage(directory);
-    if (usage.files >= MAX_ACCOUNT_MEDIA_FILES || usage.bytes + sanitized.length > MAX_ACCOUNT_MEDIA_BYTES) {
-      throw new Response("Account media storage limit reached. Remove unused images before uploading more.", { status: 413 });
+    const optimized = await optimizeImage(Buffer.from(await file.arrayBuffer()), kind);
+    const directory = mediaDirectory(user.id, scopeId, kind);
+    if (kind === "avatar") {
+      const profile = await prisma.user.findUnique({ where: { id: user.id }, select: { avatarUrl: true } });
+      await removeOtherFiles(directory, path.basename(profile?.avatarUrl || ""));
     }
-    await mkdir(directory, { recursive: true });
-    await writeFile(path.join(directory, filename), sanitized, { flag: "wx", mode: 0o640 });
+    const scopeUsage = await mediaDirectoryUsage(directory);
+    if (kind === "gallery" && scopeUsage.files >= limits.gallery.count) {
+      throw new Response("A server can store a maximum of 5 gallery images", { status: 413 });
+    }
+    const accountUsage = await accountMediaUsage(user.id);
+    if (accountUsage.bytes + optimized.length > MAX_ACCOUNT_MEDIA_BYTES) {
+      throw new Response("Account media storage limit reached. Remove unused server images before uploading more.", { status: 413 });
+    }
 
-    return NextResponse.json({ url: `/uploads/${user.id}/${filename}` }, {
-      headers: { "Cache-Control": "no-store" }
-    });
+    const filename = `${crypto.randomUUID()}.webp`;
+    await mkdir(directory, { recursive: true });
+    await writeFile(path.join(directory, filename), optimized, { flag: "wx", mode: 0o640 });
+    if (kind === "banner") await removeOtherFiles(directory, filename);
+
+    return NextResponse.json({
+      url: managedMediaUrl(user.id, scopeId, kind, filename),
+      storedBytes: optimized.length,
+      maximumStoredBytes: limits[kind].bytes
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return routeError(error);
   }

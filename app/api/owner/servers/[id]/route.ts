@@ -6,9 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { MAX_REWARD_RATE_PER_SECOND } from "@/lib/reward-rate";
 import { normalizeServerTags } from "@/lib/server-tags";
 import { routeError } from "@/lib/api";
+import { deleteManagedMedia } from "@/lib/media-storage";
 import { normalizeServerAddress } from "@/lib/server-address";
 import {
   minecraftVersionSchema,
+  normalizeBannerImage,
   normalizeGalleryImages,
   normalizeVersionRange,
   safeHttpsUrlSchema,
@@ -30,6 +32,7 @@ const schema = z.object({
   longDescription: z.string().trim().max(3000).optional(),
   rules: z.string().trim().max(2000).optional(),
   galleryImages: z.string().trim().max(2000).optional(),
+  bannerImage: z.string().trim().max(500).optional(),
   websiteUrl: safeHttpsUrlSchema.optional(),
   discordUrl: safeHttpsUrlSchema.optional(),
   supportUrl: safeHttpsUrlSchema.optional(),
@@ -81,14 +84,17 @@ async function authorize(serverId: string) {
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
-    const { server } = await authorize(id);
+    const { user, server } = await authorize(id);
     const input = schema.parse(await request.json());
     const version = input.version || (input.minVersion && input.maxVersion
       ? normalizeVersionRange(input.minVersion, input.maxVersion)
       : server.version);
     const galleryImages = input.galleryImages === undefined
       ? server.galleryImages
-      : normalizeGalleryImages(input.galleryImages);
+      : normalizeGalleryImages(input.galleryImages, user.id);
+    const bannerImage = input.bannerImage === undefined
+      ? server.bannerImage
+      : normalizeBannerImage(input.bannerImage, user.id);
     const tags = typeof input.tags === "string" ? normalizeServerTags(input.tags) : undefined;
     const address = normalizeServerAddress(input.host ?? server.host, input.port ?? server.port);
     const existing = await prisma.server.findFirst({
@@ -116,10 +122,18 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         ...address,
         version,
         galleryImages,
+        bannerImage,
         ...(tags ? { tags } : {}),
         ...(policyChanged ? { pluginConfigRevision: { increment: 1 } } : {})
       }
     });
+
+    const oldGallery = server.galleryImages.split(",").map((value) => value.trim()).filter(Boolean);
+    const nextGallery = new Set(galleryImages.split(",").map((value) => value.trim()).filter(Boolean));
+    await deleteManagedMedia([
+      ...(server.bannerImage !== bannerImage ? [server.bannerImage] : []),
+      ...oldGallery.filter((value) => !nextGallery.has(value))
+    ]);
 
     return NextResponse.json({ serverId: updated.id, message: "Server updated" });
   } catch (error) {

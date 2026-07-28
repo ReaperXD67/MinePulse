@@ -26,6 +26,19 @@ async function body(response: APIResponse) {
   return response.json().catch(() => ({}));
 }
 
+async function removeAuditUpload(file: string) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await rm(file, { force: true });
+      return;
+    } catch (error) {
+      if (typeof error !== "object" || !error || !("code" in error) || error.code !== "EBUSY") throw error;
+      if (attempt === 4) return;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
+}
+
 async function register(context: APIRequestContext, email: string, username: string) {
   const response = await context.post("/api/auth/register", { data: { email, username, password } });
   const payload = await body(response);
@@ -163,12 +176,12 @@ async function main() {
     assert(remoteAvatar.status() === 400, `Remote avatar returned ${remoteAvatar.status()}`);
 
     const badUpload = await owner.post("/api/account/media", {
-      multipart: { image: { name: "not-image.jpg", mimeType: "image/jpeg", buffer: Buffer.from("not an image") } }
+      multipart: { kind: "avatar", image: { name: "not-image.jpg", mimeType: "image/jpeg", buffer: Buffer.from("not an image") } }
     });
     assert(badUpload.status() === 400, `Malformed image upload returned ${badUpload.status()}`);
 
     const oversizedUpload = await owner.post("/api/account/media", {
-      multipart: { image: { name: "oversized.jpg", mimeType: "image/jpeg", buffer: Buffer.alloc(5 * 1024 * 1024) } }
+      multipart: { kind: "avatar", image: { name: "oversized.jpg", mimeType: "image/jpeg", buffer: Buffer.alloc(5 * 1024 * 1024) } }
     });
     assert(oversizedUpload.status() === 413, `Oversized image upload returned ${oversizedUpload.status()}`);
 
@@ -176,13 +189,17 @@ async function main() {
       create: { width: 8, height: 8, channels: 4, background: { r: 72, g: 227, b: 255, alpha: 1 } }
     }).withExif({ IFD0: { Copyright: "must be removed" } }).png().toBuffer();
     const validUpload = await owner.post("/api/account/media", {
-      multipart: { image: { name: "avatar.png", mimeType: "image/png", buffer: sourceImage } }
+      multipart: { kind: "avatar", image: { name: "avatar.png", mimeType: "image/png", buffer: sourceImage } }
     });
     const validUploadBody = await body(validUpload);
-    assert(validUpload.ok() && /^\/uploads\/[a-z0-9_-]+\/[a-f0-9-]{36}\.png$/i.test(validUploadBody.url || ""), `Valid image upload failed (${validUpload.status()})`);
-    uploadedPath = path.join(process.cwd(), "public", validUploadBody.url.replace(/^\//, ""));
+    assert(validUpload.ok() && /^\/media\/[a-z0-9_-]+\/profile\/avatar\/[a-f0-9-]{36}\.webp$/i.test(validUploadBody.url || ""), `Valid image upload failed (${validUpload.status()}): ${JSON.stringify(validUploadBody)}`);
+    uploadedPath = path.join(
+      process.env.MEDIA_ROOT || path.join(process.cwd(), "storage", "media"),
+      validUploadBody.url.replace(/^\/media\//, "")
+    );
+    assert(uploadedPath && validUploadBody.storedBytes <= 256 * 1024, "Avatar was not compressed to the 256 KB storage limit");
     const sanitizedMetadata = await sharp(uploadedPath).metadata();
-    assert(sanitizedMetadata.format === "png" && !sanitizedMetadata.exif && !sanitizedMetadata.icc, "Uploaded image metadata was not stripped");
+    assert(sanitizedMetadata.format === "webp" && !sanitizedMetadata.exif && !sanitizedMetadata.icc, "Uploaded image metadata was not stripped");
 
     const initialPlugin = await pluginConfig(firstSecret);
     assert(initialPlugin.ok && initialPlugin.headers.get("x-karixmc-signature"), "Valid plugin secret did not authenticate");
@@ -230,7 +247,7 @@ async function run() {
   try {
     await main();
   } finally {
-    if (uploadedPath) await rm(uploadedPath, { force: true });
+    if (uploadedPath) await removeAuditUpload(uploadedPath);
     if (serverId) await prisma.server.deleteMany({ where: { id: serverId } });
     await prisma.user.deleteMany({ where: { email: { in: [ownerEmail, secondEmail] } } });
     await prisma.$disconnect();

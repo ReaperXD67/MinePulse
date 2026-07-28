@@ -10,6 +10,7 @@ import { normalizeServerAddress } from "@/lib/server-address";
 import { protectPluginSecret } from "@/lib/plugin-credentials";
 import {
   minecraftVersionSchema,
+  normalizeBannerImage,
   normalizeGalleryImages,
   normalizeVersionRange,
   safeHttpsUrlSchema,
@@ -31,6 +32,7 @@ const schema = z.object({
   longDescription: z.string().trim().max(3000).default(""),
   rules: z.string().trim().max(2000).default(""),
   galleryImages: z.string().trim().max(2000).default(""),
+  bannerImage: z.string().trim().max(500).default("/voxel-network.png"),
   websiteUrl: safeHttpsUrlSchema.optional(),
   discordUrl: safeHttpsUrlSchema.optional(),
   supportUrl: safeHttpsUrlSchema.optional(),
@@ -62,7 +64,8 @@ export async function POST(request: Request) {
     const input = schema.parse(await request.json());
     const version = input.version || normalizeVersionRange(input.minVersion || "", input.maxVersion || "");
     const tags = normalizeServerTags(input.tags);
-    const galleryImages = normalizeGalleryImages(input.galleryImages);
+    const galleryImages = normalizeGalleryImages(input.galleryImages, user.id);
+    const bannerImage = normalizeBannerImage(input.bannerImage, user.id);
     const address = normalizeServerAddress(input.host, input.port);
     const existing = await prisma.server.findFirst({
       where: {
@@ -92,7 +95,7 @@ export async function POST(request: Request) {
         slug: await uniqueSlug(input.name),
         pointPool: 0,
         pluginSecret: protectPluginSecret(pluginSecret),
-        bannerImage: "/voxel-network.png"
+        bannerImage
       }
     });
 

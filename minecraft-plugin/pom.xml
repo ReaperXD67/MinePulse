@@ -5,7 +5,7 @@
 
   <groupId>com.minepulse</groupId>
   <artifactId>karixmc-bridge</artifactId>
-  <version>0.6.0</version>
+  <version>0.6.1</version>
   <packaging>jar</packaging>
 
   <name>KarixMC Bridge</name>

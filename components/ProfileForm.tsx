@@ -32,11 +32,19 @@ export function ProfileForm({
     if (avatar instanceof File && avatar.size > 0) {
       const upload = new FormData();
       upload.set("image", avatar);
-      const uploadResponse = await fetch("/api/account/media", { method: "POST", body: upload });
+      upload.set("kind", "avatar");
+      let uploadResponse: Response;
+      try {
+        uploadResponse = await fetch("/api/account/media", { method: "POST", body: upload });
+      } catch {
+        setBusy(false);
+        setMessage("Avatar upload could not reach the website service");
+        return;
+      }
       const uploadPayload = await uploadResponse.json().catch(() => ({}));
       if (!uploadResponse.ok) {
         setBusy(false);
-        setMessage(uploadPayload.error || "Avatar upload failed");
+        setMessage(uploadPayload.error || `Avatar upload failed (HTTP ${uploadResponse.status})`);
         return;
       }
       nextAvatarUrl = uploadPayload.url;
@@ -81,7 +89,7 @@ export function ProfileForm({
       <div className="form-row">
         <label htmlFor="profile-avatar"><ImageUp size={14} /> Avatar image</label>
         <input className="field file-field" id="profile-avatar" name="avatar" type="file" accept="image/png,image/jpeg" />
-        <small>PNG or JPEG, up to 4 MB and 4096 x 4096. Remote URLs are blocked to prevent tracking and unsafe content.</small>
+        <small>PNG or JPEG up to 4 MB. KarixMC strips metadata and stores an optimized WebP no larger than 256 KB.</small>
         {avatarUrl ? <label className="toggle-row"><input name="removeAvatar" type="checkbox" /> Remove current avatar</label> : null}
       </div>
       <div className="form-row">

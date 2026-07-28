@@ -11,6 +11,7 @@ import {
   Download,
   ExternalLink,
   Gem,
+  ImageUp,
   LifeBuoy,
   MessageCircle,
   PackagePlus,
@@ -43,6 +44,7 @@ type OwnerServer = {
   description: string;
   longDescription: string;
   rules: string;
+  bannerImage: string;
   galleryImages: string;
   websiteUrl: string | null;
   discordUrl: string | null;
@@ -130,30 +132,57 @@ export function OwnerConsole({
   async function send(url: string, body: unknown, method = "POST") {
     setBusy(true);
     setMessage("");
-    const response = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    const payload = await response.json().catch(() => ({}));
-    setBusy(false);
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const payload = await response.json().catch(() => ({}));
 
-    if (!response.ok) {
-      setMessage(payload.error || "Action failed");
-      return null;
-    }
+      if (!response.ok) {
+        setMessage(payload.error || `Action failed (HTTP ${response.status})`);
+        return null;
+      }
 
-    if (payload.checkoutUrl) {
-      window.location.assign(payload.checkoutUrl);
+      if (payload.checkoutUrl) {
+        window.location.assign(payload.checkoutUrl);
+        return payload;
+      }
+
+      setMessage(payload.message || "Saved");
+      router.refresh();
       return payload;
+    } catch {
+      setMessage("KarixMC could not reach the website service. Check the connection and try again.");
+      return null;
+    } finally {
+      setBusy(false);
     }
-
-    setMessage(payload.message || "Saved");
-    router.refresh();
-    return payload;
   }
 
-  async function uploadGallery(files: File[]) {
+  async function uploadMedia(file: File, kind: "banner" | "gallery", scopeId: string) {
+    const body = new FormData();
+    body.set("image", file);
+    body.set("kind", kind);
+    body.set("scopeId", scopeId);
+    try {
+      const response = await fetch("/api/account/media", { method: "POST", body });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(payload.error || (response.status === 413
+          ? "The image upload is too large for the website proxy"
+          : `Could not upload ${file.name} (HTTP ${response.status})`));
+        return null;
+      }
+      return String(payload.url || "");
+    } catch {
+      setMessage(`Could not upload ${file.name}. Check the connection and try again.`);
+      return null;
+    }
+  }
+
+  async function uploadGallery(files: File[], scopeId: string) {
     if (!files.length) return [];
     if (files.length > 5) {
       setMessage("A server can upload a maximum of 5 gallery images");
@@ -162,15 +191,9 @@ export function OwnerConsole({
 
     const urls: string[] = [];
     for (const file of files) {
-      const body = new FormData();
-      body.set("image", file);
-      const response = await fetch("/api/account/media", { method: "POST", body });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setMessage(payload.error || `Could not upload ${file.name}`);
-        return null;
-      }
-      urls.push(payload.url);
+      const url = await uploadMedia(file, "gallery", scopeId);
+      if (!url) return null;
+      urls.push(url);
     }
     return urls;
   }
@@ -179,8 +202,20 @@ export function OwnerConsole({
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const mediaScope = crypto.randomUUID();
     setBusy(true);
-    const gallery = await uploadGallery(form.getAll("galleryFiles").filter((entry): entry is File => entry instanceof File && entry.size > 0));
+    const bannerFile = form.get("bannerFile");
+    const bannerImage = bannerFile instanceof File && bannerFile.size > 0
+      ? await uploadMedia(bannerFile, "banner", mediaScope)
+      : "/voxel-network.png";
+    if (!bannerImage) {
+      setBusy(false);
+      return;
+    }
+    const gallery = await uploadGallery(
+      form.getAll("galleryFiles").filter((entry): entry is File => entry instanceof File && entry.size > 0),
+      mediaScope
+    );
     if (gallery === null) {
       setBusy(false);
       return;
@@ -196,6 +231,7 @@ export function OwnerConsole({
       description: form.get("description"),
       longDescription: form.get("longDescription"),
       rules: form.get("rules"),
+      bannerImage,
       galleryImages: gallery.join(","),
       websiteUrl: form.get("websiteUrl"),
       discordUrl: form.get("discordUrl"),
@@ -222,9 +258,10 @@ export function OwnerConsole({
   async function updateServer(event: React.FormEvent<HTMLFormElement>, serverId: string) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const mediaScope = crypto.randomUUID();
     setBusy(true);
     const files = form.getAll("galleryFiles").filter((entry): entry is File => entry instanceof File && entry.size > 0);
-    const uploaded = await uploadGallery(files);
+    const uploaded = await uploadGallery(files, mediaScope);
     if (uploaded === null) {
       setBusy(false);
       return;
@@ -234,6 +271,16 @@ export function OwnerConsole({
       : uploaded.length
         ? uploaded.join(",")
         : String(form.get("existingGalleryImages") || "");
+    const bannerFile = form.get("bannerFile");
+    const bannerImage = form.get("clearBanner") === "on"
+      ? "/voxel-network.png"
+      : bannerFile instanceof File && bannerFile.size > 0
+        ? await uploadMedia(bannerFile, "banner", mediaScope)
+        : String(form.get("existingBannerImage") || "/voxel-network.png");
+    if (!bannerImage) {
+      setBusy(false);
+      return;
+    }
     await send(`/api/owner/servers/${serverId}`, {
       name: form.get("name"),
       host: form.get("host"),
@@ -245,6 +292,7 @@ export function OwnerConsole({
       description: form.get("description"),
       longDescription: form.get("longDescription"),
       rules: form.get("rules"),
+      bannerImage,
       galleryImages,
       websiteUrl: form.get("websiteUrl"),
       discordUrl: form.get("discordUrl"),
@@ -387,7 +435,8 @@ export function OwnerConsole({
           <div className="form-row"><label>Full profile story</label><textarea className="textarea tall" name="longDescription" placeholder="What makes the community, gameplay, and economy special?" /></div>
           <div className="form-grid two">
             <div className="form-row"><label>Rules, one per line</label><textarea className="textarea" name="rules" /></div>
-            <div className="form-row"><label>Gallery images</label><input className="field file-field" name="galleryFiles" type="file" accept="image/png,image/jpeg" multiple /><small>Upload up to 5 PNG/JPEG files. Remote image URLs are not accepted.</small></div>
+            <div className="form-row"><label><ImageUp size={14} /> Server banner</label><input className="field file-field" name="bannerFile" type="file" accept="image/png,image/jpeg" /><small>Stored as optimized WebP, up to 750 KB.</small></div>
+            <div className="form-row"><label>Gallery images</label><input className="field file-field" name="galleryFiles" type="file" accept="image/png,image/jpeg" multiple /><small>Up to 5 images, each stored as optimized WebP under 500 KB.</small></div>
           </div>
           <div className="form-grid three">
             <div className="form-row"><label>Website URL</label><input className="field" name="websiteUrl" type="url" /></div>
@@ -399,7 +448,10 @@ export function OwnerConsole({
             <div className="form-row"><label>Paid player cap</label><input className="field" name="maxPaidPlayers" type="number" defaultValue="20" /></div>
             <div className="form-row"><label>Seconds before reviews</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue="1800" /></div>
           </div>
-          <button className="solid-button" disabled={busy} type="submit"><Server size={16} /> Publish draft</button>
+          <div className="form-footer">
+            <p className="toast-line" aria-live="polite">{message}</p>
+            <button className="solid-button" disabled={busy} type="submit"><Server size={16} /> {busy ? "Publishing..." : "Publish draft"}</button>
+          </div>
         </form>
       </details>
 
@@ -446,6 +498,7 @@ export function OwnerConsole({
                 <div className="form-row"><label>Full profile story</label><textarea className="textarea tall" name="longDescription" defaultValue={server.longDescription} /></div>
                 <div className="form-grid two">
                   <div className="form-row"><label>Rules</label><textarea className="textarea" name="rules" defaultValue={server.rules} /></div>
+                  <div className="form-row"><label>Replace banner</label><input className="field file-field" name="bannerFile" type="file" accept="image/png,image/jpeg" /><input name="existingBannerImage" type="hidden" value={server.bannerImage} /><small>Stored as optimized WebP, up to 750 KB.</small><label className="toggle-row"><input name="clearBanner" type="checkbox" /> Use default banner</label></div>
                   <div className="form-row"><label>Replace gallery</label><input className="field file-field" name="galleryFiles" type="file" accept="image/png,image/jpeg" multiple /><input name="existingGalleryImages" type="hidden" value={server.galleryImages} /><small>{server.galleryImages ? `${server.galleryImages.split(",").filter(Boolean).length} image(s) currently published` : "No images published"}</small><label className="toggle-row"><input name="clearGallery" type="checkbox" /> Remove current gallery</label></div>
                 </div>
                 <div className="form-grid three">

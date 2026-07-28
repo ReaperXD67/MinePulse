@@ -332,9 +332,10 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
           if (online != null) online.sendMessage(prefix() + ChatColor.GREEN + message + " Activity sharing is now enabled; no IP address is sent.");
         });
       } catch (Exception error) {
+        String detail = safeError(error);
         Bukkit.getScheduler().runTask(this, () -> {
           Player online = Bukkit.getPlayer(playerId);
-          if (online != null) online.sendMessage(prefix() + ChatColor.RED + "Link failed. Check the code and bridge connection, then try again.");
+          if (online != null) online.sendMessage(prefix() + ChatColor.RED + "Link failed: " + detail);
         });
       } finally {
         playerRequestsInFlight.remove(playerId);
@@ -728,9 +729,19 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       throw new IOException("KarixMC response exceeded the size limit");
     }
     String responseBody = new String(responseBytes, StandardCharsets.UTF_8);
+    if (response.statusCode() == 401 || response.statusCode() == 403) {
+      throw new IOException("Bridge authentication failed. Check the server ID, plugin secret, API URL, and plugin version.");
+    }
     verifyResponse(response, requestNonce, responseBody);
     if (response.statusCode() < 200 || response.statusCode() >= 300) {
-      throw new IOException("KarixMC returned HTTP " + response.statusCode());
+      String message = "KarixMC returned HTTP " + response.statusCode();
+      try {
+        JsonObject errorBody = JsonParser.parseString(responseBody).getAsJsonObject();
+        if (errorBody.has("error")) message = errorBody.get("error").getAsString();
+      } catch (RuntimeException ignored) {
+        // Keep the status-only fallback when the signed response is not JSON.
+      }
+      throw new IOException(message);
     }
 
     try {

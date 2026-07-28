@@ -84,18 +84,36 @@ export const safeHttpsUrlSchema = z
   }, "Use a complete HTTPS URL")
   .or(z.literal(""));
 
-const MEDIA_PATH = /^\/uploads\/[a-z0-9_-]{3,80}\/[a-f0-9-]{36}\.(?:png|jpg)$/i;
+const LEGACY_MEDIA_PATH = /^\/uploads\/([a-z0-9_-]{3,80})\/[a-f0-9-]{36}\.(?:png|jpg)$/i;
+const MANAGED_MEDIA_PATH = /^\/media\/([a-z0-9_-]{3,80})\/[a-z0-9-]{3,80}\/(?:avatar|banner|gallery)\/[a-f0-9-]{36}\.webp$/i;
 const BUNDLED_MEDIA = new Set(["/voxel-network.png"]);
 
 export function safeMediaPath(value: string | null | undefined) {
   const path = value?.trim() || "";
-  return BUNDLED_MEDIA.has(path) || MEDIA_PATH.test(path) ? path : "";
+  return BUNDLED_MEDIA.has(path) || LEGACY_MEDIA_PATH.test(path) || MANAGED_MEDIA_PATH.test(path) ? path : "";
 }
 
-export function normalizeGalleryImages(value: string | null | undefined) {
+export function mediaPathBelongsToUser(value: string, userId: string) {
+  if (BUNDLED_MEDIA.has(value)) return true;
+  const match = value.match(LEGACY_MEDIA_PATH) || value.match(MANAGED_MEDIA_PATH);
+  return match?.[1] === userId;
+}
+
+export function normalizeBannerImage(value: string | null | undefined, userId: string) {
+  const image = safeMediaPath(value) || "/voxel-network.png";
+  if (!mediaPathBelongsToUser(image, userId)) {
+    throw new Response("Upload the server banner through your KarixMC account", { status: 400 });
+  }
+  return image;
+}
+
+export function normalizeGalleryImages(value: string | null | undefined, userId?: string) {
   const entries = (value || "").split(",").map((entry) => entry.trim()).filter(Boolean);
   if (entries.some((entry) => !safeMediaPath(entry))) {
     throw new Response("Upload gallery images through KarixMC; remote and unrecognized paths are blocked", { status: 400 });
+  }
+  if (userId && entries.some((entry) => !mediaPathBelongsToUser(entry, userId))) {
+    throw new Response("Gallery images must come from your KarixMC account", { status: 400 });
   }
   const images = Array.from(new Set(entries.map((entry) => safeMediaPath(entry)).filter(Boolean)));
   if (images.length > 5) throw new Response("A server can upload a maximum of 5 gallery images", { status: 400 });
