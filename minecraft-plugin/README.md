@@ -1,4 +1,4 @@
-# KarixMC Bridge 0.5.1
+# KarixMC Bridge 0.6.0
 
 The Paper/Spigot plugin connects real Minecraft activity to KarixMC. The visible plugin ID and configuration folder are `KarixMCBridge`; `/minepulse` remains a command alias during migration.
 
@@ -11,7 +11,7 @@ The Paper/Spigot plugin connects real Minecraft activity to KarixMC. The visible
 
 ## Install
 
-1. Download `KarixMCBridge-0.5.1.jar` from `/plugin` on the website.
+1. Download `KarixMCBridge-0.6.0.jar` from `/plugin` on the website.
 2. Copy it into the Paper server's `plugins/` directory.
 3. Start Paper once, then stop it after `plugins/KarixMCBridge/config.yml` is created.
 4. In KarixMC, open **Account -> Your servers -> Plugin connection**.
@@ -21,6 +21,7 @@ The Paper/Spigot plugin connects real Minecraft activity to KarixMC. The visible
 api-base-url: "https://your-karixmc.com"
 server-id: "from-creator-studio"
 plugin-secret: "keep-this-private"
+allow-insecure-http: false
 ```
 
 6. Start Paper. Creator Studio should show **Plugin reached website** after policy sync.
@@ -29,7 +30,7 @@ Policy sync proves the plugin can reach KarixMC even when the Minecraft server i
 
 Docker deployments can provide the same three values as `MINEPULSE_API_BASE_URL`, `MINEPULSE_SERVER_ID`, and `MINEPULSE_PLUGIN_SECRET` environment variables. Environment variables take precedence over `config.yml`.
 
-For same-machine development, `api-base-url` can be `http://localhost:3000`. On a different host, `localhost` is wrong; use the public website URL reachable from the Minecraft server. There is no separate wallet URL: the wallet is the `/account` page on that website.
+For same-machine development, `api-base-url` can be `http://localhost:3000`. On a different host, `localhost` is wrong; use the public HTTPS website URL reachable from the Minecraft server. Public HTTP is rejected by default. Set `allow-insecure-http: true` only for a temporary isolated IP-based test, then turn it off as soon as HTTPS is available. There is no separate wallet URL: the wallet is the `/account` page on that website.
 
 ## Website-Managed Policy
 
@@ -55,6 +56,8 @@ Only connection credentials remain local because the plugin needs them before it
 - `/receive` retries queued store deliveries for the player on the current server.
 - `/karixmc help` lists commands.
 - `/karixmc link <code>` connects the in-game UUID to a signed-in website account using a ten-minute code.
+- `/karixmc privacy` shows whether this player opted into reward activity sharing and lists the transmitted fields.
+- `/karixmc forget` withdraws that local opt-in and stops future reward heartbeats for the player on this server.
 - `/mpcode <value>` remains as a backwards-compatible alias for `/answer`.
 
 ## Verification Flow
@@ -66,11 +69,11 @@ Only connection credentials remain local because the plugin needs them before it
 5. The website validates the answer. Required checks pause rewards until the answer is accepted.
 6. KarixMC calculates the reward server-side and deducts it from the campaign pool.
 
-Players must link a KarixMC website account before rewards start. Unlinked Minecraft players can still play normally, but the bridge will not create a wallet or pay points for them.
+Players must run the link command before reward activity sharing starts. Unlinked Minecraft players can still play normally and are excluded from heartbeat batches. The plugin sends the linked UUID and name, AFK state, bounded movement and interaction counters, elapsed-time claim, and challenge submission. It does not read or send player IP addresses.
 
-Heartbeats use HMAC-SHA256, timestamps, and unique nonces. The website rejects stale signatures and replays, stores only a hash derived from the player IP, and records suspicious sessions for moderation.
+Version 0.6.0 sends bounded batches of at most 200 linked players per heartbeat cycle instead of one HTTP request per player. Large servers are split into multiple sequential chunks. Requests and responses use HMAC-SHA256 over the exact body, timestamps, and persisted unique nonces. The website rejects stale, altered, replayed, or wrongly signed messages. Response bodies are size-limited before allocation, repeated log failures are throttled, and player command requests use cooldowns.
 
-No plugin can make a server owner unable to modify software on a machine they control. KarixMC therefore combines telemetry with website-side reward calculation, challenge verification, stale bridge visibility, player reports, trust states, and administrator enforcement.
+No plugin can make a server owner unable to modify software on a machine they control. A dishonest owner can fabricate activity inputs or automate a visible arithmetic question. KarixMC limits the damage by making server time, rates, balances, player caps, challenge state, pool deductions, nonce history, reports, trust states, and enforcement website-authoritative. High-value launch phases should add behavioral fraud analytics and manual review; this is detection and containment, not impossible-to-bypass attestation.
 
 ## Purchase Delivery
 

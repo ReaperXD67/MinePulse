@@ -1,15 +1,15 @@
-# KarixMC Bridge 0.5.1 - Client Testing Guide
+# KarixMC Bridge 0.6.0 - Client Testing Guide
 
 This guide is for testing the KarixMC website with a real Paper Minecraft server.
 
 ## Test addresses
 
-- Website: `http://51.83.180.202:3000`
-- Plugin page: `http://51.83.180.202:3000/plugin`
-- Account and Creator Studio: `http://51.83.180.202:3000/account`
+- Website: `http://51.83.180.202`
+- Plugin page: `http://51.83.180.202/plugin`
+- Account and Creator Studio: `http://51.83.180.202/account`
 - Minecraft join address: the address of your separate Minecraft server, not the website VPS address
 
-The website VPS and Minecraft server may be on different machines. The Minecraft server only needs outbound access to `http://51.83.180.202:3000`.
+The website VPS and Minecraft server may be on different machines. The Minecraft server needs outbound access to the KarixMC website. The IP-based HTTP URL is temporary beta infrastructure; production must use HTTPS.
 
 ## How the system connects
 
@@ -31,7 +31,7 @@ Requirements:
 
 - Paper or Purpur server, version 1.20.x or 1.21.x
 - Java 17 or newer; Java 21 is recommended for modern 1.21 servers
-- Outbound network access from the Minecraft host to `51.83.180.202:3000`
+- Outbound network access from the Minecraft host to `51.83.180.202` on port 80 during the temporary beta
 - Do not install both the old and new bridge jars
 
 If the old plugin is installed:
@@ -43,7 +43,7 @@ If the old plugin is installed:
 
 ## Part 2 - Create the owner account and server listing
 
-1. Open `http://51.83.180.202:3000/signup`.
+1. Open `http://51.83.180.202/signup`.
 2. Create a separate account for the server owner.
 3. Sign in and open `Account -> Your servers`.
 4. Select `List a new server`.
@@ -62,7 +62,7 @@ The website prevents the same host and port from being registered twice. Contact
 
 ## Part 3 - Install and configure KarixMCBridge
 
-1. Download `KarixMCBridge-0.5.1.jar` from `http://51.83.180.202:3000/plugin`.
+1. Download `KarixMCBridge-0.6.0.jar` from `http://51.83.180.202/plugin`.
 2. Put the jar in the Minecraft server's `plugins/` directory.
 3. Start Paper once.
 4. Stop Paper after `plugins/KarixMCBridge/config.yml` is created.
@@ -71,9 +71,10 @@ The website prevents the same host and port from being registered twice. Contact
 7. Edit `plugins/KarixMCBridge/config.yml`:
 
 ```yaml
-api-base-url: "http://51.83.180.202:3000"
+api-base-url: "http://51.83.180.202"
 server-id: "COPY_THE_SERVER_ID_FROM_CREATOR_STUDIO"
 plugin-secret: "COPY_THE_PLUGIN_SECRET_FROM_CREATOR_STUDIO"
+allow-insecure-http: true
 ```
 
 8. Save the file and start Paper again.
@@ -87,6 +88,8 @@ Important:
 - Do not add `/account`, `/wallet`, or `/api` to `api-base-url`.
 - There is no separate wallet URL. The wallet is part of the KarixMC account page.
 - Keep the plugin secret private. If it leaks, use Rotate secret in Creator Studio, update `config.yml`, and restart Paper.
+- The Server ID is a public routing identifier. It is safe to display; it cannot sign a request without the private plugin secret.
+- `allow-insecure-http: true` is only for this temporary IP beta. Set it to `false` when the domain has HTTPS.
 - `Plugin reached website` can appear with zero players online.
 - `Last player activity` appears only after a player joins and sends a heartbeat.
 
@@ -290,6 +293,8 @@ If a console command fails, the purchase acknowledgement marks it failed and ref
 | `/answer <value>` | Answer a required activity check |
 | `/receive` | Retry pending store deliveries |
 | `/karixmc link <code>` | Link the current Minecraft UUID to a website account |
+| `/karixmc privacy` | Show consent status and the fields shared for rewards |
+| `/karixmc forget` | Withdraw local reward-data consent and stop heartbeats |
 | `/karixmc help` | Show bridge commands |
 
 Legacy aliases `/minepulse ...` and `/mpcode <value>` remain available during migration.
@@ -301,7 +306,10 @@ Legacy aliases `/minepulse ...` and `/mpcode <value>` remain available during mi
 - Heartbeat timestamps must be recent.
 - A unique nonce prevents replaying the same heartbeat.
 - The website calculates balances and pool deductions in database transactions.
-- IP addresses are stored as hashes rather than plain text.
+- The plugin does not read or send Minecraft player IP addresses, and reward sessions have no IP column.
+- Players opt into reward telemetry by linking; unlinked players are omitted from heartbeat batches.
+- Request and response bodies, timestamps, paths, and one-time nonces are authenticated.
+- Request/response sizes, counters, player batches, retries, logs, and command cooldowns are bounded.
 - Suspicious AFK, inactivity, and failed-check behavior raises the session risk score.
 - Players can report missing rewards, tampering, bots, scams, or abusive content.
 - Admins can pause, blacklist, remove credits, or restore a server.
@@ -338,8 +346,8 @@ No plugin can fully stop a machine owner from modifying their own server softwar
 ### Creator Studio says Waiting for plugin
 
 - Check all three `config.yml` values.
-- From the Minecraft host, test `curl http://51.83.180.202:3000/plugin`.
-- Confirm outbound TCP port 3000 is allowed.
+- From the Minecraft host, test `curl http://51.83.180.202/plugin`.
+- Confirm outbound TCP port 80 is allowed during the temporary beta; production uses HTTPS on port 443.
 - Do not use `localhost` when the website is on another machine.
 - Synchronize the Minecraft host clock with NTP.
 - Restart Paper after changing the local connection values.

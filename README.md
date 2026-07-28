@@ -8,11 +8,11 @@ Members earn points on funded servers, then spend those earned points on ranks, 
 
 The hosted web platform is available for controlled testing:
 
-- **Live website:** [http://51.83.180.202:3000](http://51.83.180.202:3000)
-- **Create an account:** [http://51.83.180.202:3000/signup](http://51.83.180.202:3000/signup)
-- **Plugin download and setup:** [http://51.83.180.202:3000/plugin](http://51.83.180.202:3000/plugin)
+- **Live website:** [http://51.83.180.202](http://51.83.180.202)
+- **Create an account:** [http://51.83.180.202/signup](http://51.83.180.202/signup)
+- **Plugin download and setup:** [http://51.83.180.202/plugin](http://51.83.180.202/plugin)
 
-This VPS URL is the KarixMC website and plugin API, not automatically the Minecraft join address. A Paper server can run on another host; its `KarixMCBridge` config should use `api-base-url: "http://51.83.180.202:3000"`, while players join the hostname and port configured for that Minecraft server.
+This VPS URL is the KarixMC website and plugin API, not automatically the Minecraft join address. A Paper server can run on another host; its temporary beta config can use `api-base-url: "http://51.83.180.202"`, while players join the hostname and port configured for that Minecraft server.
 
 The current deployment uses temporary HTTP/IP access for beta testing. Before accepting public users or real payments, move to a domain with HTTPS, production secrets, PostgreSQL, backups, and the launch checks documented below.
 
@@ -101,7 +101,7 @@ npm run game:test:down
 
 ## Plugin API
 
-The creator studio shows a `server-id` and `plugin-secret`. Put those into the plugin's generated `config.yml`.
+Creator Studio shows a public `server-id` and generates a private `plugin-secret` once. Put both into the plugin's generated `config.yml`. Knowing a Server ID does not authenticate a request; the secret is required to create a valid signature. Rotate the secret immediately if it may have been copied.
 
 Important endpoints:
 
@@ -109,11 +109,12 @@ Important endpoints:
 - `POST /api/plugin/purchases/pull` returns pending commands for a server.
 - `POST /api/plugin/purchases/ack` confirms delivery or refunds failed purchases.
 
-Version 0.5.1 syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, accumulates movement and interaction telemetry, signs heartbeat envelopes with HMAC-SHA256, rejects stale/replayed activity, tracks AFK time, hashes IP addresses, uses website-generated arithmetic `/answer` challenges, retries queued deliveries with `/receive`, and only rewards linked KarixMC accounts. KarixMC calculates wallet rewards on the website; the plugin never directly edits balances.
+Version 0.6.0 batches linked-player activity, syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, tracks AFK state, and uses website-generated arithmetic `/answer` challenges. Every plugin request and response is authenticated with HMAC-SHA256, a timestamp, and a persisted one-time nonce. The plugin never sends player IP addresses. KarixMC calculates elapsed time, reward rates, campaign deductions, challenges, and wallet changes on the website; the plugin never directly edits balances.
 
 ## Plugin Build
 
 See [minecraft-plugin/README.md](minecraft-plugin/README.md) for the full Paper installation, connection, firewall, security, and troubleshooting guide.
+See [SECURITY.md](SECURITY.md) for trust boundaries, transmitted data, protocol controls, incident response, and responsible disclosure.
 
 From `minecraft-plugin/`:
 
@@ -127,17 +128,19 @@ Download the ready jar from `/plugin`, or copy the shaded jar from `minecraft-pl
 api-base-url: "https://your-domain.com"
 server-id: "from owner panel"
 plugin-secret: "from owner panel"
+allow-insecure-http: false
 ```
 
-For local testing where Paper and the website run on the same machine, keep `api-base-url: "http://localhost:3000"`. If Paper runs elsewhere, `localhost` is wrong; use the HTTPS URL reachable from that Minecraft server.
+For local testing where Paper and the website run on the same machine, keep `api-base-url: "http://localhost:3000"`. If Paper runs elsewhere, `localhost` is wrong; use the HTTPS URL reachable from that Minecraft server. Public HTTP is rejected by default. `allow-insecure-http: true` exists only for a temporary isolated test environment and must be disabled before launch.
 
 ## Deploy Notes
 
 - Copy `.env.example` to `.env` locally, and set the same variables in your host.
 - `AUTH_SECRET` must be a strong unique value of at least 32 characters. Production will refuse to boot with the demo secret.
+- `PLUGIN_SECRET_ENCRYPTION_KEY` must be a separate strong value of at least 32 characters. Plugin credentials are encrypted at rest and shown only once after server creation or rotation.
 - Authentication uses opaque, hashed, database-backed sessions. Users can review and revoke devices from Account > Security, and password changes revoke every other session.
 - New passwords require a passphrase of at least 15 characters. Login is throttled by account and connection, and public registration cannot assign privileged roles.
-- Set `APP_BASE_URL` to the public website URL testers open in the browser, for example `http://51.83.180.202:3000` during temporary VPS testing. This prevents redirects from using the internal bind address `0.0.0.0`.
+- Set `APP_BASE_URL` to the public website URL testers open in the browser, for example `http://51.83.180.202` during temporary VPS testing. This prevents redirects from using an internal bind address.
 - `AUTH_COOKIE_SECURE="false"` is allowed only for temporary HTTP/IP-based VPS testing. Use HTTPS and remove it or set it to `"true"` before real public launch.
 - Crypto checkout is implemented for campaign packages and Gold/Diamond through NOWPayments. Keep `CRYPTO_PAYMENTS_MODE="test"` until the HTTPS domain, merchant API key, IPN secret, PostgreSQL migration, backups, and launch checks are complete. See [CRYPTO_PAYMENT_SETUP.md](CRYPTO_PAYMENT_SETUP.md).
 - SQLite is fine for local MVP testing. Use Postgres before handling real money or large traffic.

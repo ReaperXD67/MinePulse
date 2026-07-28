@@ -37,7 +37,7 @@ async function main() {
       host: `fleet-${stamp}.example.test`,
       version: "1.21.11",
       description: "Temporary server used to verify central protection policy synchronization.",
-      region: "TEST",
+      region: "GLOBAL",
       tags: "Parkour,Audit",
       pluginSecret: secret,
       pointPool: 1000
@@ -75,8 +75,29 @@ async function main() {
     assert(updated.minimumActivityEvents === 2, "Activity threshold was not persisted");
     assert(updated.botProtectionLevel === 3, "Protection level was not persisted");
 
-    const config = await api.post("/api/plugin/config", { data: { serverId: server.id, secret } });
-    assert(config.ok(), `Plugin config fetch failed: ${config.status()} ${await config.text()}`);
+    const path = "/api/plugin/config";
+    const configBody = JSON.stringify({ serverId: server.id, pluginVersion: "0.6.0-audit" });
+    const timestamp = Math.floor(Date.now() / 1000);
+    const nonce = crypto.randomUUID();
+    const bodyHash = crypto.createHash("sha256").update(configBody).digest("hex");
+    const signature = crypto.createHmac("sha256", secret)
+      .update(["POST", path, server.id, timestamp, nonce, bodyHash].join("\n"))
+      .digest("hex");
+    const config = await fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-karixmc-protocol": "2",
+        "x-karixmc-server-id": server.id,
+        "x-karixmc-timestamp": String(timestamp),
+        "x-karixmc-nonce": nonce,
+        "x-karixmc-signature": signature
+      },
+      body: configBody
+    });
+    if (!config.ok) {
+      throw new Error(`Plugin config fetch failed: ${config.status} ${await config.text()}`);
+    }
     const payload = await config.json();
     assert(payload.policy.revision === 2, "Plugin received the wrong policy revision");
     assert(payload.policy.afkTimeoutSeconds === 420, "Plugin received the wrong AFK timeout");

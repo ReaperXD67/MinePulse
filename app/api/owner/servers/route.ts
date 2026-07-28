@@ -7,6 +7,14 @@ import { makePluginSecret, slugify } from "@/lib/random";
 import { normalizeServerTags } from "@/lib/server-tags";
 import { routeError } from "@/lib/api";
 import { normalizeServerAddress } from "@/lib/server-address";
+import { protectPluginSecret } from "@/lib/plugin-credentials";
+import {
+  minecraftVersionSchema,
+  normalizeGalleryImages,
+  normalizeVersionRange,
+  safeHttpsUrlSchema,
+  serverRegionSchema
+} from "@/lib/server-profile";
 
 export const runtime = "nodejs";
 
@@ -14,16 +22,18 @@ const schema = z.object({
   name: z.string().trim().min(3).max(80),
   host: z.string().trim().min(3).max(120),
   port: z.coerce.number().int().min(1).max(65535).default(25565),
-  version: z.string().trim().min(2).max(30),
-  region: z.string().trim().min(2).max(30),
+  version: minecraftVersionSchema.optional(),
+  minVersion: minecraftVersionSchema.optional(),
+  maxVersion: minecraftVersionSchema.optional(),
+  region: serverRegionSchema,
   tags: z.string().trim().min(2).max(120),
   description: z.string().trim().min(20).max(420),
   longDescription: z.string().trim().max(3000).default(""),
   rules: z.string().trim().max(2000).default(""),
   galleryImages: z.string().trim().max(2000).default(""),
-  websiteUrl: z.string().trim().url().or(z.literal("")).optional(),
-  discordUrl: z.string().trim().url().or(z.literal("")).optional(),
-  supportUrl: z.string().trim().url().or(z.literal("")).optional(),
+  websiteUrl: safeHttpsUrlSchema.optional(),
+  discordUrl: safeHttpsUrlSchema.optional(),
+  supportUrl: safeHttpsUrlSchema.optional(),
   rewardRatePerSecond: z.coerce
     .number()
     .min(1)
@@ -50,7 +60,9 @@ export async function POST(request: Request) {
   try {
     const user = await requireMember();
     const input = schema.parse(await request.json());
+    const version = input.version || normalizeVersionRange(input.minVersion || "", input.maxVersion || "");
     const tags = normalizeServerTags(input.tags);
+    const galleryImages = normalizeGalleryImages(input.galleryImages);
     const address = normalizeServerAddress(input.host, input.port);
     const existing = await prisma.server.findFirst({
       where: {
@@ -67,20 +79,28 @@ export async function POST(request: Request) {
       });
     }
 
+    const pluginSecret = makePluginSecret();
+    const { minVersion: _minVersion, maxVersion: _maxVersion, ...serverInput } = input;
     const server = await prisma.server.create({
       data: {
-        ...input,
+        ...serverInput,
         ...address,
+        version,
+        galleryImages,
         tags,
         ownerId: user.id,
         slug: await uniqueSlug(input.name),
         pointPool: 0,
-        pluginSecret: makePluginSecret(),
+        pluginSecret: protectPluginSecret(pluginSecret),
         bannerImage: "/voxel-network.png"
       }
     });
 
-    return NextResponse.json({ serverId: server.id, pluginSecret: server.pluginSecret });
+    return NextResponse.json({
+      serverId: server.id,
+      pluginSecret,
+      message: "Server created. Copy the plugin secret now; KarixMC will not display it again."
+    });
   } catch (error) {
     return routeError(error);
   }

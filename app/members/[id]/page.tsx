@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Coins, ExternalLink, Gamepad2, RadioTower, ShieldCheck } from "lucide-react";
 import { minutesLabel, points, shortDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { safeMediaPath } from "@/lib/server-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
   return (
     <main className="container dashboard member-profile-page">
       <section className="member-profile-hero">
-        <div className="profile-avatar large" style={member.avatarUrl ? { backgroundImage: `url(${member.avatarUrl})` } : undefined}>{!member.avatarUrl ? initials : null}</div>
+        <div className="profile-avatar large" style={safeMediaPath(member.avatarUrl) ? { backgroundImage: `url(${safeMediaPath(member.avatarUrl)})` } : undefined}>{!safeMediaPath(member.avatarUrl) ? initials : null}</div>
         <div>
           <p className="eyebrow"><Gamepad2 size={14} /> KarixMC member</p>
           <h1>{member.username}</h1>

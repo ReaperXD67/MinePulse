@@ -4,6 +4,7 @@ import { StoreItemStatus, UserRole } from "@/lib/generated/prisma/client";
 import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
+import { minecraftDeliveryCommandSchema } from "@/lib/minecraft-command";
 
 export const runtime = "nodejs";
 
@@ -11,7 +12,7 @@ const schema = z.object({
   name: z.string().trim().min(3).max(80).optional(),
   description: z.string().trim().min(5).max(180).optional(),
   pricePoints: z.coerce.number().int().min(1).max(100000000).optional(),
-  command: z.string().trim().min(4).max(240).optional(),
+  command: minecraftDeliveryCommandSchema.optional(),
   status: z.enum(["ACTIVE", "HIDDEN"]).optional()
 });
 

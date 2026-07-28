@@ -7,6 +7,13 @@ import { MAX_REWARD_RATE_PER_SECOND } from "@/lib/reward-rate";
 import { normalizeServerTags } from "@/lib/server-tags";
 import { routeError } from "@/lib/api";
 import { normalizeServerAddress } from "@/lib/server-address";
+import {
+  minecraftVersionSchema,
+  normalizeGalleryImages,
+  normalizeVersionRange,
+  safeHttpsUrlSchema,
+  serverRegionSchema
+} from "@/lib/server-profile";
 
 export const runtime = "nodejs";
 
@@ -14,16 +21,18 @@ const schema = z.object({
   name: z.string().trim().min(3).max(80).optional(),
   host: z.string().trim().min(3).max(120).optional(),
   port: z.coerce.number().int().min(1).max(65535).optional(),
-  version: z.string().trim().min(2).max(30).optional(),
-  region: z.string().trim().min(2).max(30).optional(),
+  version: minecraftVersionSchema.optional(),
+  minVersion: minecraftVersionSchema.optional(),
+  maxVersion: minecraftVersionSchema.optional(),
+  region: serverRegionSchema.optional(),
   tags: z.string().trim().min(2).max(120).optional(),
   description: z.string().trim().min(20).max(420).optional(),
   longDescription: z.string().trim().max(3000).optional(),
   rules: z.string().trim().max(2000).optional(),
   galleryImages: z.string().trim().max(2000).optional(),
-  websiteUrl: z.string().trim().url().or(z.literal("")).optional(),
-  discordUrl: z.string().trim().url().or(z.literal("")).optional(),
-  supportUrl: z.string().trim().url().or(z.literal("")).optional(),
+  websiteUrl: safeHttpsUrlSchema.optional(),
+  discordUrl: safeHttpsUrlSchema.optional(),
+  supportUrl: safeHttpsUrlSchema.optional(),
   rewardRatePerSecond: z.coerce
     .number()
     .min(1)
@@ -74,6 +83,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const { id } = await context.params;
     const { server } = await authorize(id);
     const input = schema.parse(await request.json());
+    const version = input.version || (input.minVersion && input.maxVersion
+      ? normalizeVersionRange(input.minVersion, input.maxVersion)
+      : server.version);
+    const galleryImages = input.galleryImages === undefined
+      ? server.galleryImages
+      : normalizeGalleryImages(input.galleryImages);
     const tags = typeof input.tags === "string" ? normalizeServerTags(input.tags) : undefined;
     const address = normalizeServerAddress(input.host ?? server.host, input.port ?? server.port);
     const existing = await prisma.server.findFirst({
@@ -93,11 +108,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     const policyChanged = Object.keys(input).some((key) => policyFields.has(key));
+    const { minVersion: _minVersion, maxVersion: _maxVersion, ...serverInput } = input;
     const updated = await prisma.server.update({
       where: { id },
       data: {
-        ...input,
+        ...serverInput,
         ...address,
+        version,
+        galleryImages,
         ...(tags ? { tags } : {}),
         ...(policyChanged ? { pluginConfigRevision: { increment: 1 } } : {})
       }

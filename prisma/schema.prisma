@@ -118,6 +118,8 @@ model User {
   username             String
   minecraftUuid        String?   @unique
   minecraftName        String?
+  minecraftLinkedAt    DateTime?
+  minecraftConsentVersion String?
   passwordHash         String?
   role                 UserRole  @default(PLAYER)
   walletPoints         Int       @default(0)
@@ -253,11 +255,25 @@ model Server {
   cryptoPayments     CryptoPayment[]
   enforcementActions EnforcementAction[]
   hourlyStats        ServerHourlyStat[]
+  pluginNonces       PluginRequestNonce[]
 
   @@unique([host, port])
   @@index([status, premiumUntil])
   @@index([trustStatus, status])
   @@index([ownerId])
+}
+
+model PluginRequestNonce {
+  id        String   @id @default(cuid())
+  serverId  String
+  nonce     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, nonce])
+  @@index([expiresAt])
 }
 
 model StoreItem {
@@ -302,7 +318,6 @@ model ServerSession {
   serverId            String
   userId              String
   minecraftName       String
-  ipHash              String
   startedAt           DateTime      @default(now())
   lastHeartbeatAt     DateTime      @default(now())
   endedAt             DateTime?

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Save, UserRound } from "lucide-react";
+import { ImageUp, Save, UserRound } from "lucide-react";
 
 export function ProfileForm({
   username,
@@ -23,18 +23,32 @@ export function ProfileForm({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setBusy(true);
     setMessage("");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
+    let nextAvatarUrl = form.get("removeAvatar") === "on" ? "" : avatarUrl || "";
+    const avatar = form.get("avatar");
+    if (avatar instanceof File && avatar.size > 0) {
+      const upload = new FormData();
+      upload.set("image", avatar);
+      const uploadResponse = await fetch("/api/account/media", { method: "POST", body: upload });
+      const uploadPayload = await uploadResponse.json().catch(() => ({}));
+      if (!uploadResponse.ok) {
+        setBusy(false);
+        setMessage(uploadPayload.error || "Avatar upload failed");
+        return;
+      }
+      nextAvatarUrl = uploadPayload.url;
+    }
     const response = await fetch("/api/account/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         username: form.get("username"),
-        minecraftName: form.get("minecraftName"),
         friendsPrivate: form.get("friendsPrivate") === "on",
         bio: form.get("bio"),
-        avatarUrl: form.get("avatarUrl")
+        avatarUrl: nextAvatarUrl
       })
     });
     const payload = await response.json().catch(() => ({}));
@@ -59,13 +73,16 @@ export function ProfileForm({
           <input className="field" id="profile-username" name="username" defaultValue={username} required />
         </div>
         <div className="form-row">
-          <label htmlFor="profile-minecraft">Minecraft name</label>
-          <input className="field" id="profile-minecraft" name="minecraftName" defaultValue={minecraftName || ""} />
+          <label htmlFor="profile-minecraft">Linked Minecraft name</label>
+          <input className="field" id="profile-minecraft" value={minecraftName || "Not linked"} readOnly aria-readonly="true" />
+          <small>This identity can only be changed by using a short-lived link code in Minecraft.</small>
         </div>
       </div>
       <div className="form-row">
-        <label htmlFor="profile-avatar">Avatar URL</label>
-        <input className="field" id="profile-avatar" name="avatarUrl" type="url" defaultValue={avatarUrl || ""} placeholder="https://..." />
+        <label htmlFor="profile-avatar"><ImageUp size={14} /> Avatar image</label>
+        <input className="field file-field" id="profile-avatar" name="avatar" type="file" accept="image/png,image/jpeg" />
+        <small>PNG or JPEG, up to 4 MB and 4096 x 4096. Remote URLs are blocked to prevent tracking and unsafe content.</small>
+        {avatarUrl ? <label className="toggle-row"><input name="removeAvatar" type="checkbox" /> Remove current avatar</label> : null}
       </div>
       <div className="form-row">
         <label htmlFor="profile-bio">Bio</label>

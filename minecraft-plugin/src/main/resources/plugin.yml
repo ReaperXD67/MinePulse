@@ -1,6 +1,6 @@
 name: KarixMCBridge
 main: com.minepulse.bridge.MinePulseBridgePlugin
-version: 0.5.1
+version: 0.6.0
 api-version: "1.20"
 author: KarixMC
 description: Verified playtime rewards and purchase delivery bridge for KarixMC.
@@ -19,10 +19,10 @@ commands:
     description: Retry queued KarixMC store item deliveries for your account.
   karixmc:
     description: Show KarixMC statistics, link an account, or open command help.
-    usage: /karixmc [pool|help|receive|link <code>]
+    usage: /karixmc [pool|help|privacy|forget|receive|link <code>]
   minepulse:
     description: Backward-compatible alias for /karixmc.
-    usage: /minepulse [pool|help|receive|link <code>]
+    usage: /minepulse [pool|help|privacy|forget|receive|link <code>]
 permissions:
   karixmc.admin:
     description: Allows administrative KarixMC diagnostics.

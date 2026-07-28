@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:apply": "node scripts/apply-sqlite-migration.mjs",
     "db:seed": "prisma db seed",
+    "security:encrypt-plugin-secrets": "tsx scripts/encrypt-plugin-secrets.ts",
     "assets:generate": "node scripts/generate-assets.mjs",
     "game:test:up": "docker compose -f docker-compose.game-test.yml up -d",
     "game:test:logs": "docker compose -f docker-compose.game-test.yml logs -f paper",
@@ -22,6 +23,7 @@
     "test:plugin-heartbeat": "tsx scripts/plugin-heartbeat-audit.ts",
     "test:server-removal": "tsx scripts/server-removal-audit.ts",
     "test:auth": "tsx scripts/auth-audit.ts",
+    "test:security-boundaries": "tsx scripts/security-boundary-audit.ts",
     "test:premium-order": "tsx scripts/premium-order-audit.ts",
     "test:crypto-payments": "tsx scripts/crypto-payment-audit.ts"
   },
@@ -29,21 +31,25 @@
     "seed": "tsx prisma/seed.ts"
   },
   "overrides": {
-    "@hono/node-server": "^1.19.13",
-    "postcss": "^8.5.10"
+    "brace-expansion": "^5.0.8",
+    "fast-uri": "^3.1.4",
+    "js-yaml": "^4.3.0",
+    "postcss": "^8.5.23",
+    "sharp": "^0.35.3"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.8.0",
-    "@prisma/client": "^7.8.0",
+    "@prisma/client": "^7.9.1",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.11.1",
     "clsx": "^2.1.1",
     "jose": "^6.2.3",
     "lucide-react": "^1.20.0",
-    "next": "^16.2.9",
+    "next": "^16.2.12",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "recharts": "^3.8.1",
+    "sharp": "^0.35.3",
     "three": "^0.184.0",
     "zod": "^4.4.3"
   },
@@ -53,9 +59,9 @@
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.184.1",
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.9",
+    "eslint-config-next": "^16.2.12",
     "playwright": "^1.61.0",
-    "prisma": "^7.8.0",
+    "prisma": "^7.9.1",
     "sql.js": "^1.14.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"

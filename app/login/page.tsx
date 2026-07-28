@@ -2,8 +2,13 @@ import { LoginForm } from "@/components/LoginForm";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 
-export default async function LoginPage() {
-  if (await currentUser()) redirect("/account");
+function safeNextPath(value: string | undefined) {
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const nextPath = safeNextPath((await searchParams).next);
+  if (await currentUser()) redirect(nextPath === "/" ? "/account" : nextPath);
 
   return (
     <main className="auth-page">
@@ -15,7 +20,7 @@ export default async function LoginPage() {
             Play, earn, publish a server, fund rewards, and support communities from one member account.
           </p>
         </div>
-        <LoginForm />
+        <LoginForm nextPath={nextPath} />
       </section>
     </main>
   );

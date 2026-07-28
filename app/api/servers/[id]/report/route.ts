@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireMember } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
+import { safeHttpsUrlSchema } from "@/lib/server-profile";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ const schema = z.object({
     "OTHER"
   ]),
   details: z.string().trim().min(20).max(1200),
-  evidenceUrl: z.string().trim().url().or(z.literal("")).optional()
+  evidenceUrl: safeHttpsUrlSchema.optional()
 });
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {

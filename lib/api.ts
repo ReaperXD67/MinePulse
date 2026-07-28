@@ -4,7 +4,11 @@ import { ZodError } from "zod";
 export async function routeError(error: unknown) {
   if (error instanceof Response) {
     const message = (await error.text()).trim() || "Request failed";
-    return NextResponse.json({ error: message }, { status: error.status || 500 });
+    const retryAfter = error.headers.get("Retry-After");
+    return NextResponse.json(
+      { error: message },
+      { status: error.status || 500, headers: retryAfter ? { "Retry-After": retryAfter } : undefined }
+    );
   }
 
   if (error instanceof ZodError) {

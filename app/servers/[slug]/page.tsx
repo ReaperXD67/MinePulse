@@ -22,6 +22,7 @@ import { compact, daysLeft, minutesLabel, points, shortDate } from "@/lib/format
 import { prisma } from "@/lib/prisma";
 import { activePremiumPlan } from "@/lib/premium";
 import { serverJoinAddress } from "@/lib/server-address";
+import { safeMediaPath } from "@/lib/server-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -66,13 +67,13 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
   const heartbeatAge = bridgeSignalAt ? Date.now() - bridgeSignalAt.getTime() : Number.POSITIVE_INFINITY;
   const bridgeState = heartbeatAge <= 120000 ? "online" : heartbeatAge <= 900000 ? "stale" : "offline";
   const premiumPlan = activePremiumPlan(server.premiumPlan, server.premiumUntil);
-  const gallery = server.galleryImages.split(",").map((image) => image.trim()).filter(Boolean).slice(0, 5);
+  const gallery = server.galleryImages.split(",").map((image) => safeMediaPath(image)).filter(Boolean).slice(0, 5);
   const rules = server.rules.split("\n").map((rule) => rule.trim()).filter(Boolean);
   const ownerInitials = server.owner.username.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <main className="server-profile-page">
-      <section className="server-profile-hero" style={{ "--profile-image": `url(${server.bannerImage || "/voxel-network.png"})` } as React.CSSProperties}>
+      <section className="server-profile-hero" style={{ "--profile-image": `url(${safeMediaPath(server.bannerImage) || "/voxel-network.png"})` } as React.CSSProperties}>
         <div className="container server-profile-hero-inner">
           <div className="profile-breadcrumbs"><Link href="/">Servers</Link><span>/</span><span>{server.name}</span></div>
           <div className="server-profile-title-row">
@@ -143,7 +144,8 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
             <div className="review-list">
               {server.comments.map((comment) => {
                 const initials = comment.user.username.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-                return <article className="review-card" key={comment.id}><div className="mini-avatar" style={comment.user.avatarUrl ? { backgroundImage: `url(${comment.user.avatarUrl})` } : undefined}>{!comment.user.avatarUrl ? initials : null}</div><div><div><strong>{comment.user.username}</strong><span>{shortDate(comment.createdAt)}</span></div><p>{comment.body}</p></div></article>;
+                const avatar = safeMediaPath(comment.user.avatarUrl);
+                return <article className="review-card" key={comment.id}><div className="mini-avatar" style={avatar ? { backgroundImage: `url(${avatar})` } : undefined}>{!avatar ? initials : null}</div><div><div><strong>{comment.user.username}</strong><span>{shortDate(comment.createdAt)}</span></div><p>{comment.body}</p></div></article>;
               })}
               {!server.comments.length ? <div className="empty-state compact-empty">No verified reviews yet.</div> : null}
             </div>
@@ -152,7 +154,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
 
         <aside className="profile-side-column">
           <section className="panel owner-profile-card">
-            <div className="profile-avatar small" style={server.owner.avatarUrl ? { backgroundImage: `url(${server.owner.avatarUrl})` } : undefined}>{!server.owner.avatarUrl ? ownerInitials : null}</div>
+            <div className="profile-avatar small" style={safeMediaPath(server.owner.avatarUrl) ? { backgroundImage: `url(${safeMediaPath(server.owner.avatarUrl)})` } : undefined}>{!safeMediaPath(server.owner.avatarUrl) ? ownerInitials : null}</div>
             <p className="eyebrow">Server creator</p>
             <h3>{server.owner.username}</h3>
             <p>{server.owner.bio || "KarixMC community creator."}</p>

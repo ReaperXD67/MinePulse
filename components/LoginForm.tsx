@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { KeyRound, LogIn } from "lucide-react";
 
-export function LoginForm() {
+export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +31,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/");
+    router.push(nextPath);
     router.refresh();
   }
 

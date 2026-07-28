@@ -29,6 +29,7 @@ import { money, points, shortDate } from "@/lib/format";
 import { activePremiumPlan } from "@/lib/premium";
 import { serverJoinAddress } from "@/lib/server-address";
 import { MAX_REWARD_RATE_PER_SECOND, rewardRateVisualTier } from "@/lib/reward-rate";
+import { MINECRAFT_VERSIONS, parseVersionRange, SERVER_REGIONS } from "@/lib/server-profile";
 
 type OwnerServer = {
   id: string;
@@ -57,7 +58,6 @@ type OwnerServer = {
   premiumUntil: string | null;
   lastHeartbeatAt: string | null;
   lastPluginVersion: string | null;
-  pluginSecret: string;
   pluginConfigRevision: number;
   heartbeatIntervalSeconds: number;
   purchasePollSeconds: number;
@@ -123,9 +123,8 @@ export function OwnerConsole({
   const [removedServerIds, setRemovedServerIds] = useState<Set<string>>(() => new Set());
   const [promoCodes, setPromoCodes] = useState<Record<string, string>>({});
   const [checkoutNotice, setCheckoutNotice] = useState(false);
-  const [serverSecrets, setServerSecrets] = useState<Record<string, string>>(() =>
-    Object.fromEntries(servers.map((server) => [server.id, server.pluginSecret]))
-  );
+  const [serverSecrets, setServerSecrets] = useState<Record<string, string>>({});
+  const [oneTimeCredential, setOneTimeCredential] = useState<{ serverId: string; pluginSecret: string } | null>(null);
   const visibleServers = servers.filter((server) => !removedServerIds.has(server.id));
 
   async function send(url: string, body: unknown, method = "POST") {
@@ -141,34 +140,63 @@ export function OwnerConsole({
 
     if (!response.ok) {
       setMessage(payload.error || "Action failed");
-      return false;
+      return null;
     }
 
     if (payload.checkoutUrl) {
       window.location.assign(payload.checkoutUrl);
-      return true;
+      return payload;
     }
 
     setMessage(payload.message || "Saved");
     router.refresh();
-    return true;
+    return payload;
+  }
+
+  async function uploadGallery(files: File[]) {
+    if (!files.length) return [];
+    if (files.length > 5) {
+      setMessage("A server can upload a maximum of 5 gallery images");
+      return null;
+    }
+
+    const urls: string[] = [];
+    for (const file of files) {
+      const body = new FormData();
+      body.set("image", file);
+      const response = await fetch("/api/account/media", { method: "POST", body });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(payload.error || `Could not upload ${file.name}`);
+        return null;
+      }
+      urls.push(payload.url);
+    }
+    return urls;
   }
 
   async function createServer(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
-    const ok = await send("/api/owner/servers", {
+    setBusy(true);
+    const gallery = await uploadGallery(form.getAll("galleryFiles").filter((entry): entry is File => entry instanceof File && entry.size > 0));
+    if (gallery === null) {
+      setBusy(false);
+      return;
+    }
+    const result = await send("/api/owner/servers", {
       name: form.get("name"),
       host: form.get("host"),
       port: form.get("port"),
-      version: form.get("version"),
+      minVersion: form.get("minVersion"),
+      maxVersion: form.get("maxVersion"),
       region: form.get("region"),
       tags: form.get("tags"),
       description: form.get("description"),
       longDescription: form.get("longDescription"),
       rules: form.get("rules"),
-      galleryImages: form.get("galleryImages"),
+      galleryImages: gallery.join(","),
       websiteUrl: form.get("websiteUrl"),
       discordUrl: form.get("discordUrl"),
       supportUrl: form.get("supportUrl"),
@@ -177,7 +205,8 @@ export function OwnerConsole({
       minPlaySecondsForComment: form.get("minPlaySecondsForComment")
     });
 
-    if (ok) {
+    if (result) {
+      setOneTimeCredential({ serverId: result.serverId, pluginSecret: result.pluginSecret });
       formElement.reset();
     }
   }
@@ -193,17 +222,30 @@ export function OwnerConsole({
   async function updateServer(event: React.FormEvent<HTMLFormElement>, serverId: string) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    setBusy(true);
+    const files = form.getAll("galleryFiles").filter((entry): entry is File => entry instanceof File && entry.size > 0);
+    const uploaded = await uploadGallery(files);
+    if (uploaded === null) {
+      setBusy(false);
+      return;
+    }
+    const galleryImages = form.get("clearGallery") === "on"
+      ? ""
+      : uploaded.length
+        ? uploaded.join(",")
+        : String(form.get("existingGalleryImages") || "");
     await send(`/api/owner/servers/${serverId}`, {
       name: form.get("name"),
       host: form.get("host"),
       port: form.get("port"),
-      version: form.get("version"),
+      minVersion: form.get("minVersion"),
+      maxVersion: form.get("maxVersion"),
       region: form.get("region"),
       tags: form.get("tags"),
       description: form.get("description"),
       longDescription: form.get("longDescription"),
       rules: form.get("rules"),
-      galleryImages: form.get("galleryImages"),
+      galleryImages,
       websiteUrl: form.get("websiteUrl"),
       discordUrl: form.get("discordUrl"),
       supportUrl: form.get("supportUrl"),
@@ -291,6 +333,7 @@ export function OwnerConsole({
     }
 
     setServerSecrets((current) => ({ ...current, [serverId]: payload.pluginSecret }));
+    setOneTimeCredential({ serverId, pluginSecret: payload.pluginSecret });
     setMessage(payload.message);
     router.refresh();
   }
@@ -299,6 +342,14 @@ export function OwnerConsole({
     <>
     <div className="creator-studio">
       <p className="global-message" aria-live="polite">{message}</p>
+      {oneTimeCredential ? (
+        <section className="panel one-time-secret" aria-label="One-time plugin credential">
+          <div><ShieldCheck size={18} /><span><strong>Copy this plugin secret now</strong><small>It is shown only once. Server IDs are public identifiers; this secret is private.</small></span></div>
+          <div className="credential-row"><div><span>Server ID</span><code>{oneTimeCredential.serverId}</code></div><button className="icon-button" type="button" title="Copy server ID" onClick={() => copy(oneTimeCredential.serverId, "Server ID")}><Copy size={15} /></button></div>
+          <div className="credential-row"><div><span>Plugin secret</span><code>{oneTimeCredential.pluginSecret}</code></div><button className="icon-button" type="button" title="Copy one-time plugin secret" onClick={() => copy(oneTimeCredential.pluginSecret, "Plugin secret")}><Copy size={15} /></button></div>
+          <button className="ghost-button" type="button" onClick={() => setOneTimeCredential(null)}><X size={15} /> I stored it safely</button>
+        </section>
+      ) : null}
 
       <section className="reward-rate-guide" aria-labelledby="reward-rate-guide-title">
         <header>
@@ -327,15 +378,16 @@ export function OwnerConsole({
           </div>
           <div className="form-grid four">
             <div className="form-row"><label>Port</label><input className="field" name="port" type="number" defaultValue="25565" /></div>
-            <div className="form-row"><label>Version</label><input className="field" name="version" defaultValue="1.21.x" /></div>
-            <div className="form-row"><label>Region</label><input className="field" name="region" defaultValue="EU" /></div>
+            <div className="form-row"><label>Minimum version</label><select className="select" name="minVersion" defaultValue="1.21.11">{MINECRAFT_VERSIONS.map((version) => <option value={version} key={version}>{version}</option>)}</select></div>
+            <div className="form-row"><label>Maximum version</label><select className="select" name="maxVersion" defaultValue="1.21.11">{MINECRAFT_VERSIONS.map((version) => <option value={version} key={version}>{version}</option>)}</select></div>
+            <div className="form-row"><label>Region</label><select className="select" name="region" defaultValue="EU">{SERVER_REGIONS.map((region) => <option value={region.value} key={region.value}>{region.label}</option>)}</select></div>
             <div className="form-row"><label>Tags - max 10</label><input className="field" name="tags" defaultValue="Survival,Economy,SMP" /></div>
           </div>
           <div className="form-row"><label>Listing summary</label><textarea className="textarea" name="description" defaultValue="A player-first server with fair rewards and a cosmetic point shop." required /></div>
           <div className="form-row"><label>Full profile story</label><textarea className="textarea tall" name="longDescription" placeholder="What makes the community, gameplay, and economy special?" /></div>
           <div className="form-grid two">
             <div className="form-row"><label>Rules, one per line</label><textarea className="textarea" name="rules" /></div>
-            <div className="form-row"><label>Gallery image URLs, comma separated</label><textarea className="textarea" name="galleryImages" /></div>
+            <div className="form-row"><label>Gallery images</label><input className="field file-field" name="galleryFiles" type="file" accept="image/png,image/jpeg" multiple /><small>Upload up to 5 PNG/JPEG files. Remote image URLs are not accepted.</small></div>
           </div>
           <div className="form-grid three">
             <div className="form-row"><label>Website URL</label><input className="field" name="websiteUrl" type="url" /></div>
@@ -384,8 +436,9 @@ export function OwnerConsole({
                 </div>
                 <div className="form-grid four">
                   <div className="form-row"><label>Port</label><input className="field" name="port" type="number" defaultValue={server.port} /></div>
-                  <div className="form-row"><label>Version</label><input className="field" name="version" defaultValue={server.version} /></div>
-                  <div className="form-row"><label>Region</label><input className="field" name="region" defaultValue={server.region} /></div>
+                  <div className="form-row"><label>Minimum version</label><select className="select" name="minVersion" defaultValue={parseVersionRange(server.version).min}>{MINECRAFT_VERSIONS.map((version) => <option value={version} key={version}>{version}</option>)}</select></div>
+                  <div className="form-row"><label>Maximum version</label><select className="select" name="maxVersion" defaultValue={parseVersionRange(server.version).max}>{MINECRAFT_VERSIONS.map((version) => <option value={version} key={version}>{version}</option>)}</select></div>
+                  <div className="form-row"><label>Region</label><select className="select" name="region" defaultValue={SERVER_REGIONS.some((region) => region.value === server.region) ? server.region : "GLOBAL"}>{SERVER_REGIONS.map((region) => <option value={region.value} key={region.value}>{region.label}</option>)}</select></div>
                   <div className="form-row"><label>Status</label><select className="select" name="status" defaultValue={server.status}><option value="ACTIVE">Active</option><option value="PAUSED">Paused</option></select></div>
                 </div>
                 <div className="form-row"><label>Tags - max 10</label><input className="field" name="tags" defaultValue={server.tags} /></div>
@@ -393,7 +446,7 @@ export function OwnerConsole({
                 <div className="form-row"><label>Full profile story</label><textarea className="textarea tall" name="longDescription" defaultValue={server.longDescription} /></div>
                 <div className="form-grid two">
                   <div className="form-row"><label>Rules</label><textarea className="textarea" name="rules" defaultValue={server.rules} /></div>
-                  <div className="form-row"><label>Gallery URLs</label><textarea className="textarea" name="galleryImages" defaultValue={server.galleryImages} /></div>
+                  <div className="form-row"><label>Replace gallery</label><input className="field file-field" name="galleryFiles" type="file" accept="image/png,image/jpeg" multiple /><input name="existingGalleryImages" type="hidden" value={server.galleryImages} /><small>{server.galleryImages ? `${server.galleryImages.split(",").filter(Boolean).length} image(s) currently published` : "No images published"}</small><label className="toggle-row"><input name="clearGallery" type="checkbox" /> Remove current gallery</label></div>
                 </div>
                 <div className="form-grid three">
                   <div className="form-row"><label>Website</label><input className="field" name="websiteUrl" type="url" defaultValue={server.websiteUrl || ""} /></div>
@@ -465,9 +518,9 @@ export function OwnerConsole({
                   <span className={`status-pill bridge-${server.lastConfigSyncAt ? "online" : "offline"}`}><Activity size={13} /> {server.lastConfigSyncAt ? "Plugin reached website" : "Waiting for plugin"}</span>
                 </div>
                 <div className="credential-row"><div><span>Website API URL</span><code>{appBaseUrl}</code></div><button className="icon-button" type="button" title="Copy website API URL" onClick={() => copy(appBaseUrl, "Website API URL")}><Copy size={15} /></button></div>
-                <div className="credential-row"><div><span>Server ID</span><code>{server.id}</code></div><button className="icon-button" type="button" title="Copy server ID" onClick={() => copy(server.id, "Server ID")}><Copy size={15} /></button></div>
-                <div className="credential-row"><div><span>Plugin secret</span><code>{serverSecrets[server.id]}</code></div><div className="credential-actions"><button className="icon-button" type="button" title="Copy plugin secret" onClick={() => copy(serverSecrets[server.id], "Plugin secret")}><Copy size={15} /></button><button className="icon-button danger-button" type="button" title="Rotate plugin secret" disabled={busy} onClick={() => rotateSecret(server.id)}><RotateCcw size={15} /></button></div></div>
-                <p className="credential-help">Put the website URL, Server ID, and plugin secret in <code>plugins/KarixMCBridge/config.yml</code>, then restart Paper. Keep the secret private.</p>
+                <div className="credential-row"><div><span>Server ID - public identifier</span><code>{server.id}</code></div><button className="icon-button" type="button" title="Copy server ID" onClick={() => copy(server.id, "Server ID")}><Copy size={15} /></button></div>
+                <div className="credential-row"><div><span>Plugin secret - private</span><code>{serverSecrets[server.id] || "Hidden after creation"}</code></div><div className="credential-actions">{serverSecrets[server.id] ? <button className="icon-button" type="button" title="Copy plugin secret" onClick={() => copy(serverSecrets[server.id], "Plugin secret")}><Copy size={15} /></button> : null}<button className="icon-button danger-button" type="button" title="Generate a new one-time plugin secret" disabled={busy} onClick={() => rotateSecret(server.id)}><RotateCcw size={15} /></button></div></div>
+                <p className="credential-help">The Server ID may be visible publicly and grants no access by itself. The secret is shown only after creation or rotation and signs every plugin request. Put both in <code>plugins/KarixMCBridge/config.yml</code>, then restart Paper.</p>
                 <div className="integrity-grid">
                   <div><span>Last player activity</span><strong>{server.lastHeartbeatAt ? shortDate(server.lastHeartbeatAt) : "Waiting for an online player"}</strong></div>
                   <div><span>Plugin connection</span><strong>{server.lastConfigSyncAt ? `Synced ${shortDate(server.lastConfigSyncAt)}` : "Not connected"}</strong></div>

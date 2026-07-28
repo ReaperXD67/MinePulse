@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description: "How KarixMC collects, uses, protects, and shares account, Minecraft, reward, and server data."
 };
 
-const updatedAt = "July 23, 2026";
+const updatedAt = "July 28, 2026";
 
 export default function PrivacyPage() {
   const legalName = process.env.NEXT_PUBLIC_LEGAL_NAME?.trim() || "KarixMC";
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
 
           <div className="privacy-signal" aria-label="Privacy at a glance">
             <div><Fingerprint size={20} /><span>Raw passwords are never stored</span></div>
-            <div><Network size={20} /><span>Player IP addresses are stored as salted hashes</span></div>
+            <div><Network size={20} /><span>The Minecraft plugin never sends player IP addresses</span></div>
             <div><Cookie size={20} /><span>One essential sign-in cookie, no advertising trackers</span></div>
             <div><UserRoundCheck size={20} /><span>Access, correction, deletion, and objection rights</span></div>
           </div>
@@ -85,11 +85,11 @@ export default function PrivacyPage() {
             <div className="policy-data-grid">
               <div>
                 <h3>Account and profile</h3>
-                <p>Email address, username, password hash, profile text and image, privacy preferences, Minecraft name and UUID, account role, creation date, friends, favorites, likes, and comments.</p>
+                <p>Email address, username, password hash, profile text and uploaded image, privacy preferences, linked Minecraft name and UUID, account role, creation date, friends, favorites, likes, and comments.</p>
               </div>
               <div>
                 <h3>Verified play</h3>
-                <p>Server and session identifiers, active and AFK time, movement and activity counts, challenge results, reward totals, plugin version and integrity signals, suspicious activity score, and a salted hash of the player IP address.</p>
+                <p>For players who explicitly link on a participating server: server and session identifiers, Minecraft UUID and name, active and AFK time, movement and activity counters, challenge submissions and results, reward totals, plugin version, integrity signals, and suspicious activity score. Player IP addresses are not sent by the plugin.</p>
               </div>
               <div>
                 <h3>Rewards and purchases</h3>
@@ -104,12 +104,16 @@ export default function PrivacyPage() {
               We receive most data directly from you, from the KarixMC plugin installed by participating server owners,
               or from a payment provider when an owner starts a purchase. Please do not place sensitive personal information in comments or support tickets.
             </p>
+            <p className="policy-note">
+              Plugin activity sharing starts only after a player runs the short-lived link command. Use <code>/karixmc privacy</code> to review the status and <code>/karixmc forget</code> to stop future activity sharing on that server. The server may still process ordinary gameplay under its own policy.
+            </p>
           </section>
 
           <section id="use" className="policy-section">
             <div className="policy-heading"><Activity size={20} /><span>03</span><h2>How and why we use data</h2></div>
             <div className="legal-basis-list">
-              <div><strong>Provide the service</strong><span>Contract</span><p>Create accounts, link Minecraft identities, record verified play, award and spend points, deliver server items, manage friends, and operate support.</p></div>
+              <div><strong>Provide the service</strong><span>Contract</span><p>Create accounts, link Minecraft identities, award and spend points, deliver server items, manage friends, and operate support.</p></div>
+              <div><strong>Verify linked play</strong><span>Consent and contract</span><p>After an in-game link command, receive limited activity counters needed to verify play and calculate rewards. Players can stop future sharing from the plugin.</p></div>
               <div><strong>Keep rewards fair</strong><span>Legitimate interests</span><p>Detect AFK sessions, replayed heartbeats, bots, plugin tampering, fake activity, abuse, and payment or reward fraud.</p></div>
               <div><strong>Operate the marketplace</strong><span>Contract and legitimate interests</span><p>Publish server listings, calculate live status, rank premium listings, show average activity, process reports, and enforce network rules.</p></div>
               <div><strong>Payments and records</strong><span>Contract and legal obligation</span><p>Open checkout, reconcile payment status, credit campaigns or premium time, issue corrections, resolve disputes, and keep required financial records.</p></div>
@@ -120,7 +124,7 @@ export default function PrivacyPage() {
           <section id="automation" className="policy-section">
             <div className="policy-heading"><Fingerprint size={20} /><span>04</span><h2>Automated reward and safety decisions</h2></div>
             <p>
-              The KarixMC plugin sends signed activity heartbeats. The network checks account linking, server funding,
+              For linked players, the KarixMC plugin sends signed activity batches. The network checks account linking, server funding,
               activity, AFK state, movement, challenge completion, integrity, duplicate messages, and configured player caps.
               A valid active interval earns the server&apos;s configured rate; an invalid or inactive interval earns nothing.
             </p>
@@ -154,8 +158,8 @@ export default function PrivacyPage() {
               or other legal rules require it. Backup copies are removed through the normal backup rotation.
             </p>
             <p>
-              We use password hashing, HTTP-only session cookies, signed plugin requests, replay protection, hashed player IPs,
-              role-based access, and audit records. No system is completely secure, so please use a unique password and report suspicious activity promptly.
+              We use password hashing, HTTP-only session cookies, encrypted plugin secrets, signed plugin requests and responses,
+              replay protection, bounded request sizes, role-based access, and audit records. The plugin does not collect or transmit player IP addresses. The website may use a one-way connection fingerprint when protecting login against abuse. No system is completely secure, so please use a unique password and report suspicious activity promptly.
             </p>
           </section>
 

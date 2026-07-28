@@ -1,52 +1,27 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { routeError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { authenticatePluginRequest, pluginJson, pluginRouteError, type PluginAuthContext } from "@/lib/plugin-auth";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
   serverId: z.string().min(1),
-  secret: z.string().min(8)
+  pluginVersion: z.string().trim().min(3).max(30)
 });
 
 export async function POST(request: Request) {
+  let auth: PluginAuthContext | null = null;
   try {
-    const input = schema.parse(await request.json());
-    const server = await prisma.server.findFirst({
-      where: { id: input.serverId, pluginSecret: input.secret },
-      select: {
-        id: true,
-        name: true,
-        status: true,
-        trustStatus: true,
-        pluginConfigRevision: true,
-        heartbeatIntervalSeconds: true,
-        purchasePollSeconds: true,
-        afkTimeoutSeconds: true,
-        challengeEnabled: true,
-        challengeIntervalSeconds: true,
-        challengeAnswerWindowSeconds: true,
-        challengeRequired: true,
-        minimumMovementDistance: true,
-        minimumActivityEvents: true,
-        botProtectionLevel: true,
-        rewardRatePerSecond: true,
-        maxPaidPlayers: true,
-        pointPool: true
-      }
-    });
-
-    if (!server) {
-      return NextResponse.json({ error: "Invalid server credentials" }, { status: 401 });
-    }
+    auth = await authenticatePluginRequest(request);
+    const input = schema.parse(auth.body);
+    const server = auth.server;
 
     await prisma.server.update({
       where: { id: server.id },
-      data: { lastConfigSyncAt: new Date() }
+      data: { lastConfigSyncAt: new Date(), lastPluginVersion: input.pluginVersion }
     });
 
-    return NextResponse.json({
+    return pluginJson(auth, {
       server: {
         id: server.id,
         name: server.name,
@@ -71,6 +46,6 @@ export async function POST(request: Request) {
       }
     });
   } catch (error) {
-    return routeError(error);
+    return pluginRouteError(auth, error);
   }
 }

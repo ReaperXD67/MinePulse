@@ -1,28 +1,21 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { routeError } from "@/lib/api";
+import { authenticatePluginRequest, pluginJson, pluginRouteError, type PluginAuthContext } from "@/lib/plugin-auth";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
   serverId: z.string().min(1),
-  secret: z.string().min(8),
   minecraftUuid: z.string().trim().min(8).max(80).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20)
 });
 
 export async function POST(request: Request) {
+  let auth: PluginAuthContext | null = null;
   try {
-    const input = schema.parse(await request.json());
-    const server = await prisma.server.findFirst({
-      where: { id: input.serverId, pluginSecret: input.secret },
-      select: { id: true }
-    });
-
-    if (!server) {
-      return NextResponse.json({ error: "Invalid server credentials" }, { status: 401 });
-    }
+    auth = await authenticatePluginRequest(request);
+    const input = schema.parse(auth.body);
+    const server = auth.server;
 
     const purchases = await prisma.purchase.findMany({
       where: {
@@ -35,7 +28,7 @@ export async function POST(request: Request) {
       take: input.limit
     });
 
-    return NextResponse.json({
+    return pluginJson(auth, {
       purchases: purchases.map((purchase) => {
         const player = purchase.buyer.minecraftName || purchase.buyer.username;
         return {
@@ -51,6 +44,6 @@ export async function POST(request: Request) {
       })
     });
   } catch (error) {
-    return routeError(error);
+    return pluginRouteError(auth, error);
   }
 }

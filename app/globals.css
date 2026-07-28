@@ -7491,3 +7491,8 @@ button.icon-stat-button:hover {
     border-left: 0;
   }
 }
+
+#support,
+.policy-section {
+  scroll-margin-top: 28px;
+}

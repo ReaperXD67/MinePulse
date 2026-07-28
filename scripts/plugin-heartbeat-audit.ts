@@ -1,11 +1,13 @@
 import crypto from "node:crypto";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "../lib/generated/prisma/client";
+import { protectPluginSecret } from "../lib/plugin-credentials";
+import { loadEnvConfig } from "@next/env";
+
+loadEnvConfig(process.cwd());
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:3001";
-const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL || "file:./prisma/dev.db"
-});
+const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || "file:./prisma/dev.db" });
 const prisma = new PrismaClient({ adapter });
 const stamp = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
 const serverId = `heartbeat-audit-${stamp}`;
@@ -15,84 +17,85 @@ const blockerEmail = `heartbeat-blocker-${stamp}@example.test`;
 const playerUuid = crypto.randomUUID();
 const secret = crypto.randomBytes(32).toString("hex");
 
-type HeartbeatInput = {
-  serverId: string;
-  timestamp: number;
-  nonce: string;
-  minecraftUuid: string;
-  minecraftName: string;
-  afk: boolean;
-  movementScore: number;
-  activityEvents: number;
-  reportedSeconds: number;
-  pluginVersion: string;
-};
-
-function signaturePayload(input: HeartbeatInput) {
-  return [
-    input.serverId,
-    input.timestamp,
-    input.nonce,
-    input.minecraftUuid,
-    input.minecraftName,
-    input.afk,
-    input.movementScore,
-    input.activityEvents,
-    "none",
-    "none",
-    "none",
-    input.reportedSeconds,
-    input.pluginVersion
-  ].join("\n");
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
 }
 
-async function heartbeat(overrides: Partial<HeartbeatInput>) {
-  const input: HeartbeatInput = {
+function sha256(value: string) {
+  return crypto.createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function requestSignature(path: string, timestamp: number, nonce: string, body: string, key = secret) {
+  const canonical = ["POST", path, serverId, timestamp, nonce, sha256(body)].join("\n");
+  return crypto.createHmac("sha256", key).update(canonical).digest("hex");
+}
+
+function verifyResponse(response: Response, requestNonce: string, body: string) {
+  const timestamp = response.headers.get("x-karixmc-timestamp") || "";
+  const nonce = response.headers.get("x-karixmc-nonce") || "";
+  const signature = response.headers.get("x-karixmc-signature") || "";
+  assert(response.headers.get("x-karixmc-protocol") === "2", "Signed response protocol header is missing");
+  assert(Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) <= 90, "Signed response timestamp is stale");
+  const canonical = ["RESPONSE", requestNonce, timestamp, nonce, response.status, sha256(body)].join("\n");
+  const expected = crypto.createHmac("sha256", secret).update(canonical).digest();
+  const received = Buffer.from(signature, "hex");
+  assert(received.length === expected.length && crypto.timingSafeEqual(received, expected), "Response signature is invalid");
+}
+
+async function signedPost(path: string, payload: unknown, options: {
+  nonce?: string;
+  rawBody?: string;
+  signBody?: string;
+  key?: string;
+  expectSigned?: boolean;
+} = {}) {
+  const body = options.rawBody ?? JSON.stringify(payload);
+  const timestamp = Math.floor(Date.now() / 1000);
+  const nonce = options.nonce || crypto.randomUUID();
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-karixmc-protocol": "2",
+      "x-karixmc-server-id": serverId,
+      "x-karixmc-timestamp": String(timestamp),
+      "x-karixmc-nonce": nonce,
+      "x-karixmc-signature": requestSignature(path, timestamp, nonce, options.signBody ?? body, options.key)
+    },
+    body
+  });
+  const responseBody = await response.text();
+  if (options.expectSigned !== false) verifyResponse(response, nonce, responseBody);
+  return { response, body: responseBody ? JSON.parse(responseBody) : {} };
+}
+
+function heartbeatPayload(overrides: Record<string, unknown> = {}) {
+  return {
     serverId,
-    timestamp: Math.floor(Date.now() / 1000),
-    nonce: crypto.randomUUID(),
     minecraftUuid: playerUuid,
     minecraftName: "HeartbeatAudit",
     afk: false,
     movementScore: 1000,
     activityEvents: 1,
     reportedSeconds: 20,
-    pluginVersion: "0.5.1-audit",
+    pluginVersion: "0.6.0-audit",
     ...overrides
   };
-  const signature = crypto.createHmac("sha256", secret).update(signaturePayload(input)).digest("hex");
-  const response = await fetch(`${baseUrl}/api/plugin/heartbeat`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...input, signature, ip: "127.0.0.1" })
-  });
-  const body = await response.json();
-  if (!response.ok) {
-    throw new Error(`Heartbeat failed (${response.status}): ${JSON.stringify(body)}`);
-  }
-  return body;
 }
 
-function assert(condition: unknown, message: string) {
-  if (!condition) throw new Error(message);
+async function agePlayerSession(seconds = 20) {
+  await prisma.serverSession.updateMany({
+    where: { serverId, user: { minecraftUuid: playerUuid }, status: "ACTIVE" },
+    data: { lastHeartbeatAt: new Date(Date.now() - seconds * 1000) }
+  });
 }
 
 async function main() {
-  const owner = await prisma.user.create({
-    data: { email: ownerEmail, username: "Heartbeat Owner", passwordHash: "audit" }
-  });
+  const owner = await prisma.user.create({ data: { email: ownerEmail, username: "Heartbeat Owner", passwordHash: "audit" } });
   const player = await prisma.user.create({
-    data: {
-      email: playerEmail,
-      username: "Heartbeat Player",
-      passwordHash: "audit",
-      minecraftUuid: playerUuid,
-      minecraftName: "HeartbeatAudit"
-    }
+    data: { email: playerEmail, username: "Heartbeat Player", passwordHash: "audit", minecraftUuid: playerUuid, minecraftName: "HeartbeatAudit" }
   });
-  const blocker = await prisma.user.create({
-    data: { email: blockerEmail, username: "Heartbeat Blocker", passwordHash: "audit" }
-  });
+  const blocker = await prisma.user.create({ data: { email: blockerEmail, username: "Heartbeat Blocker", passwordHash: "audit" } });
   await prisma.server.create({
     data: {
       id: serverId,
@@ -101,71 +104,103 @@ async function main() {
       name: "Heartbeat Audit",
       host: `${stamp}.example.test`,
       port: 25565,
-      version: "1.21.x",
+      version: "1.21.11",
       description: "Temporary signed heartbeat audit server.",
-      region: "TEST",
+      region: "GLOBAL",
       tags: "Test",
-      pluginSecret: secret,
+      pluginSecret: protectPluginSecret(secret),
       pointPool: 1000,
       rewardRatePerSecond: 1.5,
       maxPaidPlayers: 2,
       challengeEnabled: false
     }
   });
-  const configuredServer = await prisma.server.findUniqueOrThrow({ where: { id: serverId } });
-  assert(
-    configuredServer.rewardRatePerSecond === 1.5,
-    `Audit setup stored reward rate ${configuredServer.rewardRatePerSecond} instead of 1.5`
-  );
-  await prisma.serverSession.create({
-    data: {
-      serverId,
-      userId: blocker.id,
-      minecraftName: "SlotHolder",
-      ipHash: "audit",
-      startedAt: new Date(Date.now() - 10_000)
-    }
+  await prisma.serverSession.createMany({
+    data: [
+      {
+        serverId,
+        userId: blocker.id,
+        minecraftName: "SlotHolder",
+        startedAt: new Date(Date.now() - 30_000),
+        lastHeartbeatAt: new Date()
+      },
+      {
+        serverId,
+        userId: player.id,
+        minecraftName: "HeartbeatAudit",
+        startedAt: new Date(Date.now() - 20_000),
+        lastHeartbeatAt: new Date(Date.now() - 20_000)
+      }
+    ]
   });
 
-  const earning = await heartbeat({});
-  assert(earning.rewardState === "EARNING", `Expected EARNING, received ${earning.rewardState}`);
-  assert(earning.earned === 30, `Expected 30 points, received ${JSON.stringify(earning)}`);
+  const earning = await signedPost("/api/plugin/heartbeat", heartbeatPayload());
+  assert(earning.response.ok, `Earning heartbeat failed: ${earning.response.status} ${JSON.stringify(earning.body)}`);
+  assert(earning.body.rewardState === "EARNING" && earning.body.earned === 30, `Expected 30 EARNING points: ${JSON.stringify(earning.body)}`);
 
+  const rapidClaim = await signedPost("/api/plugin/heartbeat", heartbeatPayload({ reportedSeconds: 60 }));
+  assert(rapidClaim.response.ok && rapidClaim.body.earned === 0, "A rapid modified-plugin request claimed unelapsed time");
+
+  await agePlayerSession();
   await prisma.server.update({ where: { id: serverId }, data: { rewardRatePerSecond: 9 } });
-  const cappedRate = await heartbeat({});
-  assert(cappedRate.rewardState === "EARNING", `Expected capped rate to remain EARNING, received ${cappedRate.rewardState}`);
-  assert(cappedRate.earned === 60, `Expected the stale 9/s value to be capped at 60 points for 20 seconds, received ${cappedRate.earned}`);
-  assert(cappedRate.rewardMessage.includes("3 point(s) per second"), `Expected capped reward message, received ${cappedRate.rewardMessage}`);
+  const cappedRate = await signedPost("/api/plugin/heartbeat", heartbeatPayload());
+  assert(cappedRate.body.earned === 60 && cappedRate.body.rewardMessage.includes("3 point(s) per second"), "Server-side reward cap failed");
+
+  await agePlayerSession();
   await prisma.server.update({ where: { id: serverId }, data: { rewardRatePerSecond: 1.5 } });
+  const afk = await signedPost("/api/plugin/heartbeat", heartbeatPayload({ afk: true, movementScore: 0, activityEvents: 0 }));
+  assert(afk.body.rewardState === "AFK" && afk.body.earned === 0, "AFK heartbeat earned points");
 
-  const afk = await heartbeat({ afk: true, movementScore: 0, activityEvents: 0 });
-  assert(afk.rewardState === "AFK", `Expected AFK, received ${afk.rewardState}`);
-  assert(afk.earned === 0, `AFK heartbeat unexpectedly earned ${afk.earned}`);
+  const replayNonce = crypto.randomUUID();
+  const replayPayload = heartbeatPayload({ afk: true, movementScore: 0, activityEvents: 0 });
+  const firstReplayUse = await signedPost("/api/plugin/heartbeat", replayPayload, { nonce: replayNonce });
+  assert(firstReplayUse.response.ok, "First nonce use failed");
+  const replay = await signedPost("/api/plugin/heartbeat", replayPayload, { nonce: replayNonce, expectSigned: false });
+  assert(replay.response.status === 409, `Replayed nonce returned ${replay.response.status}`);
 
-  await prisma.server.update({ where: { id: serverId }, data: { pointPool: 0 } });
-  const emptyPool = await heartbeat({});
-  assert(emptyPool.rewardState === "EMPTY_POOL", `Expected EMPTY_POOL, received ${emptyPool.rewardState}`);
-  assert(emptyPool.earned === 0, `Empty pool heartbeat unexpectedly earned ${emptyPool.earned}`);
+  const validBody = JSON.stringify(heartbeatPayload());
+  const tamperedBody = JSON.stringify(heartbeatPayload({ minecraftName: "TamperedName" }));
+  const tampered = await signedPost("/api/plugin/heartbeat", {}, { rawBody: tamperedBody, signBody: validBody, expectSigned: false });
+  assert(tampered.response.status === 401, `Tampered signed body returned ${tampered.response.status}`);
 
-  await prisma.server.update({
-    where: { id: serverId },
-    data: { pointPool: 1000, maxPaidPlayers: 1 }
+  const wrongSecret = await signedPost("/api/plugin/heartbeat", heartbeatPayload(), {
+    key: crypto.randomBytes(32).toString("hex"),
+    expectSigned: false
   });
-  const paidCap = await heartbeat({});
-  assert(paidCap.rewardState === "PAID_CAP", `Expected PAID_CAP, received ${paidCap.rewardState}`);
-  assert(paidCap.earned === 0, `Paid-cap heartbeat unexpectedly earned ${paidCap.earned}`);
+  assert(wrongSecret.response.status === 401, `Wrong secret returned ${wrongSecret.response.status}`);
 
+  await agePlayerSession();
+  const batch = await signedPost("/api/plugin/heartbeat/batch", {
+    serverId,
+    pluginVersion: "0.6.0-audit",
+    heartbeats: [{
+      minecraftUuid: playerUuid,
+      minecraftName: "HeartbeatAudit",
+      afk: false,
+      movementScore: 1000,
+      activityEvents: 1,
+      reportedSeconds: 20
+    }]
+  });
+  assert(batch.response.ok && batch.body.results?.[0]?.earned === 30, `Signed batch failed: ${JSON.stringify(batch.body)}`);
+
+  const storedSession = await prisma.serverSession.findFirstOrThrow({ where: { serverId, userId: player.id, status: "ACTIVE" } });
   const storedPlayer = await prisma.user.findUniqueOrThrow({ where: { id: player.id } });
-  assert(storedPlayer.walletPoints === 90, `Expected wallet balance 90, received ${storedPlayer.walletPoints}`);
+  assert(!("ipHash" in storedSession), "Server sessions must not expose an IP field");
+  assert(storedPlayer.walletPoints === 120, `Expected wallet 120, received ${storedPlayer.walletPoints}`);
 
   console.log(JSON.stringify({
     ok: true,
     checks: {
-      earning: { state: earning.rewardState, earned: earning.earned },
-      cappedRate: { state: cappedRate.rewardState, earned: cappedRate.earned },
-      afk: { state: afk.rewardState, earned: afk.earned },
-      emptyPool: { state: emptyPool.rewardState, earned: emptyPool.earned },
-      paidCap: { state: paidCap.rewardState, earned: paidCap.earned },
+      signedRequestAndResponse: true,
+      persistentReplayRejection: true,
+      tamperRejection: true,
+      wrongSecretRejection: true,
+      serverElapsedTimeAuthority: true,
+      rewardRateCap: true,
+      afkBlocking: true,
+      batchedHeartbeat: true,
+      playerIpNotCollected: true,
       walletPoints: storedPlayer.walletPoints
     }
   }, null, 2));
@@ -176,9 +211,7 @@ async function run() {
     await main();
   } finally {
     await prisma.server.deleteMany({ where: { id: serverId } });
-    await prisma.user.deleteMany({
-      where: { email: { in: [ownerEmail, playerEmail, blockerEmail] } }
-    });
+    await prisma.user.deleteMany({ where: { email: { in: [ownerEmail, playerEmail, blockerEmail] } } });
     await prisma.$disconnect();
   }
 }

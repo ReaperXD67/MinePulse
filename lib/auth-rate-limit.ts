@@ -49,6 +49,16 @@ function signupPolicy(request: Request): LimitPolicy {
   };
 }
 
+function mediaUploadPolicy(userId: string): LimitPolicy {
+  return {
+    scope: "media-upload-account",
+    identity: userId,
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+    blockMs: 10 * 60 * 1000
+  };
+}
+
 async function statusForPolicies(policies: LimitPolicy[]): Promise<LimitStatus> {
   const now = new Date();
   const rows = await prisma.authThrottle.findMany({
@@ -128,4 +138,12 @@ export function signupRateLimitStatus(request: Request) {
 
 export function recordSignupAttempt(request: Request) {
   return recordPolicyAttempt(signupPolicy(request));
+}
+
+export function mediaUploadRateLimitStatus(userId: string) {
+  return statusForPolicies([mediaUploadPolicy(userId)]);
+}
+
+export function recordMediaUploadAttempt(userId: string) {
+  return recordPolicyAttempt(mediaUploadPolicy(userId));
 }

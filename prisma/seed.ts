@@ -9,6 +9,7 @@ import {
   StoreItemStatus,
   UserRole
 } from "../lib/generated/prisma/client";
+import { protectPluginSecret } from "../lib/plugin-credentials";
 
 const adapter = new PrismaBetterSqlite3({
   url: process.env.DATABASE_URL || "file:./prisma/dev.db"
@@ -127,7 +128,7 @@ async function main() {
         slug: "skyforge-economy",
         name: "Skyforge Economy",
         host: "play.skyforge.local",
-        version: "1.21.x",
+        version: "1.21.11",
         region: "EU",
         tags: "Survival,Economy,Jobs",
         description: "A reward-heavy economy world with shops, crates, auctions, and player towns.",
@@ -139,14 +140,14 @@ async function main() {
         minPlaySecondsForComment: 1800,
         premiumPlan: PremiumPlanCode.DIAMOND,
         premiumUntil: weekFromNow,
-        pluginSecret: "demo-secret-skyforge",
+        pluginSecret: protectPluginSecret("demo-secret-skyforge"),
         bannerImage: "/voxel-network.png",
         galleryImages: "/voxel-network.png,/voxel-network.png,/voxel-network.png",
         websiteUrl: "https://example.com/skyforge",
         discordUrl: "https://discord.com",
         supportUrl: "https://example.com/skyforge/support",
         lastHeartbeatAt: now,
-        lastPluginVersion: "0.4.0"
+        lastPluginVersion: "0.6.0"
       }
     }),
     prisma.server.create({
@@ -157,7 +158,7 @@ async function main() {
         name: "Ember SMP",
         host: "ember.local",
         version: "1.20.6",
-        region: "US",
+        region: "NA",
         tags: "SMP,Claims,Events",
         description: "Cozy SMP with weekend boss arenas and a careful no-pay-to-win shop.",
         longDescription: "Ember SMP runs a seasonal survival world with community builds, claim protection, weekend bosses, and cosmetic-only rewards.",
@@ -168,12 +169,12 @@ async function main() {
         minPlaySecondsForComment: 2400,
         premiumPlan: PremiumPlanCode.GOLD,
         premiumUntil: twoDaysFromNow,
-        pluginSecret: "demo-secret-ember",
+        pluginSecret: protectPluginSecret("demo-secret-ember"),
         bannerImage: "/voxel-network.png",
         galleryImages: "/voxel-network.png,/voxel-network.png",
         discordUrl: "https://discord.com",
         lastHeartbeatAt: new Date(now.getTime() - 8 * 60 * 1000),
-        lastPluginVersion: "0.4.0"
+        lastPluginVersion: "0.6.0"
       }
     }),
     prisma.server.create({
@@ -183,7 +184,7 @@ async function main() {
         slug: "voidcraft-hardcore",
         name: "Voidcraft Hardcore",
         host: "voidcraft.local",
-        version: "1.21.x",
+        version: "1.21.11",
         region: "ASIA",
         tags: "Hardcore,Quests,PvE",
         description: "Seasonal hardcore progression where long sessions unlock rare cosmetics.",
@@ -194,7 +195,7 @@ async function main() {
         maxPaidPlayers: 10,
         minPlaySecondsForComment: 3600,
         status: ServerStatus.ACTIVE,
-        pluginSecret: "demo-secret-voidcraft",
+        pluginSecret: protectPluginSecret("demo-secret-voidcraft"),
         bannerImage: "/voxel-network.png",
         galleryImages: "/voxel-network.png"
       }
@@ -255,7 +256,6 @@ async function main() {
       serverId: servers[0].id,
       userId: player.id,
       minecraftName: "PixelRunner",
-      ipHash: "seeded-demo-hash",
       activeSeconds: 7200,
       rewardedPoints: 7200,
       rewardCarryPoints: 0,

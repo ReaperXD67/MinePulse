@@ -1,28 +1,22 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { routeError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { authenticatePluginRequest, pluginJson, pluginRouteError, type PluginAuthContext } from "@/lib/plugin-auth";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
   serverId: z.string().min(1),
-  secret: z.string().min(8),
   code: z.string().trim().min(6).max(12).transform((value) => value.toUpperCase()),
   minecraftUuid: z.string().trim().min(8).max(80),
-  minecraftName: z.string().trim().min(2).max(32)
+  minecraftName: z.string().trim().regex(/^[A-Za-z0-9_]{2,16}$/, "Invalid Minecraft name"),
+  consentVersion: z.literal("2026-07-28")
 });
 
 export async function POST(request: Request) {
+  let auth: PluginAuthContext | null = null;
   try {
-    const input = schema.parse(await request.json());
-    const server = await prisma.server.findFirst({
-      where: { id: input.serverId, pluginSecret: input.secret },
-      select: { id: true }
-    });
-    if (!server) {
-      return NextResponse.json({ error: "Invalid server credentials" }, { status: 401 });
-    }
+    auth = await authenticatePluginRequest(request);
+    const input = schema.parse(auth.body);
 
     const result = await prisma.$transaction(async (tx) => {
       const link = await tx.minecraftLinkCode.findUnique({
@@ -55,18 +49,23 @@ export async function POST(request: Request) {
 
       const user = await tx.user.update({
         where: { id: link.userId },
-        data: { minecraftUuid: input.minecraftUuid, minecraftName: input.minecraftName }
+        data: {
+          minecraftUuid: input.minecraftUuid,
+          minecraftName: input.minecraftName,
+          minecraftLinkedAt: new Date(),
+          minecraftConsentVersion: input.consentVersion
+        }
       });
       await tx.minecraftLinkCode.delete({ where: { id: link.id } });
       return user;
     });
 
-    return NextResponse.json({
+    return pluginJson(auth, {
       message: `Linked ${input.minecraftName} to ${result.username}`,
       username: result.username,
       walletPoints: result.walletPoints
     });
   } catch (error) {
-    return routeError(error);
+    return pluginRouteError(auth, error);
   }
 }

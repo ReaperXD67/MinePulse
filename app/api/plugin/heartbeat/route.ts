@@ -1,84 +1,29 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { LedgerType, SessionStatus } from "@/lib/generated/prisma/client";
-import {
-  clampHeartbeatSeconds,
-  createMathChallenge,
-  hashIp,
-  heartbeatTimestampIsFresh,
-  verifyHeartbeatSignature,
-  verifyMathChallenge
-} from "@/lib/plugin-security";
+import { LedgerType, Prisma, SessionStatus, type Server } from "@/lib/generated/prisma/client";
+import { clampHeartbeatSeconds, createMathChallenge, verifyMathChallenge } from "@/lib/plugin-security";
 import { claimableLevelRewards } from "@/lib/progression";
 import { prisma } from "@/lib/prisma";
 import { cappedRewardRate } from "@/lib/reward-rate";
-import { routeError } from "@/lib/api";
+import { authenticatePluginRequest, pluginJson, pluginRouteError, type PluginAuthContext } from "@/lib/plugin-auth";
 
 export const runtime = "nodejs";
 
-const schema = z.object({
+export const heartbeatInputSchema = z.object({
   serverId: z.string().min(1),
-  timestamp: z.coerce.number().int().positive(),
-  nonce: z.string().trim().min(12).max(120),
-  signature: z.string().regex(/^[a-f0-9]{64}$/i),
-  minecraftUuid: z.string().trim().min(8).max(80),
-  minecraftName: z.string().trim().min(2).max(32),
-  ip: z.string().trim().max(80).optional(),
+  minecraftUuid: z.string().uuid(),
+  minecraftName: z.string().trim().regex(/^[A-Za-z0-9_]{2,16}$/, "Invalid Minecraft name"),
   afk: z.boolean().default(false),
   movementScore: z.coerce.number().int().min(0).max(1000000).default(0),
   activityEvents: z.coerce.number().int().min(0).max(10000).default(0),
-  challengePassed: z.boolean().optional(),
   challengeId: z.string().uuid().optional(),
   challengeAnswer: z.string().trim().min(1).max(20).optional(),
   reportedSeconds: z.coerce.number().int().min(0).max(60).default(20),
-  pluginVersion: z.string().trim().min(3).max(30)
+  pluginVersion: z.string().trim().min(3).max(30).optional()
 });
 
-export async function POST(request: Request) {
-  try {
-    const input = schema.parse(await request.json());
-    const server = await prisma.server.findUnique({
-      where: {
-        id: input.serverId
-      },
-      select: {
-        id: true,
-        name: true,
-        pluginSecret: true,
-        status: true,
-        trustStatus: true,
-        rewardRatePerSecond: true,
-        pointPool: true,
-        maxPaidPlayers: true,
-        botProtectionLevel: true,
-        heartbeatIntervalSeconds: true,
-        challengeEnabled: true,
-        challengeIntervalSeconds: true,
-        challengeAnswerWindowSeconds: true,
-        challengeRequired: true,
-        minimumMovementDistance: true,
-        minimumActivityEvents: true
-      }
-    });
+export type HeartbeatInput = z.infer<typeof heartbeatInputSchema>;
 
-    if (
-      !server ||
-      server.status !== "ACTIVE" ||
-      server.trustStatus === "SUSPENDED" ||
-      server.trustStatus === "BLACKLISTED"
-    ) {
-      return NextResponse.json({ error: "Invalid server credentials" }, { status: 401 });
-    }
-
-    if (!heartbeatTimestampIsFresh(input.timestamp)) {
-      return NextResponse.json({ error: "Heartbeat timestamp is stale" }, { status: 401 });
-    }
-
-    const { signature, ip, ...signedInput } = input;
-    if (!verifyHeartbeatSignature(signedInput, signature, server.pluginSecret)) {
-      return NextResponse.json({ error: "Heartbeat signature is invalid" }, { status: 401 });
-    }
-
+export async function processHeartbeat(input: HeartbeatInput, server: Server, requestNonce: string) {
     const player = await prisma.user.findUnique({
       where: { minecraftUuid: input.minecraftUuid },
       select: {
@@ -96,7 +41,7 @@ export async function POST(request: Request) {
     );
 
     if (!player || isUnclaimedShadowProfile) {
-      return NextResponse.json({
+      return {
         ok: true,
         linked: false,
         serverId: server.id,
@@ -115,7 +60,7 @@ export async function POST(request: Request) {
         challengeAccepted: false,
         challenge: null,
         message: "Link your KarixMC account with /karixmc link <code> before rewards can start."
-      });
+      };
     }
 
     await prisma.user.update({
@@ -174,14 +119,9 @@ export async function POST(request: Request) {
           data: {
             serverId: freshServer.id,
             userId: player.id,
-            minecraftName: input.minecraftName,
-            ipHash: hashIp(ip)
+            minecraftName: input.minecraftName
           }
         });
-      }
-
-      if (session.lastNonce === input.nonce) {
-        throw new Response("Heartbeat replay rejected", { status: 409 });
       }
 
       let challengeId = session.challengeId;
@@ -239,21 +179,24 @@ export async function POST(request: Request) {
         challengeExpiresAt = challenge.expiresAt;
       }
 
-      const rawElapsed = input.reportedSeconds || (now.getTime() - session.lastHeartbeatAt.getTime()) / 1000;
+      const serverElapsed = Math.max(0, (now.getTime() - session.lastHeartbeatAt.getTime()) / 1000);
+      const rawElapsed = Math.min(input.reportedSeconds, serverElapsed);
       const elapsed = clampHeartbeatSeconds(rawElapsed);
-      const activeSessions = await tx.serverSession.findMany({
-        where: {
-          serverId: freshServer.id,
-          status: SessionStatus.ACTIVE,
-          OR: [
-            { lastHeartbeatAt: { gte: cutoff } },
-            { id: session.id }
-          ]
-        },
+      const activeWhere: Prisma.ServerSessionWhereInput = {
+        serverId: freshServer.id,
+        status: SessionStatus.ACTIVE,
+        OR: [
+          { lastHeartbeatAt: { gte: cutoff } },
+          { id: session.id }
+        ]
+      };
+      const paidActivePlayers = await tx.serverSession.count({ where: activeWhere });
+      const paidSlots = await tx.serverSession.findMany({
+        where: activeWhere,
         orderBy: [{ startedAt: "asc" }, { id: "asc" }],
+        take: freshServer.maxPaidPlayers,
         select: { id: true }
       });
-      const paidActivePlayers = activeSessions.length;
 
       const requiredMovementScore = Math.max(
         1,
@@ -264,9 +207,7 @@ export async function POST(request: Request) {
       const activeInteraction = input.activityEvents >= freshServer.minimumActivityEvents;
       const challengePending = Boolean(challengeId);
       const challengeOk = !freshServer.challengeRequired || !challengePending;
-      const withinPaidCap = activeSessions
-        .slice(0, freshServer.maxPaidPlayers)
-        .some((activeSession) => activeSession.id === session.id);
+      const withinPaidCap = paidSlots.some((activeSession) => activeSession.id === session.id);
       const verifiedActive = elapsed > 0 && !input.afk && (strictMovement || activeInteraction) && challengeOk;
       const effectiveRewardRate = cappedRewardRate(freshServer.rewardRatePerSecond);
       const rewardable =
@@ -321,7 +262,7 @@ export async function POST(request: Request) {
           rewardCarryPoints,
           suspiciousScore: { increment: suspiciousBump },
           activityEvents: { increment: input.activityEvents },
-          lastNonce: input.nonce,
+          lastNonce: requestNonce,
           integrityVerified: true,
           challengeId,
           challengeQuestion,
@@ -336,7 +277,7 @@ export async function POST(request: Request) {
         where: { id: freshServer.id },
         data: {
           lastHeartbeatAt: now,
-          lastPluginVersion: input.pluginVersion
+          ...(input.pluginVersion ? { lastPluginVersion: input.pluginVersion } : {})
         }
       });
 
@@ -372,6 +313,14 @@ export async function POST(request: Request) {
 
       let balanceAfter = player.walletPoints;
       if (earned > 0) {
+        const funded = await tx.server.updateMany({
+          where: { id: freshServer.id, pointPool: { gte: earned } },
+          data: { pointPool: { decrement: earned } }
+        });
+        if (funded.count !== 1) {
+          throw new Response("Campaign pool changed; heartbeat can be retried", { status: 409 });
+        }
+
         let updatedUser = await tx.user.update({
           where: { id: player.id },
           data: {
@@ -380,11 +329,6 @@ export async function POST(request: Request) {
           }
         });
         balanceAfter = updatedUser.walletPoints;
-
-        await tx.server.update({
-          where: { id: freshServer.id },
-          data: { pointPool: { decrement: earned } }
-        });
 
         await tx.pointLedger.create({
           data: {
@@ -445,14 +389,22 @@ export async function POST(request: Request) {
       };
     });
 
-    return NextResponse.json({
+    return {
       ok: true,
       linked: true,
       serverId: server.id,
       playerId: player.id,
       ...result
-    });
+    };
+}
+
+export async function POST(request: Request) {
+  let auth: PluginAuthContext | null = null;
+  try {
+    auth = await authenticatePluginRequest(request);
+    const input = heartbeatInputSchema.parse(auth.body);
+    return pluginJson(auth, await processHeartbeat(input, auth.server, auth.nonce));
   } catch (error) {
-    return routeError(error);
+    return pluginRouteError(auth, error);
   }
 }

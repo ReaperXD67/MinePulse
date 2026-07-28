@@ -13,6 +13,7 @@ const email = `auth-audit-${stamp}@example.test`;
 const username = `Auth Audit ${stamp.slice(-8)}`;
 const password = `Nebula!River!Quartz!${stamp}`;
 const newPassword = `Orbit!Cedar!Lantern!${stamp}`;
+const auditAddress = `2001:db8::${crypto.randomBytes(8).toString("hex")}`;
 const startedAt = new Date();
 let userId = "";
 
@@ -25,8 +26,9 @@ async function json(response: APIResponse) {
 }
 
 async function main() {
-  const first = await request.newContext({ baseURL: baseUrl });
-  const second = await request.newContext({ baseURL: baseUrl });
+  const clientOptions = { baseURL: baseUrl, extraHTTPHeaders: { "x-forwarded-for": auditAddress } };
+  const first = await request.newContext(clientOptions);
+  const second = await request.newContext(clientOptions);
   const attacker = await request.newContext({
     baseURL: baseUrl,
     extraHTTPHeaders: { "x-forwarded-for": "203.0.113.77" }

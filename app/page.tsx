@@ -4,9 +4,10 @@ import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
 import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { currentUser } from "@/lib/auth";
 import { FIRST_POSITION_CHANCES, orderDirectory } from "@/lib/directory-order";
-import { compact, money, points } from "@/lib/format";
+import { compact, minutesLabel, money, points } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { activePremiumPlan } from "@/lib/premium";
+import { safeMediaPath } from "@/lib/server-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,7 @@ export default async function MarketplacePage({
     Promise.all([
       prisma.user.count(),
       prisma.server.aggregate({ _sum: { pointPool: true } }),
-      prisma.purchase.count(),
+      prisma.purchase.count({ where: { status: "PENDING" } }),
       prisma.serverSession.aggregate({ _sum: { activeSeconds: true } })
     ]),
     prisma.pointPackage.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
@@ -76,7 +77,7 @@ export default async function MarketplacePage({
       region: server.region,
       tags: server.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
       description: server.description,
-      bannerImage: server.bannerImage || "/voxel-network.png",
+      bannerImage: safeMediaPath(server.bannerImage) || "/voxel-network.png",
       pointPool: server.pointPool,
       rewardRatePerSecond: server.rewardRatePerSecond,
       maxPaidPlayers: server.maxPaidPlayers,
@@ -203,10 +204,10 @@ export default async function MarketplacePage({
             <div className="beacon-orbit" aria-hidden="true"><i /><i /><i /><strong>KX</strong></div>
             <div className="beacon-readout">
               <p>Network telemetry</p>
-              <div><span>Campaign signal</span><strong>{points(pools._sum.pointPool ?? 0)}</strong></div>
-              <div><span>Linked members</span><strong>{usersCount}</strong></div>
-              <div><span>Verified play</span><strong>{compact(playtime._sum.activeSeconds ?? 0)}s</strong></div>
-              <div><span>Queued perks</span><strong>{purchaseCount}</strong></div>
+              <div title="Campaign credits currently available to reward players across all servers"><span>Reward pools</span><strong>{points(pools._sum.pointPool ?? 0)} pts</strong><small>available for play rewards</small></div>
+              <div title="Registered KarixMC accounts"><span>Member accounts</span><strong>{usersCount}</strong><small>registered profiles</small></div>
+              <div title="Total active playtime accepted by the KarixMC verification service"><span>Verified playtime</span><strong>{minutesLabel(playtime._sum.activeSeconds ?? 0)}</strong><small>AFK time excluded</small></div>
+              <div title="Purchased server items waiting for an in-game delivery confirmation"><span>Pending deliveries</span><strong>{purchaseCount}</strong><small>items awaiting the plugin</small></div>
             </div>
           </aside>
         </div>

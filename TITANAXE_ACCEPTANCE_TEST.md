@@ -6,7 +6,7 @@ Use this checklist before connecting a production domain or enabling real paymen
 
 | Purpose | Value |
 | --- | --- |
-| Website | `http://51.83.180.202:3000` |
+| Website | `http://51.83.180.202` |
 | Minecraft join address | `s130.titanaxe.com:27390` |
 | KarixMC server name | `test1` |
 | Server ID | `cmremn65y00025w9vva8q1kcx` |
@@ -28,15 +28,16 @@ Pass condition: the console has no KarixMCBridge stack trace and `/plugins` show
 
 ## 2. Install And Connect The Bridge
 
-1. Download `KarixMCBridge-0.5.1.jar` from the website Plugin page.
+1. Download `KarixMCBridge-0.6.0.jar` from the website Plugin page.
 2. In Titanaxe, open the server File Manager and upload it to `plugins/`.
 3. Start once, wait for startup, then stop the server.
 4. Open `plugins/KarixMCBridge/config.yml` and enter exactly:
 
 ```yaml
-api-base-url: "http://51.83.180.202:3000"
+api-base-url: "http://51.83.180.202"
 server-id: "cmremn65y00025w9vva8q1kcx"
 plugin-secret: "COPY_FROM_TEST1_CREATOR_STUDIO"
+allow-insecure-http: true
 ```
 
 5. Save and fully restart the server.
@@ -72,7 +73,7 @@ Expected result at 1 point/second:
 
 - Wallet and Session earned increase by approximately verified active seconds.
 - Campaign pool decreases by exactly the points credited to the wallet.
-- Creator Studio shows Last player activity and plugin version `0.5.1`.
+- Creator Studio shows Last player activity and plugin version `0.6.0`.
 
 Rewards arrive in heartbeat batches, so a small delay is normal.
 

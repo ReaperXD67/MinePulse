@@ -12,6 +12,7 @@ import { cryptoPaymentMode } from "@/lib/crypto-payments";
 import { minutesLabel, money, points, shortDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { serverJoinAddress } from "@/lib/server-address";
+import { safeMediaPath } from "@/lib/server-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -128,8 +129,8 @@ export default async function AccountPage() {
   return (
     <main className="container dashboard account-page">
       <section className="account-hero">
-        <div className="profile-avatar" style={profile?.avatarUrl ? { backgroundImage: `url(${profile.avatarUrl})` } : undefined}>
-          {!profile?.avatarUrl ? initials : null}
+        <div className="profile-avatar" style={safeMediaPath(profile?.avatarUrl) ? { backgroundImage: `url(${safeMediaPath(profile?.avatarUrl)})` } : undefined}>
+          {!safeMediaPath(profile?.avatarUrl) ? initials : null}
         </div>
         <div className="account-identity">
           <p className="eyebrow"><ShieldCheck size={14} /> Unified member profile</p>
@@ -305,7 +306,6 @@ export default async function AccountPage() {
           premiumUntil: server.premiumUntil?.toISOString() ?? null,
           lastHeartbeatAt: server.lastHeartbeatAt?.toISOString() ?? null,
           lastPluginVersion: server.lastPluginVersion,
-          pluginSecret: server.pluginSecret,
           pluginConfigRevision: server.pluginConfigRevision,
           heartbeatIntervalSeconds: server.heartbeatIntervalSeconds,
           purchasePollSeconds: server.purchasePollSeconds,

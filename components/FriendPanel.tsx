@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { RadioTower, Trash2, UserPlus, UsersRound } from "lucide-react";
 import { shortDate } from "@/lib/format";
+import { safeMediaPath } from "@/lib/server-profile";
 
 type FriendRow = {
   id: string;
@@ -24,9 +25,10 @@ export function FriendPanel({ friends }: { friends: FriendRow[] }) {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setBusy(true);
     setMessage("");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const response = await fetch("/api/friends", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -36,7 +38,7 @@ export function FriendPanel({ friends }: { friends: FriendRow[] }) {
     setBusy(false);
     setMessage(response.ok ? payload.message || "Friend added" : payload.error || "Could not add friend");
     if (response.ok) {
-      event.currentTarget.reset();
+      formElement.reset();
       router.refresh();
     }
   }
@@ -73,8 +75,8 @@ export function FriendPanel({ friends }: { friends: FriendRow[] }) {
       <div className="friend-list">
         {friends.map((friend) => (
           <article className="friend-card" key={friend.id}>
-            <div className="mini-avatar" style={friend.avatarUrl ? { backgroundImage: `url(${friend.avatarUrl})` } : undefined}>
-              {!friend.avatarUrl ? friend.username.slice(0, 2).toUpperCase() : null}
+            <div className="mini-avatar" style={safeMediaPath(friend.avatarUrl) ? { backgroundImage: `url(${safeMediaPath(friend.avatarUrl)})` } : undefined}>
+              {!safeMediaPath(friend.avatarUrl) ? friend.username.slice(0, 2).toUpperCase() : null}
             </div>
             <div>
               <strong>{friend.username}</strong>

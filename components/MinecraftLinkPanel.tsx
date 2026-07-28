@@ -44,6 +44,7 @@ export function MinecraftLinkPanel({ minecraftName, isLinked }: { minecraftName:
       ) : (
         <button className="ghost-button" type="button" disabled={busy} onClick={generateCode}><Link2 size={16} /> {isLinked ? "Relink Minecraft" : "Create link code"}</button>
       )}
+      <small className="privacy-copy">Running the link command opts this Minecraft identity into KarixMC reward verification on that server. The plugin sends limited activity counters, never your IP address. Review or stop sharing at any time with <code>/karixmc privacy</code> or <code>/karixmc forget</code>.</small>
       <p className="toast-line" aria-live="polite">{message}</p>
     </section>
   );

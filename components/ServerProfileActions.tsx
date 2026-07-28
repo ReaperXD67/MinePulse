@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Flag, Heart, LifeBuoy, MessageSquare, Send, ShoppingBag, Star } from "lucide-react";
+import { ChevronDown, Flag, Heart, LifeBuoy, MessageSquare, Send, ShoppingBag, Star } from "lucide-react";
 import { points } from "@/lib/format";
 
 type ProfileItem = { id: string; name: string; description: string; pricePoints: number; requiresOnline: boolean };
@@ -29,6 +29,8 @@ export function ServerProfileActions({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<"report" | "support" | "review" | null>(null);
+  const [visibleItemCount, setVisibleItemCount] = useState(6);
+  const visibleItems = items.slice(0, visibleItemCount);
 
   async function request(url: string, body: unknown) {
     setBusy(true);
@@ -56,13 +58,14 @@ export function ServerProfileActions({
     return (
       <div className="profile-action-stack">
         <div className="store-grid">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <div className="store-profile-card" key={item.id}>
               <div><strong>{item.name}</strong><p>{item.description}</p><small>{item.requiresOnline ? "Join the server, then use /receive if it does not arrive instantly." : "Can be delivered while offline."}</small></div>
               <span>{points(item.pricePoints)} pts</span>
             </div>
           ))}
         </div>
+        {visibleItemCount < items.length ? <button className="ghost-button store-load-more" type="button" onClick={() => setVisibleItemCount((count) => count + 6)}><ChevronDown size={16} /> Show 6 more items ({items.length - visibleItemCount} remaining)</button> : null}
         <Link className="solid-button" href="/login"><ShoppingBag size={16} /> Log in to buy or interact</Link>
       </div>
     );
@@ -126,7 +129,7 @@ export function ServerProfileActions({
       ) : null}
 
       <div className="store-grid">
-        {items.map((item) => (
+        {visibleItems.map((item) => (
           <article className="store-profile-card" key={item.id}>
             <div><strong>{item.name}</strong><p>{item.description}</p><small>{item.requiresOnline ? "Online delivery" : "Offline-safe delivery"}</small></div>
             <div><span>{points(item.pricePoints)} earned pts</span><button className="icon-button" type="button" title={`Buy ${item.name}`} aria-label={`Buy ${item.name}`} disabled={busy} onClick={() => request("/api/player/purchase", { itemId: item.id })}><ShoppingBag size={16} /></button></div>
@@ -134,6 +137,7 @@ export function ServerProfileActions({
         ))}
         {!items.length ? <div className="empty-state compact-empty">This server has not published store items yet.</div> : null}
       </div>
+      {visibleItemCount < items.length ? <button className="ghost-button store-load-more" type="button" onClick={() => setVisibleItemCount((count) => count + 6)}><ChevronDown size={16} /> Show 6 more items ({items.length - visibleItemCount} remaining)</button> : null}
 
       <p className="toast-line action-message" aria-live="polite">{message}</p>
     </div>

@@ -1,22 +1,22 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { LedgerType, PurchaseStatus } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { routeError } from "@/lib/api";
+import { authenticatePluginRequest, pluginJson, pluginRouteError, type PluginAuthContext } from "@/lib/plugin-auth";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
   serverId: z.string().min(1),
-  secret: z.string().min(8),
   purchaseId: z.string().min(1),
   status: z.enum(["DELIVERED", "FAILED"]),
   message: z.string().trim().max(240).optional()
 });
 
 export async function POST(request: Request) {
+  let auth: PluginAuthContext | null = null;
   try {
-    const input = schema.parse(await request.json());
+    auth = await authenticatePluginRequest(request);
+    const input = schema.parse(auth.body);
     const purchase = await prisma.purchase.findUnique({
       where: { id: input.purchaseId },
       include: {
@@ -29,10 +29,10 @@ export async function POST(request: Request) {
     if (
       !purchase ||
       purchase.serverId !== input.serverId ||
-      purchase.server.pluginSecret !== input.secret ||
+      purchase.serverId !== auth.server.id ||
       purchase.status !== PurchaseStatus.PENDING
     ) {
-      return NextResponse.json({ error: "Purchase not found" }, { status: 404 });
+      throw new Response("Purchase not found", { status: 404 });
     }
 
     if (input.status === "DELIVERED") {
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
         where: { id: purchase.id },
         data: { status: PurchaseStatus.DELIVERED, deliveredAt: new Date() }
       });
-      return NextResponse.json({ message: "Delivery confirmed" });
+      return pluginJson(auth, { message: "Delivery confirmed" });
     }
 
     await prisma.$transaction(async (tx) => {
@@ -66,8 +66,8 @@ export async function POST(request: Request) {
       });
     });
 
-    return NextResponse.json({ message: "Purchase failed and refunded" });
+    return pluginJson(auth, { message: "Purchase failed and refunded" });
   } catch (error) {
-    return routeError(error);
+    return pluginRouteError(auth, error);
   }
 }
