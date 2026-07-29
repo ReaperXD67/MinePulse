@@ -23,6 +23,7 @@
     "test:plugin-heartbeat": "tsx scripts/plugin-heartbeat-audit.ts",
     "test:owner-live-state": "tsx scripts/owner-server-live-audit.ts",
     "test:server-removal": "tsx scripts/server-removal-audit.ts",
+    "test:minecraft-unlink": "tsx scripts/minecraft-unlink-audit.ts",
     "test:auth": "tsx scripts/auth-audit.ts",
     "test:security-boundaries": "tsx scripts/security-boundary-audit.ts",
     "test:premium-order": "tsx scripts/premium-order-audit.ts"

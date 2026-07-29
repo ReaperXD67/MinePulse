@@ -135,6 +135,16 @@ Only linked players earn points. People who join without a KarixMC account can p
 
 The old `/minepulse link` command remains as a compatibility alias, but all new instructions use `/karixmc`.
 
+If Minecraft says the profile belongs to another account:
+
+1. Sign in to the old website account and use `Account -> Minecraft identity -> Unlink Minecraft`.
+2. If the old account is unavailable, an administrator can search that member under `Admin -> Server grants` and use `Reset Minecraft link`.
+3. Generate a new code from the intended account and run `/karixmc link <code>` again.
+
+Unlinking closes active reward sessions and invalidates old link codes. It does not erase the player's wallet, ledger, or purchases.
+
+If a removed server address is published again, Creator Studio creates a fresh server ID and plugin secret. Download the new `config.yml`; old shop items, pool credits, reactions, reviews, and sessions are not transferred to the new listing.
+
 ## Balance terminology
 
 | Term | Meaning | Increases when | Decreases when |

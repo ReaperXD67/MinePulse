@@ -18,8 +18,10 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
+  Unlink,
   Wifi,
-  WifiOff
+  WifiOff,
+  X
 } from "lucide-react";
 import { money, points, shortDate } from "@/lib/format";
 
@@ -112,6 +114,7 @@ export function AdminConsole({
   const [accountQuery, setAccountQuery] = useState("");
   const [accountResults, setAccountResults] = useState<CampaignAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<CampaignAccount | null>(null);
+  const [confirmMinecraftReset, setConfirmMinecraftReset] = useState(false);
   const [campaignServerId, setCampaignServerId] = useState("");
   const [premiumServerId, setPremiumServerId] = useState("");
   const [searching, setSearching] = useState(false);
@@ -329,10 +332,26 @@ export function AdminConsole({
 
   function chooseGrantAccount(account: CampaignAccount) {
     setSelectedAccount(account);
+    setConfirmMinecraftReset(false);
     setAccountQuery(`${account.username} - ${account.email}`);
     setCampaignServerId(account.ownedServers[0]?.id || "");
     setPremiumServerId(account.ownedServers[0]?.id || "");
     setAccountResults([]);
+  }
+
+  async function resetMinecraftLink() {
+    if (!selectedAccount?.minecraftName) return;
+    if (!confirmMinecraftReset) {
+      setConfirmMinecraftReset(true);
+      setMessage("Confirm the Minecraft unlink below. Active reward sessions for this account will close.");
+      return;
+    }
+
+    const reset = await send(`/api/admin/users/${selectedAccount.id}/minecraft-link`, {}, "DELETE");
+    if (reset) {
+      setSelectedAccount({ ...selectedAccount, minecraftName: null });
+      setConfirmMinecraftReset(false);
+    }
   }
 
   return (
@@ -376,6 +395,7 @@ export function AdminConsole({
               onChange={(event) => {
                 setAccountQuery(event.target.value);
                 setSelectedAccount(null);
+                setConfirmMinecraftReset(false);
                 setCampaignServerId("");
                 setPremiumServerId("");
               }}
@@ -401,7 +421,27 @@ export function AdminConsole({
           {selectedAccount ? (
             <div className="admin-selected-account">
               <div><strong>{selectedAccount.username}</strong><span>{selectedAccount.email}</span></div>
-              <span>{selectedAccount.minecraftName || "Minecraft not linked"}</span>
+              <div className="inline-actions">
+                <span>{selectedAccount.minecraftName || "Minecraft not linked"}</span>
+                {selectedAccount.minecraftName && confirmMinecraftReset ? (
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setConfirmMinecraftReset(false);
+                      setMessage("");
+                    }}
+                  >
+                    <X size={15} /> Cancel
+                  </button>
+                ) : null}
+                {selectedAccount.minecraftName ? (
+                  <button className="ghost-button danger-button" type="button" disabled={busy} onClick={resetMinecraftLink}>
+                    <Unlink size={15} /> {confirmMinecraftReset ? "Confirm unlink" : "Reset Minecraft link"}
+                  </button>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </div>

@@ -194,6 +194,13 @@ if (!adminLogin.ok()) {
   if ((await premiumDuration.locator("option").allTextContents()).join("|") !== "1 week|2 weeks") {
     errors.push("admin premium grant: expected one-week and two-week durations");
   }
+  await search.fill("PixelRunner");
+  const playerResult = adminPage.locator(".admin-account-results").getByRole("option", { name: /PixelRunner/i });
+  await playerResult.waitFor({ state: "visible" });
+  await playerResult.click();
+  if (!(await adminPage.getByRole("button", { name: "Reset Minecraft link", exact: true }).isVisible())) {
+    errors.push("admin account: targeted Minecraft unlink control is not visible");
+  }
   const serverFilter = adminPage.getByRole("textbox", { name: "Search servers" });
   await serverFilter.fill("Survival");
   await adminPage.waitForTimeout(150);

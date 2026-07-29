@@ -1,7 +1,7 @@
 import type { Prisma } from "@/lib/generated/prisma/client";
 
 export const ownerServerInclude = {
-  items: { orderBy: { createdAt: "desc" } },
+  items: { where: { status: "ACTIVE" }, orderBy: { createdAt: "desc" } },
   supportTickets: {
     include: { requester: { select: { username: true } } },
     orderBy: { updatedAt: "desc" },

@@ -89,21 +89,24 @@ Pass:
 - Only 0.5 reward steps from 1 through 3 are accepted.
 - Media limits are one avatar, one server banner, and five gallery images.
 
-## 6. Remove And Restore A Listing
+## 6. Remove And Recreate A Listing
 
 1. Click **Remove listing** once.
 2. Confirm that the button changes to **Confirm removal** and a Cancel action appears.
 3. Click Cancel and verify nothing is removed.
 4. Arm removal again, then click **Confirm removal**.
 5. Wait 15 seconds, refresh the page, and search the public directory.
-6. Publish the same host/port again from the same trusted owner account if restoration is required.
+6. Publish the same host/port again from the same trusted owner account.
+7. Compare the old and new server IDs, plugin secrets, shop, pool, likes, favorites, reviews, and sessions.
 
 Pass:
 
 - The first click never silently deletes the server.
 - Confirmed removal hides it from Creator Studio and the marketplace permanently across polling and reloads.
 - Plugin requests cannot reactivate a removed listing.
-- Audit history remains, and an allowed restoration reuses the old server record with a fresh private secret.
+- The removed record remains archived for audit history.
+- Republishing creates a new server ID and private secret with an empty shop, zero pool, zero social reactions, and no inherited sessions or reviews.
+- The new `config.yml` replaces the old server ID and secret in Paper before reconnecting the plugin.
 
 ## 7. Plugin Installation And Connection
 
@@ -150,12 +153,15 @@ Pass:
 2. Join using Tester A's Minecraft account and run `/karixmc link <code>`.
 3. Reuse the code and try an expired or incorrect code.
 4. Run `/karixmc privacy`, then `/karixmc forget`.
-5. Create a new code and link again.
+5. On the website, use **Account -> Minecraft identity -> Unlink Minecraft**, then confirm the unlink.
+6. As admin, search a test account under **Admin -> Server grants** and test **Reset Minecraft link**.
+7. Create a new code on a different website test account and link again.
 
 Pass:
 
 - A valid code links the correct UUID once; reused, expired, and wrong codes fail.
 - Unlinked/forgotten players continue playing Minecraft but send no reward heartbeats and earn nothing.
+- Self-unlink and admin reset close active reward sessions and invalidate pending link codes before the UUID can move to another account.
 - The plugin does not collect or transmit player IP addresses.
 
 ## 10. Verified Play And Fractional Rewards
@@ -307,6 +313,7 @@ Pass:
 
 - Code releases are atomic and the previous release remains available for rollback.
 - Database and uploaded media live outside release directories and are not replaced by code deployment.
+- Normal deployments never reset the database. Use targeted unlink, listing removal/recreation, or admin moderation controls for test cleanup.
 - A current backup exists and a restore has been tested, not merely assumed.
 
 ## Automated Regression Commands
@@ -326,6 +333,7 @@ npm.cmd run test:security-boundaries
 npm.cmd run test:plugin-heartbeat
 npm.cmd run test:owner-live-state
 npm.cmd run test:server-removal
+npm.cmd run test:minecraft-unlink
 npm.cmd run test:admin-campaign-grant
 npm.cmd run test:admin-fleet
 npm.cmd run test:premium-order

@@ -49,6 +49,25 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ error: "Server not found" }, { status: 404 });
     }
 
+    const nextStatus = input.status ? (input.status as ServerStatus) : server.status;
+    if (server.status === ServerStatus.REMOVED && nextStatus !== ServerStatus.REMOVED) {
+      const currentListing = await prisma.server.findFirst({
+        where: {
+          id: { not: server.id },
+          host: server.host,
+          port: server.port,
+          status: { not: ServerStatus.REMOVED }
+        },
+        select: { id: true, name: true }
+      });
+      if (currentListing) {
+        return NextResponse.json(
+          { error: `${currentListing.name} is the current listing for this address. Keep the old record archived.` },
+          { status: 409 }
+        );
+      }
+    }
+
     const pointPool = Math.max(0, server.pointPool + (input.adjustPoints ?? 0));
     const premiumPlan = input.premiumPlan ? (input.premiumPlan as PremiumPlanCode) : server.premiumPlan;
     const premiumUntil =
@@ -64,7 +83,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         where: { id },
         data: {
           pointPool,
-          status: input.status ? (input.status as ServerStatus) : server.status,
+          status: nextStatus,
           trustStatus: input.trustStatus ?? server.trustStatus,
           premiumPlan,
           premiumUntil,

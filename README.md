@@ -80,6 +80,7 @@ Wait until `KarixMCBridge` appears in green, then connect Minecraft Java Edition
 4. Use `/points`, `/pool`, and `/karixmc help` while testing.
 5. Buy a store item on the website while linked, then join the server and run `/receive` if the item does not arrive immediately.
 6. After five verified minutes, answer the activity prompt with `/answer <value>`.
+7. Use **Unlink Minecraft** on the account page, or the targeted admin reset, before moving a Minecraft UUID to another test account.
 
 To watch Paper and bridge logs or remove the test server:
 
@@ -144,5 +145,6 @@ For local testing where Paper and the website run on the same machine, keep `api
 - `AUTH_COOKIE_SECURE="false"` is allowed only for temporary HTTP/IP-based VPS testing. Use HTTPS and remove it or set it to `"true"` before real public launch.
 - No payment method is connected in the testing build. Campaign credits and premium time are granted by an administrator. Select and security-review a payment provider only after HTTPS, PostgreSQL, backups, refund rules, merchant verification, and signed webhook tests are ready.
 - SQLite is fine for local MVP testing. Use Postgres before handling real money or large traffic.
+- Do not reset the database during normal deployments. Removing and republishing an address creates a fresh server identity while retaining the removed record for audit history; account and admin controls provide targeted Minecraft unlinking.
 
 Run `npm run test:auth` against a local production server on port 3001 to verify registration, password hashing, session revocation, logout, password rotation, and brute-force throttling.

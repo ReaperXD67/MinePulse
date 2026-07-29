@@ -9,7 +9,6 @@ import { routeError } from "@/lib/api";
 import { normalizeServerAddress } from "@/lib/server-address";
 import { protectPluginSecret } from "@/lib/plugin-credentials";
 import { ownerServerInclude, serializeOwnerServer } from "@/lib/owner-server-view";
-import { deleteManagedMedia } from "@/lib/media-storage";
 import {
   minecraftVersionSchema,
   normalizeBannerImage,
@@ -88,22 +87,28 @@ export async function POST(request: Request) {
     const bannerImage = normalizeBannerImage(input.bannerImage, user.id);
     const address = normalizeServerAddress(input.host, input.port);
     const existing = await prisma.server.findFirst({
-      where: { host: address.host, port: address.port }
+      where: { host: address.host, port: address.port, status: { not: "REMOVED" } },
+      select: { id: true }
     });
 
-    if (existing && existing.status !== "REMOVED") {
+    if (existing) {
       throw new Response("That Minecraft server is already registered. Contact support if you own it.", {
         status: 409
       });
     }
 
-    if (existing && existing.ownerId !== user.id) {
+    const previousListing = await prisma.server.findFirst({
+      where: { host: address.host, port: address.port, status: "REMOVED" },
+      orderBy: { updatedAt: "desc" }
+    });
+
+    if (previousListing && previousListing.ownerId !== user.id) {
       throw new Response("That Minecraft server was registered by another account. Contact support to verify ownership.", {
         status: 409
       });
     }
 
-    if (existing && existing.trustStatus !== "VERIFIED") {
+    if (previousListing && previousListing.trustStatus !== "VERIFIED") {
       throw new Response("This removed server cannot be restored automatically. Contact support for a trust review.", {
         status: 409
       });
@@ -120,42 +125,21 @@ export async function POST(request: Request) {
       pluginSecret: protectPluginSecret(pluginSecret),
       bannerImage
     };
-    const server = existing
-      ? await prisma.server.update({
-          where: { id: existing.id },
-          data: {
-            ...serverData,
-            status: "ACTIVE",
-            lastHeartbeatAt: null,
-            lastConfigSyncAt: null,
-            lastPluginVersion: null,
-            pluginConfigRevision: { increment: 1 }
-          }
-        })
-      : await prisma.server.create({
-          data: {
-            ...serverData,
-            ownerId: user.id,
-            slug: await uniqueSlug(input.name),
-            pointPool: 0
-          }
-        });
-
-    if (existing) {
-      const oldGallery = existing.galleryImages.split(",").map((value) => value.trim()).filter(Boolean);
-      const nextGallery = new Set(galleryImages.split(",").map((value) => value.trim()).filter(Boolean));
-      await deleteManagedMedia([
-        ...(existing.bannerImage !== bannerImage ? [existing.bannerImage] : []),
-        ...oldGallery.filter((value) => !nextGallery.has(value))
-      ]);
-    }
+    const server = await prisma.server.create({
+      data: {
+        ...serverData,
+        ownerId: user.id,
+        slug: await uniqueSlug(input.name),
+        pointPool: 0
+      }
+    });
 
     return NextResponse.json({
       serverId: server.id,
       pluginSecret,
-      restored: Boolean(existing),
-      message: existing
-        ? "Removed listing restored with a fresh plugin secret. Copy it now; KarixMC will not display it again."
+      freshStart: Boolean(previousListing),
+      message: previousListing
+        ? "Fresh listing created. The removed server stays archived, and its shop, likes, favorites, reviews, sessions, pool, and plugin identity were not reused."
         : "Server created. Copy the plugin secret now; KarixMC will not display it again."
     });
   } catch (error) {

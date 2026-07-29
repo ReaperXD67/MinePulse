@@ -14,6 +14,7 @@ const serverName = `Live Studio ${stamp}`;
 const updatedName = `${serverName} Updated`;
 const host = `${stamp}.example.test`;
 let serverId = "";
+let freshServerId = "";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -104,6 +105,23 @@ async function main() {
     await updatedCard.getByText("1.5/s", { exact: true }).waitFor({ state: "visible" });
     assert(await page.evaluate(() => (window as typeof window & { __karixAuditMarker?: string }).__karixAuditMarker) === marker, "Saving caused a full page reload");
 
+    const itemResponse = await context.request.post(`${baseUrl}/api/owner/items`, {
+      data: {
+        serverId,
+        name: "Archived test reward",
+        description: "Must stay attached only to the removed listing",
+        pricePoints: 250,
+        command: "give {player} stone 1",
+        requiresOnline: true
+      }
+    });
+    assert(itemResponse.ok(), `Could not create the archived test item: ${itemResponse.status()}`);
+    const likeResponse = await context.request.post(`${baseUrl}/api/marketplace/interact`, { data: { serverId, type: "like" } });
+    assert(likeResponse.ok(), `Could not create the archived test like: ${likeResponse.status()}`);
+    const favoriteResponse = await context.request.post(`${baseUrl}/api/marketplace/interact`, { data: { serverId, type: "favorite" } });
+    assert(favoriteResponse.ok(), `Could not create the archived test favorite: ${favoriteResponse.status()}`);
+    await prisma.server.update({ where: { id: serverId }, data: { pointPool: 4321 } });
+
     const removedTopup = await context.request.post(`${baseUrl}/api/owner/servers/${serverId}/topup`, { data: {} });
     assert(removedTopup.status() === 404, `Removed payment route returned ${removedTopup.status()} instead of 404`);
 
@@ -132,16 +150,41 @@ async function main() {
     }
     await createForm.locator('input[name="name"]').fill(updatedName);
     await createForm.locator('input[name="host"]').fill(host);
-    const [restoreResponse] = await Promise.all([
+    const [freshResponse] = await Promise.all([
       page.waitForResponse((response) => response.url().endsWith("/api/owner/servers") && response.request().method() === "POST"),
       createForm.getByRole("button", { name: "Publish draft" }).click()
     ]);
-    const restoreBody = await restoreResponse.json();
-    assert(restoreResponse.ok(), `Removed server restore failed with ${restoreResponse.status()}: ${JSON.stringify(restoreBody)}`);
-    assert(restoreBody.serverId === serverId, "Restoring created a duplicate server instead of reusing the removed record");
-    assert(restoreBody.restored === true, "Restore response did not identify the restored listing");
+    const freshBody = await freshResponse.json();
+    assert(freshResponse.ok(), `Fresh server publish failed with ${freshResponse.status()}: ${JSON.stringify(freshBody)}`);
+    freshServerId = String(freshBody.serverId || "");
+    assert(freshServerId && freshServerId !== serverId, "Republishing reused the removed server identity");
+    assert(freshBody.freshStart === true, "Publish response did not identify the fresh start");
+    assert(freshBody.pluginSecret && freshBody.pluginSecret !== createBody.pluginSecret, "Fresh listing reused the old plugin secret");
     await page.getByRole("article").filter({ hasText: updatedName }).waitFor({ state: "visible" });
-    assert(await page.evaluate(() => (window as typeof window & { __karixAuditMarker?: string }).__karixAuditMarker) === marker, "Restoring caused a full page reload");
+    assert(await page.evaluate(() => (window as typeof window & { __karixAuditMarker?: string }).__karixAuditMarker) === marker, "Fresh publish caused a full page reload");
+
+    const freshListing = await context.request.get(`${baseUrl}/api/owner/servers`);
+    const freshListingBody = await freshListing.json();
+    const freshServer = freshListingBody.servers.find((server: { id: string }) => server.id === freshServerId);
+    assert(freshListing.ok() && freshServer, "Fresh listing is missing from the owner endpoint");
+    assert(freshServer.pointPool === 0, "Fresh listing inherited the removed campaign pool");
+    assert(freshServer.likeCount === 0, "Fresh listing inherited removed likes");
+    assert(freshServer.favoriteCount === 0, "Fresh listing inherited removed favorites");
+    assert(Array.isArray(freshServer.items) && freshServer.items.length === 0, "Fresh listing inherited removed shop items");
+
+    const archived = await prisma.server.findUnique({
+      where: { id: serverId },
+      include: { items: true, likes: true, favorites: true }
+    });
+    assert(archived?.status === "REMOVED", "Old listing was not retained as a removed audit record");
+    assert(archived.pointPool === 4321 && archived.items.length === 1 && archived.likes.length === 1 && archived.favorites.length === 1, "Archived listing history was unexpectedly erased");
+    let duplicateActiveAddressBlocked = false;
+    try {
+      await prisma.server.update({ where: { id: serverId }, data: { status: "ACTIVE" } });
+    } catch (error) {
+      duplicateActiveAddressBlocked = typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
+    }
+    assert(duplicateActiveAddressBlocked, "Database allowed two current listings for the same host and port");
     assert(browserErrors.length === 0, browserErrors.join("\n"));
 
     console.log(JSON.stringify({
@@ -155,7 +198,10 @@ async function main() {
         rewardRatePersisted: true,
         removeVisibleWithoutReload: true,
         removalPersistsAfterReload: true,
-        removedAddressRestoredWithoutReload: true,
+        removedAddressCreatesFreshIdentityWithoutReload: true,
+        oldShopSocialPoolNotReused: true,
+        removedListingRetainedForAudit: true,
+        concurrentActiveDuplicateGuard: true,
         cryptoRoutesRemoved: true,
         browserErrors: 0
       }
@@ -171,7 +217,8 @@ async function run() {
   try {
     await main();
   } finally {
-    if (serverId) await prisma.server.deleteMany({ where: { id: serverId } });
+    const serverIds = [serverId, freshServerId].filter(Boolean);
+    if (serverIds.length) await prisma.server.deleteMany({ where: { id: { in: serverIds } } });
     await prisma.$disconnect();
   }
 }

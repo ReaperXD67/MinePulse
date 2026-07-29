@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { routeError } from "@/lib/api";
 import { requireMember } from "@/lib/auth";
+import { unlinkMinecraftIdentity } from "@/lib/minecraft-identity";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -35,6 +36,21 @@ export async function POST() {
     });
 
     return NextResponse.json({ code: link.code, expiresAt: link.expiresAt.toISOString() });
+  } catch (error) {
+    return routeError(error);
+  }
+}
+
+export async function DELETE() {
+  try {
+    const user = await requireMember();
+    const unlinked = await unlinkMinecraftIdentity(user.id);
+
+    return NextResponse.json({
+      message: unlinked?.wasLinked
+        ? `${unlinked.minecraftName || "Minecraft profile"} was unlinked. You can now link it to another KarixMC account.`
+        : "This account was already unlinked."
+    });
   } catch (error) {
     return routeError(error);
   }
