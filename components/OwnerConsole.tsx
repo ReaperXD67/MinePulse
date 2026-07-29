@@ -98,6 +98,7 @@ export function OwnerConsole({
   const [serverState, setServerState] = useState(servers);
   const [serverSecrets, setServerSecrets] = useState<Record<string, string>>({});
   const [oneTimeCredential, setOneTimeCredential] = useState<{ serverId: string; pluginSecret: string } | null>(null);
+  const [removalConfirmationId, setRemovalConfirmationId] = useState<string | null>(null);
   const refreshSequence = useRef(0);
   const visibleServers = serverState;
   const insecureHttpOptIn = requiresInsecureHttpOptIn(appBaseUrl);
@@ -370,10 +371,14 @@ export function OwnerConsole({
   }
 
   async function removeServer(serverId: string, serverName: string) {
-    if (!window.confirm(`Remove ${serverName}? It will disappear from Creator Studio and the public marketplace.`)) {
+    if (removalConfirmationId !== serverId) {
+      setRemovalConfirmationId(serverId);
+      setMessageTone("info");
+      setMessage(`Confirm removal of ${serverName}. Its audit history will be preserved.`);
       return;
     }
 
+    setRemovalConfirmationId(null);
     const removed = await send(`/api/owner/servers/${serverId}`, {}, "DELETE");
     if (removed) {
       setServerState((current) => current.filter((server) => server.id !== serverId));
@@ -658,7 +663,10 @@ export function OwnerConsole({
 
           <footer className="management-card-footer">
             <span>{server.likeCount} likes / {server.favoriteCount} favorites</span>
-            <button className="ghost-button danger-button" type="button" disabled={busy} onClick={() => removeServer(server.id, server.name)}><Trash2 size={15} /> Remove listing</button>
+            <div className="inline-actions">
+              {removalConfirmationId === server.id ? <button className="ghost-button" type="button" disabled={busy} onClick={() => setRemovalConfirmationId(null)}><X size={15} /> Cancel</button> : null}
+              <button className="ghost-button danger-button" type="button" disabled={busy} onClick={() => removeServer(server.id, server.name)}><Trash2 size={15} /> {removalConfirmationId === server.id ? "Confirm removal" : "Remove listing"}</button>
+            </div>
           </footer>
         </article>
       ))}

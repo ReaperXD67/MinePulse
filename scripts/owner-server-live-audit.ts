@@ -107,10 +107,11 @@ async function main() {
     const removedTopup = await context.request.post(`${baseUrl}/api/owner/servers/${serverId}/topup`, { data: {} });
     assert(removedTopup.status() === 404, `Removed payment route returned ${removedTopup.status()} instead of 404`);
 
-    page.once("dialog", (dialog) => dialog.accept());
+    await updatedCard.getByRole("button", { name: "Remove listing", exact: true }).click();
+    await updatedCard.getByRole("button", { name: "Confirm removal", exact: true }).waitFor({ state: "visible" });
     const [removeResponse] = await Promise.all([
       page.waitForResponse((response) => response.url().endsWith(`/api/owner/servers/${serverId}`) && response.request().method() === "DELETE"),
-      updatedCard.getByRole("button", { name: "Remove listing", exact: true }).click()
+      updatedCard.getByRole("button", { name: "Confirm removal", exact: true }).click()
     ]);
     const removeBody = await removeResponse.json();
     assert(removeResponse.ok(), `Server removal failed with ${removeResponse.status()}: ${JSON.stringify(removeBody)}`);
@@ -120,7 +121,15 @@ async function main() {
     const afterRemovalBody = await afterRemoval.json();
     assert(afterRemoval.ok(), `Post-removal server list failed with ${afterRemoval.status()}`);
     assert(!afterRemovalBody.servers.some((server: { id: string }) => server.id === serverId), "Removed server remains in the live owner endpoint");
+    await page.reload({ waitUntil: "networkidle" });
+    assert(await page.getByRole("heading", { name: updatedName, exact: true }).count() === 0, "Removed server returned after a fresh account-page load");
+    await page.evaluate((nextMarker) => {
+      (window as typeof window & { __karixAuditMarker?: string }).__karixAuditMarker = nextMarker;
+    }, marker);
 
+    if (!(await createPanel.getAttribute("open"))) {
+      await createPanel.locator("summary").click();
+    }
     await createForm.locator('input[name="name"]').fill(updatedName);
     await createForm.locator('input[name="host"]').fill(host);
     const [restoreResponse] = await Promise.all([
@@ -145,6 +154,7 @@ async function main() {
         updateVisibleWithoutReload: true,
         rewardRatePersisted: true,
         removeVisibleWithoutReload: true,
+        removalPersistsAfterReload: true,
         removedAddressRestoredWithoutReload: true,
         cryptoRoutesRemoved: true,
         browserErrors: 0
