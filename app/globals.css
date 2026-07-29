@@ -553,6 +553,38 @@ h1 {
   font-size: 12px;
 }
 
+.form-feedback {
+  min-height: 38px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(104, 216, 255, 0.22);
+  border-radius: 6px;
+  background: rgba(104, 216, 255, 0.06);
+  color: #c6eaf3;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.form-feedback:empty {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.form-feedback.message-success {
+  border-color: rgba(120, 255, 127, 0.28);
+  background: rgba(120, 255, 127, 0.07);
+  color: #b8ffbb;
+}
+
+.form-feedback.message-error {
+  border-color: rgba(255, 96, 119, 0.42);
+  background: rgba(255, 96, 119, 0.1);
+  color: #ffb5c0;
+}
+
 .auth-page {
   display: grid;
   min-height: calc(100vh - 70px);
@@ -818,6 +850,35 @@ h1 {
 
 .linked-check {
   color: var(--ok);
+}
+
+.identity-link-scope {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 11px 12px;
+  border-left: 2px solid var(--cyan);
+  background: rgba(104, 216, 255, 0.055);
+  color: #cdeff6;
+}
+
+.identity-link-scope > svg {
+  margin-top: 2px;
+  color: var(--cyan);
+}
+
+.identity-link-scope p {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
+}
+
+.identity-link-scope span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .link-code-readout {

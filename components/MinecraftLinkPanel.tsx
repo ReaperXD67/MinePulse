@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CheckCircle2, Copy, Gamepad2, Link2, Unlink, X } from "lucide-react";
+import { CheckCircle2, Copy, Gamepad2, Link2, ShieldCheck, Unlink, X } from "lucide-react";
 import { copyText } from "@/lib/copy-text";
 
 export function MinecraftLinkPanel({ minecraftName, isLinked }: { minecraftName: string | null; isLinked: boolean }) {
@@ -10,31 +10,38 @@ export function MinecraftLinkPanel({ minecraftName, isLinked }: { minecraftName:
   const [code, setCode] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info");
   const [busy, setBusy] = useState(false);
   const [confirmUnlink, setConfirmUnlink] = useState(false);
 
   async function generateCode() {
     setBusy(true);
     setMessage("");
+    setMessageTone("info");
     const response = await fetch("/api/account/minecraft-link", { method: "POST" });
     const payload = await response.json().catch(() => ({}));
     setBusy(false);
     if (!response.ok) {
+      setMessageTone("error");
       setMessage(payload.error || "Could not create a link code");
       return;
     }
     setCode(payload.code);
     setExpiresAt(payload.expiresAt);
+    setMessageTone("success");
+    setMessage("Fresh link code created. Older codes no longer apply.");
   }
 
   async function copyCommand() {
     const copied = await copyText(`/karixmc link ${code}`);
+    setMessageTone(copied ? "success" : "error");
     setMessage(copied ? "Link command copied" : "Copy was blocked. Select the command and copy it manually.");
   }
 
   async function unlinkAccount() {
     if (!confirmUnlink) {
       setConfirmUnlink(true);
+      setMessageTone("info");
       setMessage("Confirm unlinking below. Active reward sessions will close immediately.");
       return;
     }
@@ -44,6 +51,7 @@ export function MinecraftLinkPanel({ minecraftName, isLinked }: { minecraftName:
     const payload = await response.json().catch(() => ({}));
     setBusy(false);
     setConfirmUnlink(false);
+    setMessageTone(response.ok ? "success" : "error");
     setMessage(response.ok ? payload.message || "Minecraft profile unlinked" : payload.error || "Could not unlink Minecraft profile");
     if (response.ok) router.refresh();
   }
@@ -54,6 +62,10 @@ export function MinecraftLinkPanel({ minecraftName, isLinked }: { minecraftName:
         <Gamepad2 size={19} />
         <div><strong>Minecraft identity</strong><span>{isLinked ? `${minecraftName || "Minecraft profile"} is linked` : "Link the player who earns your points"}</span></div>
         {isLinked ? <CheckCircle2 className="linked-check" size={18} /> : null}
+      </div>
+      <div className="identity-link-scope">
+        <ShieldCheck size={17} />
+        <p><strong>One Minecraft profile, one website account.</strong><span>This link applies across the KarixMC network. Creating or replacing a server does not reset it.</span></p>
       </div>
       {code ? (
         <div className="link-code-readout">
@@ -68,7 +80,7 @@ export function MinecraftLinkPanel({ minecraftName, isLinked }: { minecraftName:
         </div>
       )}
       <small className="privacy-copy">Running the link command opts this Minecraft identity into KarixMC reward verification on that server. The plugin sends limited activity counters, never your IP address. Review or stop sharing at any time with <code>/karixmc privacy</code> or <code>/karixmc forget</code>.</small>
-      <p className="toast-line" aria-live="polite">{message}</p>
+      <p className={`form-feedback message-${messageTone}`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>
     </section>
   );
 }

@@ -47,7 +47,11 @@ const schema = z.object({
   maxVersion: minecraftVersionSchema.optional(),
   region: serverRegionSchema,
   tags: z.string().trim().min(2).max(120),
-  description: z.string().trim().min(20).max(420),
+  description: z
+    .string()
+    .trim()
+    .min(20, "Listing summary must be at least 20 characters")
+    .max(420, "Listing summary must be 420 characters or less"),
   longDescription: z.string().trim().max(3000).default(""),
   rules: z.string().trim().max(2000).default(""),
   galleryImages: z.string().trim().max(2000).default(""),

@@ -27,14 +27,20 @@ export async function POST(request: Request) {
         throw new Response("Link code is invalid or expired", { status: 400 });
       }
       if (link.user.minecraftUuid && link.user.minecraftUuid !== input.minecraftUuid) {
-        throw new Response("This account is already linked to another Minecraft profile", { status: 409 });
+        throw new Response(
+          "This website account is already linked to another Minecraft profile. Unlink it in Account before linking a different name.",
+          { status: 409 }
+        );
       }
 
       const currentProfile = await tx.user.findUnique({ where: { minecraftUuid: input.minecraftUuid } });
       if (currentProfile && currentProfile.id !== link.userId) {
         const isUnclaimed = !currentProfile.passwordHash && currentProfile.email.endsWith("@players.minepulse.local");
         if (!isUnclaimed) {
-          throw new Response("This Minecraft profile belongs to another account", { status: 409 });
+          throw new Response(
+            `${input.minecraftName} is linked to another website account. Unlink it there or ask an admin to reset that Minecraft name. New servers do not reset player links.`,
+            { status: 409 }
+          );
         }
 
         await tx.serverSession.updateMany({ where: { userId: currentProfile.id }, data: { userId: link.userId } });

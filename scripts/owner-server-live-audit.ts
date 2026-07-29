@@ -37,7 +37,10 @@ async function main() {
 
     const page = await context.newPage();
     page.on("console", (message) => {
-      if (message.type() === "error") browserErrors.push(`console: ${message.text()}`);
+      const text = message.text();
+      if (message.type() === "error" && !text.includes("status of 400 (Bad Request)")) {
+        browserErrors.push(`console: ${text}`);
+      }
     });
     page.on("pageerror", (error) => browserErrors.push(`page: ${error.message}`));
 
@@ -52,6 +55,19 @@ async function main() {
     const createForm = createPanel.locator("form");
     await createForm.locator('input[name="name"]').fill(serverName);
     await createForm.locator('input[name="host"]').fill(host);
+    await createForm.locator('textarea[name="description"]').fill("Too short");
+    const [validationResponse] = await Promise.all([
+      page.waitForResponse((response) => response.url().endsWith("/api/owner/servers") && response.request().method() === "POST"),
+      createForm.getByRole("button", { name: "Publish draft" }).click()
+    ]);
+    const validationBody = await validationResponse.json();
+    assert(validationResponse.status() === 400, `Short summary returned ${validationResponse.status()} instead of 400`);
+    assert(validationBody.error === "Listing summary must be at least 20 characters", `Summary validation was unclear: ${JSON.stringify(validationBody)}`);
+    const visibleValidation = createForm.getByRole("alert");
+    await visibleValidation.waitFor({ state: "visible" });
+    assert(await visibleValidation.textContent() === "Listing summary must be at least 20 characters", "Creator Studio did not display the validation message beside the form");
+    assert(Number.parseFloat(await visibleValidation.evaluate((element) => getComputedStyle(element).fontSize)) >= 13, "Creator Studio validation feedback is too small");
+    await createForm.locator('textarea[name="description"]').fill("A player-first server with fair rewards and a cosmetic point shop.");
 
     const marker = crypto.randomUUID();
     await page.evaluate((value) => {
@@ -192,6 +208,8 @@ async function main() {
       checks: {
         insecureHttpFallback: true,
         publishFeedback: true,
+        clearSummaryValidation: true,
+        visibleFormErrorFeedback: true,
         completePluginConfigDownload: true,
         createVisibleWithoutReload: true,
         updateVisibleWithoutReload: true,

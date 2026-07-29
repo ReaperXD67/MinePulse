@@ -33,6 +33,30 @@ async function register(context: APIRequestContext, suffix: string) {
   return payload.user.id as string;
 }
 
+function sha256(value: string) {
+  return crypto.createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+async function signedPluginPost(serverId: string, secret: string, path: string, payload: unknown) {
+  const rawBody = JSON.stringify(payload);
+  const timestamp = Math.floor(Date.now() / 1000);
+  const nonce = crypto.randomUUID();
+  const canonical = ["POST", path, serverId, timestamp, nonce, sha256(rawBody)].join("\n");
+
+  return fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-karixmc-protocol": "2",
+      "x-karixmc-server-id": serverId,
+      "x-karixmc-timestamp": String(timestamp),
+      "x-karixmc-nonce": nonce,
+      "x-karixmc-signature": crypto.createHmac("sha256", secret).update(canonical).digest("hex")
+    },
+    body: rawBody
+  });
+}
+
 async function main() {
   const options = { baseURL: baseUrl, extraHTTPHeaders: { "x-forwarded-for": auditAddress } };
   const member = await request.newContext(options);
@@ -71,15 +95,55 @@ async function main() {
     assert(await prisma.minecraftLinkCode.count({ where: { userId: memberId } }) === 0, "Self-unlink did not invalidate pending link codes");
 
     const targetId = await register(secondMember, "admin-target");
+    const targetUuid = crypto.randomUUID();
     await prisma.user.update({
       where: { id: targetId },
       data: {
-        minecraftUuid: crypto.randomUUID(),
+        minecraftUuid: targetUuid,
         minecraftName: "UnlinkAuditAdmin",
         minecraftLinkedAt: new Date(),
         minecraftConsentVersion: "2026-07-28"
       }
     });
+
+    const pluginServer = await member.post("/api/owner/servers", {
+      data: {
+        name: `Identity conflict ${stamp}`,
+        host: `${stamp}.identity.example.test`,
+        port: 25565,
+        version: "1.21.11",
+        region: "EU",
+        tags: "SMP,Testing",
+        description: "A temporary server for the Minecraft identity conflict audit.",
+        longDescription: "",
+        rules: "",
+        galleryImages: "",
+        bannerImage: "/voxel-network.png",
+        rewardRatePerSecond: 1,
+        maxPaidPlayers: 20,
+        minPlaySecondsForComment: 1800
+      }
+    });
+    const pluginServerBody = await body(pluginServer);
+    assert(pluginServer.ok(), `Plugin audit server creation failed (${pluginServer.status()}): ${JSON.stringify(pluginServerBody)}`);
+    const pluginServerId = String(pluginServerBody.serverId || "");
+    const pluginSecret = String(pluginServerBody.pluginSecret || "");
+    assert(pluginServerId && pluginSecret, "Plugin audit server did not return one-time credentials");
+
+    const pendingLink = await member.post("/api/account/minecraft-link");
+    const pendingLinkBody = await body(pendingLink);
+    assert(pendingLink.ok() && pendingLinkBody.code, `Could not create a pending link code: ${JSON.stringify(pendingLinkBody)}`);
+    const conflictResponse = await signedPluginPost(pluginServerId, pluginSecret, "/api/plugin/link", {
+      serverId: pluginServerId,
+      code: pendingLinkBody.code,
+      minecraftUuid: targetUuid,
+      minecraftName: "UnlinkAuditAdmin",
+      consentVersion: "2026-07-28"
+    });
+    const conflictBody = await conflictResponse.json().catch(() => ({})) as { error?: string };
+    assert(conflictResponse.status === 409, `Linked identity conflict returned ${conflictResponse.status} instead of 409`);
+    assert(conflictBody.error?.includes("linked to another website account"), `Conflict did not explain the account link: ${JSON.stringify(conflictBody)}`);
+    assert(conflictBody.error?.includes("New servers do not reset player links"), `Conflict implied that a new server resets identity links: ${JSON.stringify(conflictBody)}`);
 
     const forbidden = await member.delete(`/api/admin/users/${targetId}/minecraft-link`);
     assert(forbidden.status() === 403, `Member used the admin reset endpoint with status ${forbidden.status()}`);
@@ -100,6 +164,8 @@ async function main() {
         selfUnlink: true,
         activeSessionsClosed: true,
         pendingCodesInvalidated: true,
+        linkedIdentityConflictExplained: true,
+        newServerIdentityScopeExplained: true,
         adminAuthorizationRequired: true,
         adminTargetedReset: true
       }

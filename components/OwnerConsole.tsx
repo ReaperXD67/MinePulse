@@ -499,7 +499,7 @@ export function OwnerConsole({
             <div className="form-row"><label>Seconds before reviews</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue="1800" /></div>
           </div>
           <div className="form-footer">
-            <p className="toast-line" aria-live="polite">{message}</p>
+            <p className={`form-feedback message-${messageTone}`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>
             <button className="solid-button" disabled={busy} type="submit"><Server size={16} /> {busy ? "Publishing..." : "Publish draft"}</button>
           </div>
         </form>
@@ -562,7 +562,7 @@ export function OwnerConsole({
                   <div className="form-row"><label>Review seconds</label><input className="field" name="minPlaySecondsForComment" type="number" defaultValue={server.minPlaySecondsForComment} /></div>
                 </div>
                 <div className="form-footer">
-                  <p className="toast-line" aria-live="polite">{message}</p>
+                  <p className={`form-feedback message-${messageTone}`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>
                   <button className="solid-button" disabled={busy} type="submit"><Save size={16} /> {busy ? "Saving..." : "Save profile"}</button>
                 </div>
               </form>
