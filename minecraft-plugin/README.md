@@ -1,4 +1,4 @@
-# KarixMC Bridge 0.6.1
+# KarixMC Bridge 0.6.2
 
 The Paper/Spigot plugin connects real Minecraft activity to KarixMC. The visible plugin ID and configuration folder are `KarixMCBridge`; `/minepulse` remains a command alias during migration.
 
@@ -11,7 +11,7 @@ The Paper/Spigot plugin connects real Minecraft activity to KarixMC. The visible
 
 ## Install
 
-1. Download `KarixMCBridge-0.6.1.jar` from `/plugin` on the website.
+1. Download `KarixMCBridge-0.6.2.jar` from `/plugin` on the website.
 2. Copy it into the Paper server's `plugins/` directory.
 3. Start Paper once, then stop it after `plugins/KarixMCBridge/config.yml` is created.
 4. In KarixMC, open **Account -> Your servers -> Plugin connection**.
@@ -30,7 +30,7 @@ Policy sync proves the plugin can reach KarixMC even when the Minecraft server i
 
 Docker deployments can provide the same three values as `MINEPULSE_API_BASE_URL`, `MINEPULSE_SERVER_ID`, and `MINEPULSE_PLUGIN_SECRET` environment variables. Environment variables take precedence over `config.yml`.
 
-For same-machine development, `api-base-url` can be `http://localhost:3000`. On a different host, `localhost` is wrong; use the public HTTPS website URL reachable from the Minecraft server. Public HTTP is rejected by default. Set `allow-insecure-http: true` only for a temporary isolated IP-based test, then turn it off as soon as HTTPS is available. There is no separate wallet URL: the wallet is the `/account` page on that website.
+For same-machine development, `api-base-url` can be `http://localhost:3000`. On a different host, `localhost` is wrong; use the public HTTPS website URL reachable from the Minecraft server. Public HTTP is rejected by default. Set `allow-insecure-http: true` only for a temporary isolated IP-based test, then turn it off as soon as HTTPS is available. Standard HTTP uses port 80 automatically; do not add `:3000` unless the website is actually exposed on that port. There is no separate wallet URL: the wallet is the `/account` page on that website.
 
 ## Website-Managed Policy
 
@@ -71,7 +71,7 @@ Only connection credentials remain local because the plugin needs them before it
 
 Players must run the link command before reward activity sharing starts. Unlinked Minecraft players can still play normally and are excluded from heartbeat batches. The plugin sends the linked UUID and name, AFK state, bounded movement and interaction counters, elapsed-time claim, and challenge submission. It does not read or send player IP addresses.
 
-Version 0.6.1 sends bounded batches of at most 200 linked players per heartbeat cycle instead of one HTTP request per player. Large servers are split into multiple sequential chunks. Requests and responses use HMAC-SHA256 over the exact body, timestamps, and persisted unique nonces. The website rejects stale, altered, replayed, or wrongly signed messages. Response bodies are size-limited before allocation, repeated log failures are throttled, player command requests use cooldowns, and link failures now identify stale credentials or protocol versions without exposing secrets.
+Version 0.6.2 sends bounded batches of at most 200 linked players per heartbeat cycle instead of one HTTP request per player. Large servers are split into multiple sequential chunks. Requests and responses use HMAC-SHA256 over the exact body, timestamps, and persisted unique nonces. The website rejects stale, altered, replayed, or wrongly signed messages. Response bodies are size-limited before allocation, repeated log failures are throttled, player command requests use cooldowns, and startup diagnostics now identify the exact invalid or missing connection setting without exposing secrets.
 
 No plugin can make a server owner unable to modify software on a machine they control. A dishonest owner can fabricate activity inputs or automate a visible arithmetic question. KarixMC limits the damage by making server time, rates, balances, player caps, challenge state, pool deductions, nonce history, reports, trust states, and enforcement website-authoritative. High-value launch phases should add behavioral fraud analytics and manual review; this is detection and containment, not impossible-to-bypass attestation.
 

@@ -28,7 +28,7 @@ Pass condition: the console has no KarixMCBridge stack trace and `/plugins` show
 
 ## 2. Install And Connect The Bridge
 
-1. Download `KarixMCBridge-0.6.1.jar` from the website Plugin page.
+1. Download `KarixMCBridge-0.6.2.jar` from the website Plugin page.
 2. In Titanaxe, open the server File Manager and upload it to `plugins/`.
 3. Start once, wait for startup, then stop the server.
 4. Open `plugins/KarixMCBridge/config.yml` and enter exactly:
@@ -39,6 +39,8 @@ server-id: "cmremn65y00025w9vva8q1kcx"
 plugin-secret: "COPY_FROM_TEST1_CREATOR_STUDIO"
 allow-insecure-http: true
 ```
+
+Port 80 is automatic for this URL. Do not add `:3000` or any path after the IP. Creator Studio can download the complete `config.yml` after server creation or secret rotation.
 
 5. Save and fully restart the server.
 6. Check the console for policy-sync or invalid-credential errors.
@@ -73,7 +75,7 @@ Expected result at 1 point/second:
 
 - Wallet and Session earned increase by approximately verified active seconds.
 - Campaign pool decreases by exactly the points credited to the wallet.
-- Creator Studio shows Last player activity and plugin version `0.6.1`.
+- Creator Studio shows Last player activity and plugin version `0.6.2`.
 
 Rewards arrive in heartbeat batches, so a small delay is normal.
 

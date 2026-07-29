@@ -93,8 +93,11 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     allowInsecureHttp = connectionBoolean("MINEPULSE_ALLOW_INSECURE_HTTP", "allow-insecure-http", false);
     loadConsent();
 
-    if (!configured()) {
-      getLogger().severe("KarixMC Bridge is not safely configured. Add an HTTPS api-base-url, server-id, and plugin-secret to plugins/KarixMCBridge/config.yml, then restart Paper. Plain HTTP is allowed only for explicit local testing.");
+    String configurationProblem = configurationProblem();
+    if (configurationProblem != null) {
+      getLogger().severe(configurationProblem);
+    } else if (isPublicHttpEndpoint()) {
+      getLogger().warning("Temporary HTTP beta mode is active for " + apiBaseUrl + ". Port 80 is automatic. Move to HTTPS and set allow-insecure-http: false before production.");
     }
 
     Bukkit.getPluginManager().registerEvents(this, this);
@@ -754,16 +757,48 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   }
 
   private boolean configured() {
-    if (serverId == null || serverId.isBlank() || pluginSecret == null || pluginSecret.isBlank()) {
-      return false;
+    return configurationProblem() == null;
+  }
+
+  private String configurationProblem() {
+    List<String> missing = new ArrayList<>();
+    if (apiBaseUrl == null || apiBaseUrl.isBlank()) missing.add("api-base-url");
+    if (serverId == null || serverId.isBlank()) missing.add("server-id");
+    if (pluginSecret == null || pluginSecret.isBlank()) missing.add("plugin-secret");
+    if (!missing.isEmpty()) {
+      return "KarixMC Bridge configuration is incomplete. Set " + String.join(", ", missing) + " in plugins/KarixMCBridge/config.yml, then fully restart Paper.";
     }
+
+    try {
+      URI uri = URI.create(apiBaseUrl);
+      String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+      String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+      String path = uri.getRawPath() == null ? "" : uri.getRawPath();
+      boolean loopback = host.equals("localhost") || host.equals("127.0.0.1") || host.equals("::1");
+      if (host.isBlank() || uri.getRawUserInfo() != null || uri.getRawQuery() != null || uri.getRawFragment() != null) {
+        return "KarixMC api-base-url is invalid. Use only the website origin, for example http://51.83.180.202, with no login, query, or fragment.";
+      }
+      if (!path.isBlank() && !path.equals("/")) {
+        return "KarixMC api-base-url must be the website origin only. Remove " + path + "; do not add /api, /plugin, or /account.";
+      }
+      if (scheme.equals("https")) return null;
+      if (scheme.equals("http") && (loopback || allowInsecureHttp)) return null;
+      if (scheme.equals("http")) {
+        return "KarixMC blocked public HTTP for safety at " + apiBaseUrl + ". For temporary testing, add exactly 'allow-insecure-http: true' to plugins/KarixMCBridge/config.yml. Standard port 80 is automatic; do not add :3000 unless the website actually runs there. Then fully restart Paper.";
+      }
+      return "KarixMC api-base-url must begin with https://. Temporary testing may use http:// only with allow-insecure-http: true.";
+    } catch (IllegalArgumentException error) {
+      return "KarixMC api-base-url is malformed. Use the website origin only, for example http://51.83.180.202.";
+    }
+  }
+
+  private boolean isPublicHttpEndpoint() {
     try {
       URI uri = URI.create(apiBaseUrl);
       String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
       String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
       boolean loopback = host.equals("localhost") || host.equals("127.0.0.1") || host.equals("::1");
-      boolean secure = scheme.equals("https") || (scheme.equals("http") && (loopback || allowInsecureHttp));
-      return secure && uri.getRawUserInfo() == null && uri.getRawQuery() == null && uri.getRawFragment() == null;
+      return scheme.equals("http") && !loopback && allowInsecureHttp;
     } catch (IllegalArgumentException error) {
       return false;
     }

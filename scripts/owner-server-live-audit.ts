@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { chromium } from "playwright";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "../lib/generated/prisma/client";
@@ -69,6 +70,16 @@ async function main() {
     await createdCard.waitFor({ state: "visible" });
     assert(await createdCard.getByText(`${host}:25565`, { exact: true }).isVisible(), "Created server address is not visible");
     assert(await page.getByText("Copy this plugin secret now", { exact: true }).isVisible(), "One-time plugin secret was not shown");
+    const configDownloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download config.yml", exact: true }).click();
+    const configDownload = await configDownloadPromise;
+    const configPath = await configDownload.path();
+    assert(configPath, "Generated config.yml download did not produce a local file");
+    const configText = await readFile(configPath, "utf8");
+    assert(configText.includes("api-base-url:"), "Generated config is missing api-base-url");
+    assert(configText.includes(`server-id: "${serverId}"`), "Generated config has the wrong server ID");
+    assert(configText.includes(`plugin-secret: "${createBody.pluginSecret}"`), "Generated config has the wrong plugin secret");
+    assert(configText.includes("allow-insecure-http:"), "Generated config is missing the HTTP transport policy");
     assert(await page.evaluate(() => (window as typeof window & { __karixAuditMarker?: string }).__karixAuditMarker) === marker, "Publishing caused a full page reload");
 
     const listed = await context.request.get(`${baseUrl}/api/owner/servers`);
@@ -129,6 +140,7 @@ async function main() {
       checks: {
         insecureHttpFallback: true,
         publishFeedback: true,
+        completePluginConfigDownload: true,
         createVisibleWithoutReload: true,
         updateVisibleWithoutReload: true,
         rewardRatePersisted: true,

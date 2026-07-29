@@ -36,7 +36,16 @@ async function auditViewport(name, viewport) {
     errors.push(`${name}: demo account shortcuts are still exposed`);
   }
 
+  await page.goto(`${baseUrl}/plugin`, { waitUntil: "networkidle" });
+  const pluginDownload = page.getByRole("link", { name: /Download jar/i });
+  if ((await pluginDownload.getAttribute("href")) !== "/downloads/KarixMCBridge-0.6.2.jar") {
+    errors.push(`${name}: plugin page is not serving bridge 0.6.2`);
+  }
+
   await page.goto(baseUrl, { waitUntil: "networkidle" });
+  await page.locator(".economy-band").waitFor({ state: "visible" });
+  await page.locator(".voxel-scene canvas").waitFor({ state: "visible" });
+  await page.waitForTimeout(800);
   if ((await page.locator('link[rel~="icon"][href="/icon.svg"]').count()) !== 1) {
     errors.push(`${name}: KarixMC favicon is missing`);
   }
@@ -46,6 +55,7 @@ async function auditViewport(name, viewport) {
   if ((await page.getByText("45% chance at #1", { exact: true }).count()) !== 1) {
     errors.push(`${name}: Diamond first-position chance is not explained clearly`);
   }
+
   if ((await page.getByText("35% chance at #1", { exact: true }).count()) !== 1) {
     errors.push(`${name}: Gold first-position chance is not explained clearly`);
   }

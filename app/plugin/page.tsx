@@ -58,11 +58,11 @@ export default async function PluginPage() {
       <section className="plugin-hero" style={{ backgroundImage: "url('/voxel-network.png')" }}>
         <div className="plugin-hero-shade" />
         <div className="container plugin-hero-content">
-          <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.6.1</span><i>Paper / Spigot 1.20-1.21</i></div>
+          <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.6.2</span><i>Paper / Spigot 1.20-1.21</i></div>
           <h1>KarixMC Bridge</h1>
           <p>Connect real Minecraft activity to the reward economy. The website owns policy and balances; the plugin verifies play, delivers purchases, and stays deliberately small.</p>
           <div className="inline-actions plugin-hero-actions">
-            <a className="solid-button download-button" href="/downloads/KarixMCBridge-0.6.1.jar" download>
+            <a className="solid-button download-button" href="/downloads/KarixMCBridge-0.6.2.jar" download>
               <ArrowDownToLine size={17} /> Download jar
             </a>
             <Link className="ghost-button" href="/account#servers"><ServerCog size={17} /> Open server setup</Link>
@@ -108,12 +108,12 @@ allow-insecure-http: ${insecureHttpOptIn}`}</code></pre>
             <footer><CheckCircle2 size={15} /> Policy, AFK rules, reward rate, and delivery polling sync from KarixMC</footer>
           </div>
         </div>
-        {insecureHttpOptIn ? <div className="container plugin-http-warning"><strong>Temporary HTTP test mode</strong><span>This IP-based VPS requires <code>allow-insecure-http: true</code>. Use HTTPS and change it to <code>false</code> before production.</span></div> : null}
+        {insecureHttpOptIn ? <div className="container plugin-http-warning"><strong>Temporary HTTP test mode</strong><span>This IP-based VPS requires <code>allow-insecure-http: true</code>. Port 80 is already implied, so use exactly <code>{appBaseUrl}</code> without <code>:3000</code> or an <code>/api</code> suffix. Use HTTPS and change the setting to <code>false</code> before production.</span></div> : null}
       </section>
 
       <section className="plugin-band config-explainer-band">
         <div className="container config-explainer-grid">
-          <div><b>API URL</b><strong>{appBaseUrl}</strong><p>This is the website address. It is not a wallet URL and it is not the Minecraft join address.</p></div>
+          <div><b>API URL</b><strong>{appBaseUrl}</strong><p>This is the website address. It is not a wallet URL or Minecraft join address, and its standard HTTP port does not need to be written.</p></div>
           <div><b>Server ID + secret</b><strong>Creator Studio / Bridge</strong><p>The ID is a public identifier and grants no access. The secret is shown once after creation or rotation, stays private, and signs every request.</p></div>
           <div><b>Connection proof</b><strong>Policy sync, then player activity</strong><p>Policy sync appears after startup. Reward heartbeats begin only while a player is online.</p></div>
         </div>

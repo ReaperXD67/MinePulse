@@ -75,6 +75,16 @@ function createMediaScope() {
   return `scope-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}-${Math.random().toString(36).slice(2, 14)}`;
 }
 
+function pluginConfigText(appBaseUrl: string, serverId: string, pluginSecret: string, allowInsecureHttp: boolean) {
+  return [
+    `api-base-url: "${appBaseUrl}"`,
+    `server-id: "${serverId}"`,
+    `plugin-secret: "${pluginSecret}"`,
+    `allow-insecure-http: ${allowInsecureHttp}`,
+    ""
+  ].join("\n");
+}
+
 export function OwnerConsole({
   servers,
   appBaseUrl
@@ -377,6 +387,22 @@ export function OwnerConsole({
     setMessage(copied ? `${label} copied` : "Copy was blocked. Select the value and copy it manually.");
   }
 
+  async function copyPluginConfig(serverId: string, pluginSecret: string) {
+    await copy(pluginConfigText(appBaseUrl, serverId, pluginSecret, insecureHttpOptIn), "Complete config.yml");
+  }
+
+  function downloadPluginConfig(serverId: string, pluginSecret: string) {
+    const content = pluginConfigText(appBaseUrl, serverId, pluginSecret, insecureHttpOptIn);
+    const url = URL.createObjectURL(new Blob([content], { type: "text/yaml;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "config.yml";
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setMessageTone("success");
+    setMessage("Complete config.yml downloaded");
+  }
+
   async function rotateSecret(serverId: string) {
     if (!window.confirm("Rotate this plugin secret? The current plugin will disconnect until config.yml is updated.")) {
       return;
@@ -409,7 +435,12 @@ export function OwnerConsole({
           <div><ShieldCheck size={18} /><span><strong>Copy this plugin secret now</strong><small>It is shown only once. Server IDs are public identifiers; this secret is private.</small></span></div>
           <div className="credential-row"><div><span>Server ID</span><code>{oneTimeCredential.serverId}</code></div><button className="icon-button" type="button" title="Copy server ID" onClick={() => copy(oneTimeCredential.serverId, "Server ID")}><Copy size={15} /></button></div>
           <div className="credential-row"><div><span>Plugin secret</span><code>{oneTimeCredential.pluginSecret}</code></div><button className="icon-button" type="button" title="Copy one-time plugin secret" onClick={() => copy(oneTimeCredential.pluginSecret, "Plugin secret")}><Copy size={15} /></button></div>
-          <button className="ghost-button" type="button" onClick={() => setOneTimeCredential(null)}><X size={15} /> I stored it safely</button>
+          <p className="credential-help"><strong>Use the complete file:</strong> replace <code>plugins/KarixMCBridge/config.yml</code> with this generated config, then fully restart Paper. The HTTP beta uses standard port 80, so do not add <code>:3000</code>.</p>
+          <div className="inline-actions">
+            <button className="solid-button" type="button" onClick={() => copyPluginConfig(oneTimeCredential.serverId, oneTimeCredential.pluginSecret)}><Copy size={15} /> Copy complete config</button>
+            <button className="ghost-button" type="button" onClick={() => downloadPluginConfig(oneTimeCredential.serverId, oneTimeCredential.pluginSecret)}><Download size={15} /> Download config.yml</button>
+            <button className="ghost-button" type="button" onClick={() => setOneTimeCredential(null)}><X size={15} /> I stored it safely</button>
+          </div>
         </section>
       ) : null}
 
@@ -556,7 +587,7 @@ export function OwnerConsole({
                 <div className="credential-row"><div><span>Plugin secret - private</span><code>{serverSecrets[server.id] || "Hidden after creation"}</code></div><div className="credential-actions">{serverSecrets[server.id] ? <button className="icon-button" type="button" title="Copy plugin secret" onClick={() => copy(serverSecrets[server.id], "Plugin secret")}><Copy size={15} /></button> : null}<button className="icon-button danger-button" type="button" title="Generate a new one-time plugin secret" disabled={busy} onClick={() => rotateSecret(server.id)}><RotateCcw size={15} /></button></div></div>
                 <div className="credential-row"><div><span>HTTP test-mode setting</span><code>allow-insecure-http: {insecureHttpOptIn ? "true" : "false"}</code></div><button className="icon-button" type="button" title="Copy HTTP setting" onClick={() => copy(`allow-insecure-http: ${insecureHttpOptIn}`, "HTTP setting")}><Copy size={15} /></button></div>
                 <p className="credential-help">The Server ID may be visible publicly and grants no access by itself. The secret is shown only after creation or rotation and signs every plugin request. Put both in <code>plugins/KarixMCBridge/config.yml</code>, then restart Paper.</p>
-                {insecureHttpOptIn ? <p className="credential-help bridge-http-warning"><strong>Required on this test VPS:</strong> set <code>allow-insecure-http: true</code>. Change it back to <code>false</code> as soon as the production domain uses HTTPS.</p> : null}
+                {insecureHttpOptIn ? <p className="credential-help bridge-http-warning"><strong>Required on this test VPS:</strong> set <code>allow-insecure-http: true</code>. Port 80 is automatic; do not add <code>:3000</code>, <code>/api</code>, or <code>/plugin</code>. Change the setting back to <code>false</code> as soon as the production domain uses HTTPS.</p> : null}
                 <div className="integrity-grid">
                   <div><span>Last player activity</span><strong>{server.lastHeartbeatAt ? shortDate(server.lastHeartbeatAt) : "Waiting for an online player"}</strong></div>
                   <div><span>Plugin connection</span><strong>{server.lastConfigSyncAt ? `Synced ${shortDate(server.lastConfigSyncAt)}` : "Not connected"}</strong></div>

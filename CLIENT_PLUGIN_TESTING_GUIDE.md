@@ -1,4 +1,4 @@
-# KarixMC Bridge 0.6.1 - Client Testing Guide
+# KarixMC Bridge 0.6.2 - Client Testing Guide
 
 This guide is for testing the KarixMC website with a real Paper Minecraft server.
 
@@ -62,7 +62,7 @@ The website prevents the same host and port from being registered twice. Contact
 
 ## Part 3 - Install and configure KarixMCBridge
 
-1. Download `KarixMCBridge-0.6.1.jar` from `http://51.83.180.202/plugin`.
+1. Download `KarixMCBridge-0.6.2.jar` from `http://51.83.180.202/plugin`.
 2. Put the jar in the Minecraft server's `plugins/` directory.
 3. Start Paper once.
 4. Stop Paper after `plugins/KarixMCBridge/config.yml` is created.
@@ -76,6 +76,8 @@ server-id: "COPY_THE_SERVER_ID_FROM_CREATOR_STUDIO"
 plugin-secret: "COPY_THE_PLUGIN_SECRET_FROM_CREATOR_STUDIO"
 allow-insecure-http: true
 ```
+
+The website runs through standard HTTP port 80. Do not add `:3000`, `/api`, `/plugin`, or `/account` to `api-base-url`. After creating a server or rotating its secret, use **Download config.yml** in Creator Studio to avoid missing one of these four settings.
 
 8. Save the file and start Paper again.
 9. Run `/plugins`. `KarixMCBridge` should be green.

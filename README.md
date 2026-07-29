@@ -109,7 +109,7 @@ Important endpoints:
 - `POST /api/plugin/purchases/pull` returns pending commands for a server.
 - `POST /api/plugin/purchases/ack` confirms delivery or refunds failed purchases.
 
-Version 0.6.1 batches linked-player activity, syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, tracks AFK state, and uses website-generated arithmetic `/answer` challenges. Every plugin request and response is authenticated with HMAC-SHA256, a timestamp, and a persisted one-time nonce. The plugin never sends player IP addresses. KarixMC calculates elapsed time, reward rates, campaign deductions, challenges, and wallet changes on the website; the plugin never directly edits balances.
+Version 0.6.2 batches linked-player activity, syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, tracks AFK state, and uses website-generated arithmetic `/answer` challenges. Every plugin request and response is authenticated with HMAC-SHA256, a timestamp, and a persisted one-time nonce. The plugin never sends player IP addresses. KarixMC calculates elapsed time, reward rates, campaign deductions, challenges, and wallet changes on the website; the plugin never directly edits balances.
 
 ## Plugin Build
 
@@ -131,7 +131,7 @@ plugin-secret: "from owner panel"
 allow-insecure-http: false
 ```
 
-For local testing where Paper and the website run on the same machine, keep `api-base-url: "http://localhost:3000"`. If Paper runs elsewhere, `localhost` is wrong; use the HTTPS URL reachable from that Minecraft server. Public HTTP is rejected by default. `allow-insecure-http: true` exists only for a temporary isolated test environment and must be disabled before launch.
+For local testing where Paper and the website run on the same machine, keep `api-base-url: "http://localhost:3000"`. If Paper runs elsewhere, `localhost` is wrong; use the HTTPS URL reachable from that Minecraft server. Public HTTP is rejected by default. `allow-insecure-http: true` exists only for a temporary isolated test environment and must be disabled before launch. The temporary VPS URL uses normal port 80, so `http://51.83.180.202` is complete and must not include `:3000` or an `/api` suffix.
 
 ## Deploy Notes
 
