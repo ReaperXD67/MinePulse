@@ -84,6 +84,7 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
           botProtectionLevel: true,
           trustStatus: true,
           heartbeatIntervalSeconds: true,
+          afkTimeoutSeconds: true,
           challengeEnabled: true,
           challengeIntervalSeconds: true,
           challengeAnswerWindowSeconds: true,
@@ -119,7 +120,8 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
           data: {
             serverId: freshServer.id,
             userId: player.id,
-            minecraftName: input.minecraftName
+            minecraftName: input.minecraftName,
+            lastActivityAt: now
           }
         });
       }
@@ -205,10 +207,16 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
       const strictMovement =
         freshServer.botProtectionLevel >= 2 ? input.movementScore >= requiredMovementScore : true;
       const activeInteraction = input.activityEvents >= freshServer.minimumActivityEvents;
+      const meaningfulActivity = strictMovement || activeInteraction;
+      const previousActivityAt = session.lastActivityAt ?? session.startedAt;
+      const lastActivityAt = meaningfulActivity ? now : previousActivityAt;
+      const activityTimedOut =
+        now.getTime() - lastActivityAt.getTime() >= freshServer.afkTimeoutSeconds * 1000;
+      const afk = input.afk || activityTimedOut;
       const challengePending = Boolean(challengeId);
       const challengeOk = !freshServer.challengeRequired || !challengePending;
       const withinPaidCap = paidSlots.some((activeSession) => activeSession.id === session.id);
-      const verifiedActive = elapsed > 0 && !input.afk && (strictMovement || activeInteraction) && challengeOk;
+      const verifiedActive = elapsed > 0 && !afk && challengeOk;
       const effectiveRewardRate = cappedRewardRate(freshServer.rewardRatePerSecond);
       const rewardable =
         verifiedActive && withinPaidCap && freshServer.pointPool > 0 && effectiveRewardRate > 0;
@@ -219,13 +227,11 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
           ? "REWARDS_DISABLED"
           : !withinPaidCap
             ? "PAID_CAP"
-            : input.afk
+            : afk
               ? "AFK"
               : !challengeOk
                 ? "ACTIVITY_CHECK"
-                : !strictMovement && !activeInteraction
-                  ? "INACTIVE"
-                  : "EARNING";
+                : "EARNING";
       const rewardMessage = rewardState === "EMPTY_POOL"
         ? "Rewards are paused because this server's campaign pool is empty."
         : rewardState === "REWARDS_DISABLED"
@@ -233,12 +239,10 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
           : rewardState === "PAID_CAP"
             ? `Rewards are paused because all ${freshServer.maxPaidPlayers} paid player slots are in use.`
             : rewardState === "AFK"
-              ? "Rewards are paused because you are AFK. Move or interact to continue earning."
+              ? `Rewards are paused after ${freshServer.afkTimeoutSeconds} seconds without meaningful activity. Move, chat, or interact to continue.`
               : rewardState === "ACTIVITY_CHECK"
                 ? "Rewards are paused until you answer the activity check with /answer <value>."
-                : rewardState === "INACTIVE"
-                  ? "Rewards are paused because no meaningful activity was detected. Move, chat, or interact to continue."
-                  : `Verified play active. Earning ${effectiveRewardRate} point(s) per second.`;
+                : `Verified play active. Earning ${effectiveRewardRate} point(s) per second.`;
 
       const preciseEarned = rewardable
         ? Math.min(freshServer.pointPool, session.rewardCarryPoints + elapsed * effectiveRewardRate)
@@ -247,7 +251,7 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
       const rewardCarryPoints = rewardable ? Math.max(0, preciseEarned - earned) : session.rewardCarryPoints;
 
       const suspiciousBump =
-        input.afk || (!strictMovement && !activeInteraction) || !challengeOk
+        afk || !challengeOk
           ? Math.max(1, freshServer.botProtectionLevel)
           : 0;
 
@@ -256,8 +260,9 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
         data: {
           minecraftName: input.minecraftName,
           lastHeartbeatAt: now,
+          lastActivityAt,
           activeSeconds: { increment: verifiedActive ? elapsed : 0 },
-          afkSeconds: { increment: input.afk ? elapsed : 0 },
+          afkSeconds: { increment: afk ? elapsed : 0 },
           rewardedPoints: { increment: earned },
           rewardCarryPoints,
           suspiciousScore: { increment: suspiciousBump },

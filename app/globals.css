@@ -372,6 +372,7 @@ h1 {
 }
 
 .server-card-image::after {
+  display: none;
   position: absolute;
   right: 14px;
   bottom: 12px;
@@ -2175,6 +2176,7 @@ h1 {
 
 .server-card.premium-gold .server-card-image::after,
 .server-card.premium-diamond .server-card-image::after {
+  display: block;
   right: 0;
   bottom: 0;
   left: 0;

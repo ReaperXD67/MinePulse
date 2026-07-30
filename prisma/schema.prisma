@@ -320,6 +320,7 @@ model ServerSession {
   minecraftName       String
   startedAt           DateTime      @default(now())
   lastHeartbeatAt     DateTime      @default(now())
+  lastActivityAt      DateTime?
   endedAt             DateTime?
   activeSeconds       Int           @default(0)
   afkSeconds          Int           @default(0)

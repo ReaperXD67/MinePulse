@@ -463,13 +463,11 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
           data.has("required") && data.get("required").getAsBoolean()
         );
         challenges.put(playerId, challenge);
-        player.sendMessage("");
-        player.sendMessage(prefix() + ChatColor.GOLD + ChatColor.BOLD + "ACTIVITY CHECK");
-        player.sendMessage(ChatColor.YELLOW + challenge.question);
-        player.sendMessage(ChatColor.GRAY + (challenge.required
-          ? "Rewards pause until KarixMC verifies your answer."
-          : "This server uses optional activity checks."));
-        player.sendMessage("");
+        player.sendMessage(prefix() + ChatColor.GOLD + ChatColor.BOLD + "Activity check: "
+          + ChatColor.RESET + ChatColor.YELLOW + challenge.question);
+        if (!challenge.required) {
+          player.sendMessage(prefix() + ChatColor.GRAY + "This server uses optional activity checks.");
+        }
       }
     }
 

@@ -608,7 +608,7 @@ export function OwnerConsole({
                     <div className="form-row"><label>Heartbeat seconds</label><input className="field" name="heartbeatIntervalSeconds" type="number" min="10" max="60" defaultValue={server.heartbeatIntervalSeconds} /></div>
                     <div className="form-row"><label>Purchase poll seconds</label><input className="field" name="purchasePollSeconds" type="number" min="10" max="120" defaultValue={server.purchasePollSeconds} /></div>
                     <div className="form-row"><label>Movement distance</label><input className="field" name="minimumMovementDistance" type="number" min="0.05" max="3" step="0.05" defaultValue={server.minimumMovementDistance} /></div>
-                    <div className="form-row"><label>Interactions per heartbeat</label><input className="field" name="minimumActivityEvents" type="number" min="0" max="20" defaultValue={server.minimumActivityEvents} /></div>
+                    <div className="form-row"><label>Events to reset AFK timer</label><input className="field" name="minimumActivityEvents" type="number" min="0" max="20" defaultValue={server.minimumActivityEvents} /><small>Movement also resets the timer.</small></div>
                     <div className="form-row"><label>Protection level</label><select className="select" name="botProtectionLevel" defaultValue={server.botProtectionLevel}><option value="1">Balanced</option><option value="2">Strict</option><option value="3">Maximum</option></select></div>
                   </div>
                   <div className="policy-toggles">

@@ -90,6 +90,13 @@ async function agePlayerSession(seconds = 20) {
   });
 }
 
+async function agePlayerActivity(seconds: number) {
+  await prisma.serverSession.updateMany({
+    where: { serverId, user: { minecraftUuid: playerUuid }, status: "ACTIVE" },
+    data: { lastActivityAt: new Date(Date.now() - seconds * 1000) }
+  });
+}
+
 async function main() {
   const owner = await prisma.user.create({ data: { email: ownerEmail, username: "Heartbeat Owner", passwordHash: "audit" } });
   const player = await prisma.user.create({
@@ -148,6 +155,27 @@ async function main() {
 
   await agePlayerSession();
   await prisma.server.update({ where: { id: serverId }, data: { rewardRatePerSecond: 1.5 } });
+  const quietWithinAfkWindow = await signedPost(
+    "/api/plugin/heartbeat",
+    heartbeatPayload({ movementScore: 0, activityEvents: 0 })
+  );
+  assert(
+    quietWithinAfkWindow.body.rewardState === "EARNING" && quietWithinAfkWindow.body.earned === 30,
+    `A quiet heartbeat inside the AFK window was incorrectly paused: ${JSON.stringify(quietWithinAfkWindow.body)}`
+  );
+
+  await agePlayerSession();
+  await agePlayerActivity(301);
+  const activityTimeout = await signedPost(
+    "/api/plugin/heartbeat",
+    heartbeatPayload({ afk: false, movementScore: 0, activityEvents: 0 })
+  );
+  assert(
+    activityTimeout.body.rewardState === "AFK" && activityTimeout.body.earned === 0,
+    `The server-side AFK window did not pause rewards: ${JSON.stringify(activityTimeout.body)}`
+  );
+
+  await agePlayerSession();
   const afk = await signedPost("/api/plugin/heartbeat", heartbeatPayload({ afk: true, movementScore: 0, activityEvents: 0 }));
   assert(afk.body.rewardState === "AFK" && afk.body.earned === 0, "AFK heartbeat earned points");
 
@@ -187,7 +215,7 @@ async function main() {
   const storedSession = await prisma.serverSession.findFirstOrThrow({ where: { serverId, userId: player.id, status: "ACTIVE" } });
   const storedPlayer = await prisma.user.findUniqueOrThrow({ where: { id: player.id } });
   assert(!("ipHash" in storedSession), "Server sessions must not expose an IP field");
-  assert(storedPlayer.walletPoints === 120, `Expected wallet 120, received ${storedPlayer.walletPoints}`);
+  assert(storedPlayer.walletPoints === 150, `Expected wallet 150, received ${storedPlayer.walletPoints}`);
 
   console.log(JSON.stringify({
     ok: true,
@@ -198,6 +226,8 @@ async function main() {
       wrongSecretRejection: true,
       serverElapsedTimeAuthority: true,
       rewardRateCap: true,
+      quietHeartbeatGrace: true,
+      serverSideAfkTimeout: true,
       afkBlocking: true,
       batchedHeartbeat: true,
       playerIpNotCollected: true,
