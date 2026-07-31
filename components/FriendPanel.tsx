@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { RadioTower, Trash2, UserPlus, UsersRound } from "lucide-react";
+import { RadioTower, Trash2, Trophy, UserPlus, UsersRound } from "lucide-react";
 import { shortDate } from "@/lib/format";
 import { safeMediaPath } from "@/lib/server-profile";
 
 type FriendRow = {
   id: string;
   username: string;
+  level: number;
   minecraftName: string | null;
   avatarUrl: string | null;
   online: boolean;
@@ -79,7 +80,12 @@ export function FriendPanel({ friends }: { friends: FriendRow[] }) {
               {!safeMediaPath(friend.avatarUrl) ? friend.username.slice(0, 2).toUpperCase() : null}
             </div>
             <div>
-              <strong>{friend.username}</strong>
+              <div className="friend-name-row">
+                <strong>{friend.username}</strong>
+                <span className="friend-level-badge" title={`${friend.username} is player level ${friend.level}`}>
+                  <Trophy size={11} /> LVL {friend.level}
+                </span>
+              </div>
               <span>{friend.minecraftName || "Minecraft not linked"}</span>
               {friend.serverSlug ? (
                 <Link href={`/servers/${friend.serverSlug}`}>

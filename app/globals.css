@@ -3542,6 +3542,30 @@ body::before {
   gap: 3px;
 }
 
+.friend-name-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.friend-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  padding: 3px 6px;
+  border: 1px solid rgba(155, 255, 91, 0.35);
+  border-radius: 4px;
+  background: rgba(155, 255, 91, 0.08);
+  color: var(--lime) !important;
+  font-family: var(--font-mono);
+  font-size: 9px !important;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .friend-card span,
 .friend-card small {
   color: var(--muted);

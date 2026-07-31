@@ -70,6 +70,7 @@ export default async function AccountPage() {
             select: {
               id: true,
               username: true,
+              level: true,
               minecraftName: true,
               avatarUrl: true,
               sessions: {
@@ -95,6 +96,7 @@ export default async function AccountPage() {
     return {
       id: link.friend.id,
       username: link.friend.username,
+      level: link.friend.level,
       minecraftName: link.friend.minecraftName,
       avatarUrl: link.friend.avatarUrl,
       online,
