@@ -1,6 +1,6 @@
 # KarixMC
 
-KarixMC is a production-style MVP for a Minecraft server marketplace where verified playtime earns platform points. The visible Paper plugin is `KarixMCBridge`; internal Java package names and legacy `/minepulse` commands remain compatible.
+KarixMC is a production-style MVP for a Minecraft server marketplace where verified playtime earns platform points. The visible Paper plugin and command namespace are `KarixMCBridge` and `/karixmc`; internal Java package names remain unchanged for binary stability.
 
 Members earn points on funded servers, then spend those earned points on ranks, crates, cosmetics, or any server-configured item. The same account can also publish servers, buy campaign credits with real money, choose reward rates per second, cap paid players, and buy Gold or Diamond placement. Admins control pricing, bonus promo codes, reports, punishments, campaign pools, premium state, server visibility, and platform statistics.
 
@@ -110,7 +110,7 @@ Important endpoints:
 - `POST /api/plugin/purchases/pull` returns pending commands for a server.
 - `POST /api/plugin/purchases/ack` confirms delivery or refunds failed purchases.
 
-Version 0.6.3 batches linked-player activity, syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, tracks the last verified activity across heartbeats, and uses website-generated arithmetic `/answer` challenges. Quiet heartbeats continue earning until the configured AFK timeout actually expires. Every plugin request and response is authenticated with HMAC-SHA256, a timestamp, and a persisted one-time nonce. The plugin never sends player IP addresses. KarixMC calculates elapsed time, reward rates, campaign deductions, challenges, and wallet changes on the website; the plugin never directly edits balances.
+Version 0.6.4 batches linked-player activity, syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, tracks the last verified activity across heartbeats, and uses website-generated arithmetic `/answer` challenges. The retired `/minepulse` alias is no longer registered. Quiet heartbeats continue earning until the configured AFK timeout actually expires. Every plugin request and response is authenticated with HMAC-SHA256, a timestamp, and a persisted one-time nonce. The plugin never sends player IP addresses. KarixMC calculates elapsed time, reward rates, campaign deductions, challenges, and wallet changes on the website; the plugin never directly edits balances.
 
 ## Plugin Build
 

@@ -13,8 +13,12 @@ const stamp = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
 const serverName = `Live Studio ${stamp}`;
 const updatedName = `${serverName} Updated`;
 const host = `${stamp}.example.test`;
+const auditAddress = `2001:db8::${crypto.randomBytes(8).toString("hex")}`;
 let serverId = "";
 let freshServerId = "";
+let ownerId = "";
+const ownerEmail = `live-studio-${stamp}@example.test`;
+const ownerPassword = `Live!Studio!Audit!Passphrase!${stamp}`;
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -22,7 +26,10 @@ function assert(condition: unknown, message: string): asserts condition {
 
 async function main() {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+    extraHTTPHeaders: { "x-forwarded-for": auditAddress }
+  });
   const browserErrors: string[] = [];
 
   await context.addInitScript(() => {
@@ -30,10 +37,13 @@ async function main() {
   });
 
   try {
-    const login = await context.request.post(`${baseUrl}/api/auth/login`, {
-      data: { email: "owner@minepulse.local", password: "owner123" }
+    const login = await context.request.post(`${baseUrl}/api/auth/register`, {
+      data: { email: ownerEmail, username: `Live Studio ${stamp.slice(-6)}`, password: ownerPassword }
     });
-    assert(login.ok(), `Owner login failed with ${login.status()}`);
+    const loginBody = await login.json();
+    assert(login.ok(), `Owner registration failed with ${login.status()}: ${JSON.stringify(loginBody)}`);
+    ownerId = String(loginBody.user?.id || "");
+    assert(ownerId, "Owner registration did not return a user ID");
 
     const page = await context.newPage();
     page.on("console", (message) => {
@@ -49,7 +59,7 @@ async function main() {
     assert(await page.getByText("Crypto funding", { exact: true }).count() === 0, "Removed crypto funding panel is still visible");
 
     const createPanel = page.locator("details.disclosure-panel");
-    if (!(await createPanel.getAttribute("open"))) {
+    if (!(await createPanel.evaluate((element: HTMLDetailsElement) => element.open))) {
       await createPanel.locator("summary").click();
     }
     const createForm = createPanel.locator("form");
@@ -161,7 +171,7 @@ async function main() {
       (window as typeof window & { __karixAuditMarker?: string }).__karixAuditMarker = nextMarker;
     }, marker);
 
-    if (!(await createPanel.getAttribute("open"))) {
+    if (!(await createPanel.evaluate((element: HTMLDetailsElement) => element.open))) {
       await createPanel.locator("summary").click();
     }
     await createForm.locator('input[name="name"]').fill(updatedName);
@@ -237,6 +247,7 @@ async function run() {
   } finally {
     const serverIds = [serverId, freshServerId].filter(Boolean);
     if (serverIds.length) await prisma.server.deleteMany({ where: { id: { in: serverIds } } });
+    if (ownerId) await prisma.user.deleteMany({ where: { id: ownerId } });
     await prisma.$disconnect();
   }
 }

@@ -29,6 +29,7 @@ import { activePremiumPlan } from "@/lib/premium";
 import { serverJoinAddress } from "@/lib/server-address";
 import { rewardRateVisualTier } from "@/lib/reward-rate";
 import { MINECRAFT_VERSIONS, parseVersionRange, SERVER_REGIONS } from "@/lib/server-profile";
+import { MAX_SERVERS_PER_MEMBER } from "@/lib/server-limits";
 
 const rewardRateExamples = [
   { rate: 1.5, label: "Boosted" },
@@ -101,6 +102,7 @@ export function OwnerConsole({
   const [removalConfirmationId, setRemovalConfirmationId] = useState<string | null>(null);
   const refreshSequence = useRef(0);
   const visibleServers = serverState;
+  const canCreateServer = visibleServers.length < MAX_SERVERS_PER_MEMBER;
   const insecureHttpOptIn = requiresInsecureHttpOptIn(appBaseUrl);
 
   const refreshServers = useCallback(async (showError = false) => {
@@ -228,6 +230,11 @@ export function OwnerConsole({
 
   async function createServer(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canCreateServer) {
+      setMessageTone("error");
+      setMessage(`Each account can list at most ${MAX_SERVERS_PER_MEMBER} servers. Remove one before adding another.`);
+      return;
+    }
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const mediaScope = createMediaScope();
@@ -467,8 +474,9 @@ export function OwnerConsole({
       <details className="panel disclosure-panel" open={!visibleServers.length}>
         <summary>
           <span><Server size={18} /><strong>List a new server</strong></span>
-          <small>Every member can create a listing</small>
+          <small>{visibleServers.length}/{MAX_SERVERS_PER_MEMBER} listings used</small>
         </summary>
+        {!canCreateServer ? <p className="limit-notice">You have reached the two-server limit. Remove an existing listing before publishing another.</p> : null}
         <form className="form-grid form-section" onInvalid={reportInvalid} onSubmit={createServer}>
           <div className="form-grid two">
             <div className="form-row"><label htmlFor="new-server-name">Name</label><input className="field" id="new-server-name" name="name" placeholder="Crystal SMP" required /></div>
@@ -500,7 +508,7 @@ export function OwnerConsole({
           </div>
           <div className="form-footer">
             <p className={`form-feedback message-${messageTone}`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>
-            <button className="solid-button" disabled={busy} type="submit"><Server size={16} /> {busy ? "Publishing..." : "Publish draft"}</button>
+            <button className="solid-button" disabled={busy || !canCreateServer} type="submit"><Server size={16} /> {busy ? "Publishing..." : canCreateServer ? "Publish draft" : "Two-server limit reached"}</button>
           </div>
         </form>
       </details>

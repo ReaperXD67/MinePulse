@@ -10,19 +10,29 @@ const adapter = new PrismaBetterSqlite3({
 const prisma = new PrismaClient({ adapter });
 const stamp = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
 const serverName = `Removal Audit ${stamp}`;
+const auditAddress = `2001:db8::${crypto.randomBytes(8).toString("hex")}`;
 let serverId = "";
+let ownerId = "";
+const ownerEmail = `removal-owner-${stamp}@example.test`;
+const ownerPassword = `Removal!Audit!Passphrase!${stamp}`;
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
 
 async function main() {
-  const context = await request.newContext({ baseURL: baseUrl });
+  const context = await request.newContext({
+    baseURL: baseUrl,
+    extraHTTPHeaders: { "x-forwarded-for": auditAddress }
+  });
   try {
-    const login = await context.post("/api/auth/login", {
-      data: { email: "owner@minepulse.local", password: "owner123" }
+    const login = await context.post("/api/auth/register", {
+      data: { email: ownerEmail, username: `Removal Owner ${stamp.slice(-6)}`, password: ownerPassword }
     });
-    assert(login.ok(), `Owner login failed with ${login.status()}`);
+    const loginBody = await login.json();
+    assert(login.ok(), `Owner registration failed with ${login.status()}: ${JSON.stringify(loginBody)}`);
+    ownerId = String(loginBody.user?.id || "");
+    assert(ownerId, "Owner registration did not return a user ID");
 
     const created = await context.post("/api/owner/servers", {
       data: {
@@ -79,6 +89,7 @@ async function run() {
     await main();
   } finally {
     if (serverId) await prisma.server.deleteMany({ where: { id: serverId } });
+    if (ownerId) await prisma.user.deleteMany({ where: { id: ownerId } });
     await prisma.$disconnect();
   }
 }

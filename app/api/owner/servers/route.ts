@@ -8,6 +8,7 @@ import { normalizeServerTags } from "@/lib/server-tags";
 import { routeError } from "@/lib/api";
 import { normalizeServerAddress } from "@/lib/server-address";
 import { protectPluginSecret } from "@/lib/plugin-credentials";
+import { MAX_SERVERS_PER_MEMBER } from "@/lib/server-limits";
 import { ownerServerInclude, serializeOwnerServer } from "@/lib/owner-server-view";
 import {
   minecraftVersionSchema,
@@ -85,6 +86,17 @@ export async function POST(request: Request) {
   try {
     const user = await requireMember();
     const input = schema.parse(await request.json());
+    const activeListingCount = await prisma.server.count({
+      where: { ownerId: user.id, status: { not: "REMOVED" } }
+    });
+
+    if (activeListingCount >= MAX_SERVERS_PER_MEMBER) {
+      throw new Response(
+        `Each account can have at most ${MAX_SERVERS_PER_MEMBER} active or paused server listings. Remove a listing before adding another.`,
+        { status: 409 }
+      );
+    }
+
     const version = input.version || normalizeVersionRange(input.minVersion || "", input.maxVersion || "");
     const tags = normalizeServerTags(input.tags);
     const galleryImages = normalizeGalleryImages(input.galleryImages, user.id);

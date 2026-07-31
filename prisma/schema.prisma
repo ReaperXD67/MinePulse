@@ -408,6 +408,7 @@ model Comment {
   server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([serverId, userId])
   @@index([serverId, createdAt])
 }
 

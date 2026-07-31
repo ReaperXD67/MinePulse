@@ -106,7 +106,6 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     registerCommand("pool");
     registerCommand("receive");
     registerCommand("karixmc");
-    registerCommand("minepulse");
     registerCommand("mpcode");
 
     Bukkit.getScheduler().runTaskTimer(this, this::tickBridge, 40L, 100L);
@@ -229,7 +228,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   @Override
   public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
     String name = command.getName().toLowerCase(Locale.ROOT);
-    boolean bridgeCommand = name.equals("karixmc") || name.equals("minepulse");
+    boolean bridgeCommand = name.equals("karixmc");
     if (name.equals("answer") || name.equals("mpcode")) {
       return answerChallenge(sender, args);
     }

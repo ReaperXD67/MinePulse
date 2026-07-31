@@ -71,8 +71,16 @@ export async function POST(request: Request) {
       );
     }
 
-    await prisma.comment.create({ data: { serverId: server.id, userId: user.id, body: text } });
-    return NextResponse.json({ message: "Comment posted" });
+    const existing = await prisma.comment.findFirst({
+      where: { serverId: server.id, userId: user.id },
+      select: { id: true }
+    });
+    if (existing) {
+      await prisma.comment.update({ where: { id: existing.id }, data: { body: text } });
+    } else {
+      await prisma.comment.create({ data: { serverId: server.id, userId: user.id, body: text } });
+    }
+    return NextResponse.json({ message: existing ? "Review updated" : "Review posted" });
   } catch (error) {
     return routeError(error);
   }

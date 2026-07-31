@@ -93,9 +93,9 @@ export function ServerProfileActions({
 
       {panel === "review" ? (
         <form className="inline-form-panel" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); interact("comment", String(form.get("body") || "")); }}>
-          <div><strong>Write a verified review</strong><p>Reviews unlock after the server&apos;s required verified playtime.</p></div>
+          <div><strong>Write or update your review</strong><p>Each player gets one review per server after the required verified playtime.</p></div>
           <textarea className="textarea" name="body" minLength={3} maxLength={240} required placeholder="How was the gameplay, community, and reward delivery?" />
-          <button className="solid-button" disabled={busy}><Send size={15} /> Post review</button>
+          <button className="solid-button" disabled={busy}><Send size={15} /> Save review</button>
         </form>
       ) : null}
 
