@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
+import { bridgeIsOnline } from "@/lib/server-liveness";
 
 export const runtime = "nodejs";
 
@@ -19,11 +20,21 @@ export async function POST(request: Request) {
 
     const server = await prisma.server.findUnique({
       where: { id: input.serverId },
-      select: { id: true, status: true, minPlaySecondsForComment: true }
+      select: {
+        id: true,
+        status: true,
+        minPlaySecondsForComment: true,
+        lastHeartbeatAt: true,
+        lastConfigSyncAt: true
+      }
     });
 
     if (!server || server.status !== "ACTIVE") {
       return NextResponse.json({ error: "Server is not available" }, { status: 404 });
+    }
+
+    if (!bridgeIsOnline(server)) {
+      return NextResponse.json({ error: "Server is offline. The directory is refreshing." }, { status: 409 });
     }
 
     if (input.type === "like") {

@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   typedRoutes: false,
+  allowedDevOrigins: ["127.0.0.1"],
   async headers() {
     const developmentScripts = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
     const developmentConnections = process.env.NODE_ENV === "development" ? " ws: wss:" : "";

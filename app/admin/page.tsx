@@ -9,6 +9,7 @@ import { UserRole } from "@/lib/generated/prisma/client";
 import { money, points } from "@/lib/format";
 import { platformStats } from "@/lib/stats";
 import { prisma } from "@/lib/prisma";
+import { bridgeIsOnline } from "@/lib/server-liveness";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,7 @@ export default async function AdminPage({
   ]);
 
   const buyerWindowLabel = buyers === "all" ? "all time" : `${buyerDays} days`;
-  const bridgeOnlineCutoff = Date.now() - 2 * 60 * 1000;
+  const bridgeCheckedAt = Date.now();
 
   return (
     <main className="container dashboard">
@@ -206,10 +207,7 @@ export default async function AdminPage({
           premiumPlan: server.premiumPlan,
           premiumUntil: server.premiumUntil?.toISOString() ?? null,
           trustStatus: server.trustStatus,
-          bridgeOnline: Boolean(
-            (server.lastConfigSyncAt?.getTime() ?? 0) >= bridgeOnlineCutoff ||
-            (server.lastHeartbeatAt?.getTime() ?? 0) >= bridgeOnlineCutoff
-          ),
+          bridgeOnline: bridgeIsOnline(server, bridgeCheckedAt),
           lastConfigSyncAt: server.lastConfigSyncAt?.toISOString() ?? null,
           lastPluginVersion: server.lastPluginVersion,
           riskScore: server.riskScore,

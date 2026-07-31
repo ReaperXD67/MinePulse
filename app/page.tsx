@@ -1,6 +1,7 @@
 import { Coins, Crosshair, LayoutGrid, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
 import Link from "next/link";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
+import { MarketplaceLiveSync } from "@/components/MarketplaceLiveSync";
 import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { currentUser } from "@/lib/auth";
 import { FIRST_POSITION_CHANCES, orderDirectory } from "@/lib/directory-order";
@@ -8,6 +9,7 @@ import { compact, minutesLabel, money, points } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { activePremiumPlan } from "@/lib/premium";
 import { safeMediaPath } from "@/lib/server-profile";
+import { bridgeStateAt } from "@/lib/server-liveness";
 
 export const dynamic = "force-dynamic";
 
@@ -63,10 +65,6 @@ export default async function MarketplacePage({
 
   const visibleServers = servers.map<MarketplaceServer>((server) => {
     const premiumPlan = activePremiumPlan(server.premiumPlan, server.premiumUntil, now);
-    const bridgeSignalAt = [server.lastHeartbeatAt, server.lastConfigSyncAt]
-      .filter((value): value is Date => Boolean(value))
-      .sort((left, right) => right.getTime() - left.getTime())[0];
-
     return {
       id: server.id,
       slug: server.slug,
@@ -87,13 +85,7 @@ export default async function MarketplacePage({
       premiumPlan,
       premiumUntil: premiumPlan === "NONE" ? null : server.premiumUntil?.toISOString() ?? null,
       trustStatus: server.trustStatus,
-      bridgeState: !bridgeSignalAt
-        ? "offline"
-        : now.getTime() - bridgeSignalAt.getTime() <= 120000
-          ? "online"
-          : now.getTime() - bridgeSignalAt.getTime() <= 900000
-            ? "stale"
-            : "offline",
+      bridgeState: bridgeStateAt(server, now.getTime()),
       likes: server._count.likes,
       favorites: server._count.favorites,
       comments: server._count.comments,
@@ -220,6 +212,7 @@ export default async function MarketplacePage({
       </section>
 
       <section className="container" id="servers">
+        <MarketplaceLiveSync serverIds={visibleServers.map((server) => server.id)} />
         <div className="section-bar">
           <div>
             <p className="eyebrow"><RadioTower size={14} /> Live directory</p>

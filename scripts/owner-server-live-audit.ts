@@ -142,11 +142,32 @@ async function main() {
       }
     });
     assert(itemResponse.ok(), `Could not create the archived test item: ${itemResponse.status()}`);
+    await prisma.server.update({
+      where: { id: serverId },
+      data: { pointPool: 4321, lastConfigSyncAt: new Date(), lastHeartbeatAt: null }
+    });
+    const liveDirectory = await context.request.get(`${baseUrl}/api/marketplace/live`);
+    const liveDirectoryBody = await liveDirectory.json();
+    assert(liveDirectory.ok(), `Live directory endpoint failed with ${liveDirectory.status()}`);
+    assert(liveDirectoryBody.serverIds.includes(serverId), "Connected funded server is missing from live directory state");
+
     const likeResponse = await context.request.post(`${baseUrl}/api/marketplace/interact`, { data: { serverId, type: "like" } });
     assert(likeResponse.ok(), `Could not create the archived test like: ${likeResponse.status()}`);
     const favoriteResponse = await context.request.post(`${baseUrl}/api/marketplace/interact`, { data: { serverId, type: "favorite" } });
     assert(favoriteResponse.ok(), `Could not create the archived test favorite: ${favoriteResponse.status()}`);
-    await prisma.server.update({ where: { id: serverId }, data: { pointPool: 4321 } });
+    const directoryPage = await context.newPage();
+    await directoryPage.goto(`${baseUrl}/#servers`, { waitUntil: "networkidle" });
+    await directoryPage.getByRole("heading", { name: updatedName, exact: true }).waitFor({ state: "visible" });
+    await prisma.server.update({
+      where: { id: serverId },
+      data: { lastConfigSyncAt: new Date(Date.now() - 3 * 60 * 1000), lastHeartbeatAt: null }
+    });
+    await directoryPage.waitForTimeout(5_500);
+    await directoryPage.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await directoryPage.getByRole("heading", { name: updatedName, exact: true }).waitFor({ state: "hidden" });
+    await directoryPage.close();
+    const offlineInteraction = await context.request.post(`${baseUrl}/api/marketplace/interact`, { data: { serverId, type: "like" } });
+    assert(offlineInteraction.status() === 409, `Offline server interaction returned ${offlineInteraction.status()} instead of 409`);
 
     const removedTopup = await context.request.post(`${baseUrl}/api/owner/servers/${serverId}/topup`, { data: {} });
     assert(removedTopup.status() === 404, `Removed payment route returned ${removedTopup.status()} instead of 404`);

@@ -1739,7 +1739,7 @@ h1 {
 
 .admin-fleet-item > summary {
   display: grid;
-  grid-template-columns: 34px minmax(180px, 1.35fr) minmax(150px, 1fr) minmax(110px, 0.6fr) auto auto 18px;
+  grid-template-columns: 98px minmax(180px, 1.35fr) minmax(150px, 1fr) minmax(110px, 0.6fr) auto auto 18px;
   min-height: 70px;
   align-items: center;
   gap: 12px;
@@ -1768,21 +1768,39 @@ h1 {
   background: rgba(72, 227, 255, 0.035);
 }
 
-.admin-bridge-orb {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
+.admin-bridge-status {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
   border: 1px solid currentColor;
-  border-radius: 50%;
+  border-radius: 4px;
+  line-height: 1;
 }
 
-.admin-bridge-orb.online {
+.admin-bridge-status > span {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-bridge-status small {
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.admin-bridge-status strong {
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.admin-bridge-status.online {
   background: rgba(155, 255, 91, 0.08);
   color: var(--lime);
 }
 
-.admin-bridge-orb.offline {
+.admin-bridge-status.offline {
   background: rgba(255, 104, 134, 0.07);
   color: var(--rose);
 }
@@ -1984,7 +2002,7 @@ h1 {
   }
 
   .admin-fleet-item > summary {
-    grid-template-columns: 34px minmax(180px, 1.2fr) minmax(130px, 0.9fr) auto auto 18px;
+    grid-template-columns: 92px minmax(180px, 1.2fr) minmax(130px, 0.9fr) auto auto 18px;
   }
 
   .admin-fleet-balance {
@@ -2032,6 +2050,18 @@ h1 {
 
   .admin-fleet-tags,
   .admin-fleet-item > summary > .status-pill {
+    display: none;
+  }
+
+  .admin-bridge-status {
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .admin-bridge-status > span {
     display: none;
   }
 

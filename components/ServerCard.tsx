@@ -51,7 +51,7 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
     const payload = await response.json().catch(() => ({}));
     setBusy(false);
     setMessage(response.ok ? payload.message || "Saved" : payload.error || "Log in to interact");
-    if (response.ok) {
+    if (response.ok || response.status === 404 || response.status === 409) {
       router.refresh();
     }
   }

@@ -102,6 +102,10 @@ async function main() {
         endedAt: new Date()
       }
     });
+    await prisma.server.update({
+      where: { id: first.payload.serverId },
+      data: { lastConfigSyncAt: new Date() }
+    });
 
     const firstReview = await reviewer.post("/api/marketplace/interact", {
       data: { serverId: first.payload.serverId, type: "comment", body: "The first version of this verified review." }

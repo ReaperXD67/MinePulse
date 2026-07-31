@@ -632,8 +632,9 @@ export function AdminConsole({
           {visibleServers.map((server) => (
             <details className="admin-fleet-item" key={server.id}>
               <summary>
-                <span className={`admin-bridge-orb ${server.bridgeOnline ? "online" : "offline"}`} title={server.bridgeOnline ? "Bridge online" : "Bridge offline"}>
-                  {server.bridgeOnline ? <Wifi size={16} /> : <WifiOff size={16} />}
+                <span className={`admin-bridge-status ${server.bridgeOnline ? "online" : "offline"}`} title={server.bridgeOnline ? "Plugin bridge is online" : "Plugin bridge is offline and hidden from the public directory"}>
+                  {server.bridgeOnline ? <Wifi size={15} /> : <WifiOff size={15} />}
+                  <span><small>Bridge</small><strong>{server.bridgeOnline ? "Online" : "Offline"}</strong></span>
                 </span>
                 <span className="admin-fleet-identity">
                   <strong>{server.name}</strong>

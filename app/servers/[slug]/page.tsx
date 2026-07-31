@@ -23,6 +23,7 @@ import { prisma } from "@/lib/prisma";
 import { activePremiumPlan } from "@/lib/premium";
 import { serverJoinAddress } from "@/lib/server-address";
 import { safeMediaPath } from "@/lib/server-profile";
+import { bridgeStateAt } from "@/lib/server-liveness";
 
 export const dynamic = "force-dynamic";
 
@@ -61,11 +62,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
     prisma.purchase.count({ where: { serverId: server.id, status: "DELIVERED" } })
   ]);
 
-  const bridgeSignalAt = [server.lastHeartbeatAt, server.lastConfigSyncAt]
-    .filter((value): value is Date => Boolean(value))
-    .sort((left, right) => right.getTime() - left.getTime())[0];
-  const heartbeatAge = bridgeSignalAt ? Date.now() - bridgeSignalAt.getTime() : Number.POSITIVE_INFINITY;
-  const bridgeState = heartbeatAge <= 120000 ? "online" : heartbeatAge <= 900000 ? "stale" : "offline";
+  const bridgeState = bridgeStateAt(server);
   const premiumPlan = activePremiumPlan(server.premiumPlan, server.premiumUntil);
   const gallery = server.galleryImages.split(",").map((image) => safeMediaPath(image)).filter(Boolean).slice(0, 5);
   const rules = server.rules.split("\n").map((rule) => rule.trim()).filter(Boolean);
