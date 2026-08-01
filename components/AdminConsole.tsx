@@ -74,19 +74,12 @@ type ServerRow = {
   botProtectionLevel: number;
 };
 
-type UserRow = {
+type AdminAccount = {
   id: string;
   username: string;
   email: string;
   minecraftName: string | null;
   walletPoints: number;
-};
-
-type CampaignAccount = {
-  id: string;
-  username: string;
-  email: string;
-  minecraftName: string | null;
   ownedServers: Array<{
     id: string;
     name: string;
@@ -97,27 +90,127 @@ type CampaignAccount = {
 
 const SERVERS_PER_PAGE = 10;
 
+function useAdminAccountSearch() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<AdminAccount[]>([]);
+  const [selected, setSelected] = useState<AdminAccount | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    const normalizedQuery = query.trim();
+    if (normalizedQuery.length < 2 || selected) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setSearching(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(normalizedQuery)}`, {
+          signal: controller.signal
+        });
+        const payload = await response.json().catch(() => ({}));
+        setResults(response.ok && Array.isArray(payload.accounts) ? payload.accounts : []);
+      } catch {
+        if (!controller.signal.aborted) setResults([]);
+      } finally {
+        if (!controller.signal.aborted) setSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, selected]);
+
+  return {
+    query,
+    results,
+    selected,
+    searching,
+    changeQuery(value: string) {
+      setQuery(value);
+      setSelected(null);
+    },
+    select(account: AdminAccount) {
+      setSelected(account);
+      setQuery(`${account.username} - ${account.email}`);
+      setResults([]);
+    },
+    setSelected,
+    clear() {
+      setQuery("");
+      setResults([]);
+      setSelected(null);
+      setSearching(false);
+    }
+  };
+}
+
+type AdminAccountSearchState = ReturnType<typeof useAdminAccountSearch>;
+
+function AdminAccountSearch({
+  lookup,
+  ariaLabel,
+  resultDetail
+}: {
+  lookup: AdminAccountSearchState;
+  ariaLabel: string;
+  resultDetail: (account: AdminAccount) => string;
+}) {
+  return (
+    <>
+      <div className="admin-account-search">
+        <Search size={17} aria-hidden="true" />
+        <input
+          className="field"
+          type="search"
+          value={lookup.query}
+          onChange={(event) => lookup.changeQuery(event.target.value)}
+          placeholder="Search email, username, or Minecraft name"
+          aria-label={ariaLabel}
+          autoComplete="off"
+        />
+        <span>{lookup.searching ? "Searching" : lookup.selected ? "Selected" : ""}</span>
+      </div>
+      {lookup.results.length ? (
+        <div className="admin-account-results" role="listbox" aria-label="Matching accounts">
+          {lookup.results.map((account) => (
+            <button type="button" role="option" key={account.id} onClick={() => lookup.select(account)}>
+              <span><strong>{account.username}</strong><small>{account.minecraftName || account.email}</small></span>
+              <span>{resultDetail(account)}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {lookup.query.trim().length >= 2 && !lookup.searching && !lookup.results.length && !lookup.selected ? (
+        <p className="toast-line">No matching account. Check the spelling or use the full email address.</p>
+      ) : null}
+    </>
+  );
+}
+
 export function AdminConsole({
   pointPackages,
   premiumTiers,
-  servers,
-  users
+  servers
 }: {
   pointPackages: PackageRow[];
   premiumTiers: TierRow[];
   servers: ServerRow[];
-  users: UserRow[];
 }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [accountQuery, setAccountQuery] = useState("");
-  const [accountResults, setAccountResults] = useState<CampaignAccount[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<CampaignAccount | null>(null);
+  const walletAccount = useAdminAccountSearch();
+  const serverAccount = useAdminAccountSearch();
+  const selectedAccount = serverAccount.selected;
   const [confirmMinecraftReset, setConfirmMinecraftReset] = useState(false);
   const [campaignServerId, setCampaignServerId] = useState("");
   const [premiumServerId, setPremiumServerId] = useState("");
-  const [searching, setSearching] = useState(false);
   const [serverQuery, setServerQuery] = useState("");
   const [serverStatus, setServerStatus] = useState("ALL");
   const [serverTrust, setServerTrust] = useState("ALL");
@@ -160,36 +253,6 @@ export function AdminConsole({
   useEffect(() => {
     if (serverPage > serverPageCount) setServerPage(serverPageCount);
   }, [serverPage, serverPageCount]);
-
-  useEffect(() => {
-    const query = accountQuery.trim();
-    if (query.length < 2 || selectedAccount) {
-      setAccountResults([]);
-      setSearching(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    setSearching(true);
-    const timer = window.setTimeout(async () => {
-      try {
-        const response = await fetch(`/api/admin/campaign-grants?q=${encodeURIComponent(query)}`, {
-          signal: controller.signal
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (response.ok) setAccountResults(payload.accounts || []);
-      } catch {
-        if (!controller.signal.aborted) setAccountResults([]);
-      } finally {
-        if (!controller.signal.aborted) setSearching(false);
-      }
-    }, 250);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [accountQuery, selectedAccount]);
 
   async function send(url: string, body: unknown, method = "PATCH") {
     setBusy(true);
@@ -261,18 +324,27 @@ export function AdminConsole({
     });
   }
 
-  function grantPoints(event: React.FormEvent<HTMLFormElement>) {
+  async function grantPoints(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    send(
+    const formElement = event.currentTarget;
+    if (!walletAccount.selected) {
+      setMessage("Search for and select an account first");
+      return;
+    }
+    const form = new FormData(formElement);
+    const sent = await send(
       "/api/admin/users/grant",
       {
-        userId: form.get("userId"),
+        userId: walletAccount.selected.id,
         amountPoints: form.get("amountPoints"),
         description: form.get("description")
       },
       "POST"
     );
+    if (sent) {
+      formElement.reset();
+      walletAccount.clear();
+    }
   }
 
   async function grantCampaignPoints(event: React.FormEvent<HTMLFormElement>) {
@@ -330,13 +402,11 @@ export function AdminConsole({
     await send(`/api/admin/servers/${server.id}`, body);
   }
 
-  function chooseGrantAccount(account: CampaignAccount) {
-    setSelectedAccount(account);
+  function chooseGrantAccount(account: AdminAccount) {
+    serverAccount.select(account);
     setConfirmMinecraftReset(false);
-    setAccountQuery(`${account.username} - ${account.email}`);
     setCampaignServerId(account.ownedServers[0]?.id || "");
     setPremiumServerId(account.ownedServers[0]?.id || "");
-    setAccountResults([]);
   }
 
   async function resetMinecraftLink() {
@@ -349,7 +419,7 @@ export function AdminConsole({
 
     const reset = await send(`/api/admin/users/${selectedAccount.id}/minecraft-link`, {}, "DELETE");
     if (reset) {
-      setSelectedAccount({ ...selectedAccount, minecraftName: null });
+      serverAccount.setSelected({ ...selectedAccount, minecraftName: null });
       setConfirmMinecraftReset(false);
     }
   }
@@ -364,18 +434,22 @@ export function AdminConsole({
           </div>
         </div>
         <form className="form-grid grant-form" onSubmit={grantPoints}>
-          <select className="select" name="userId" required aria-label="Account">
-            {users.map((account) => (
-              <option value={account.id} key={account.id}>
-                {account.username} - {account.minecraftName || account.email} - {points(account.walletPoints)}
-              </option>
-            ))}
-          </select>
+          <AdminAccountSearch
+            lookup={walletAccount}
+            ariaLabel="Search wallet account"
+            resultDetail={(account) => `${points(account.walletPoints)} wallet`}
+          />
+          {walletAccount.selected ? (
+            <div className="admin-selected-account">
+              <div><strong>{walletAccount.selected.username}</strong><span>{walletAccount.selected.email}</span></div>
+              <div><strong>{points(walletAccount.selected.walletPoints)}</strong><span>Current earned wallet</span></div>
+            </div>
+          ) : null}
           <div className="form-grid two">
             <input className="field" name="amountPoints" type="number" defaultValue="1000" required aria-label="Points to grant" />
             <input className="field" name="description" placeholder="Won weekend event" minLength={4} maxLength={240} required />
           </div>
-          <button className="solid-button" disabled={busy} type="submit"><Gift size={16} /> Grant points</button>
+          <button className="solid-button" disabled={busy || !walletAccount.selected} type="submit"><Gift size={16} /> Grant points</button>
         </form>
       </section>
 
@@ -387,37 +461,11 @@ export function AdminConsole({
           </div>
         </div>
         <div className="form-grid grant-form">
-          <div className="admin-account-search">
-            <Search size={17} aria-hidden="true" />
-            <input
-              className="field"
-              value={accountQuery}
-              onChange={(event) => {
-                setAccountQuery(event.target.value);
-                setSelectedAccount(null);
-                setConfirmMinecraftReset(false);
-                setCampaignServerId("");
-                setPremiumServerId("");
-              }}
-              placeholder="Search email, username, or Minecraft name"
-              aria-label="Search server owner"
-              autoComplete="off"
-            />
-            <span>{searching ? "Searching" : ""}</span>
-          </div>
-          {accountResults.length ? (
-            <div className="admin-account-results" role="listbox" aria-label="Matching accounts">
-              {accountResults.map((account) => (
-                <button type="button" role="option" key={account.id} onClick={() => chooseGrantAccount(account)}>
-                  <span><strong>{account.username}</strong><small>{account.minecraftName || account.email}</small></span>
-                  <span>{account.ownedServers.length} server{account.ownedServers.length === 1 ? "" : "s"}</span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-          {accountQuery.trim().length >= 2 && !searching && !accountResults.length && !selectedAccount ? (
-            <p className="toast-line">No matching account selected. Check the spelling or use the account email.</p>
-          ) : null}
+          <AdminAccountSearch
+            lookup={{ ...serverAccount, select: chooseGrantAccount }}
+            ariaLabel="Search server owner"
+            resultDetail={(account) => `${account.ownedServers.length} server${account.ownedServers.length === 1 ? "" : "s"}`}
+          />
           {selectedAccount ? (
             <div className="admin-selected-account">
               <div><strong>{selectedAccount.username}</strong><span>{selectedAccount.email}</span></div>

@@ -1,24 +1,29 @@
 import { Coins, Crosshair, LayoutGrid, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
 import { MarketplaceLiveSync } from "@/components/MarketplaceLiveSync";
+import { DirectoryShuffleButton } from "@/components/DirectoryShuffleButton";
 import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { currentUser } from "@/lib/auth";
 import { FIRST_POSITION_CHANCES, orderDirectory } from "@/lib/directory-order";
+import { DEFAULT_DIRECTORY_SEED, DIRECTORY_SEED_COOKIE } from "@/lib/directory-seed";
 import { compact, minutesLabel, money, points } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { activePremiumPlan } from "@/lib/premium";
 import { safeMediaPath } from "@/lib/server-profile";
 import { bridgeStateAt } from "@/lib/server-liveness";
+import { createSeededRandom } from "@/lib/random";
 
 export const dynamic = "force-dynamic";
 
 export default async function MarketplacePage({
   searchParams
 }: {
-  searchParams: Promise<{ tag?: string; q?: string; view?: string; shuffle?: string }>;
+  searchParams: Promise<{ tag?: string; q?: string; view?: string }>;
 }) {
   const user = await currentUser();
+  const cookieStore = await cookies();
   const now = new Date();
   const { tag, q, view } = await searchParams;
   const selectedTag = typeof tag === "string" ? tag.trim() : "";
@@ -124,20 +129,23 @@ export default async function MarketplacePage({
   const premiumWeightByPlan = new Map(
     premiumTiers.map((tier) => [tier.code, Math.max(1, tier.priority)])
   );
-  const premiumCandidates = filteredServers.filter(
+  const stableFilteredServers = [...filteredServers].sort((left, right) => left.id.localeCompare(right.id));
+  const premiumCandidates = stableFilteredServers.filter(
       (server) =>
         server.premiumPlan !== "NONE" &&
         server.premiumUntil &&
         new Date(server.premiumUntil).getTime() > now.getTime()
   );
-  const standardCandidates = filteredServers.filter(
+  const standardCandidates = stableFilteredServers.filter(
     (server) => !premiumCandidates.some((premiumServer) => premiumServer.id === server.id)
   );
+  const directorySeed = cookieStore.get(DIRECTORY_SEED_COOKIE)?.value || user?.id || DEFAULT_DIRECTORY_SEED;
   const { servers: sortedServers } = orderDirectory({
     premium: premiumCandidates,
     standard: standardCandidates,
     premiumWeightFor: (server) => premiumWeightByPlan.get(server.premiumPlan) ?? 1,
-    premiumTierFor: (server) => server.premiumPlan === "DIAMOND" ? "DIAMOND" : "GOLD"
+    premiumTierFor: (server) => server.premiumPlan === "DIAMOND" ? "DIAMOND" : "GOLD",
+    random: createSeededRandom(directorySeed)
   });
   const [usersCount, pools, purchaseCount, playtime] = platform;
   const goldTier = premiumTiers.find((tier) => tier.code === "GOLD");
@@ -148,12 +156,11 @@ export default async function MarketplacePage({
   const canManageServers = Boolean(user);
   const favoriteCount = visibleServers.filter((server) => server.favorited).length;
 
-  function directoryHref(next: { tag?: string; query?: string; favorites?: boolean; shuffle?: boolean }) {
+  function directoryHref(next: { tag?: string; query?: string; favorites?: boolean }) {
     const params = new URLSearchParams();
     if (next.tag) params.set("tag", next.tag);
     if (next.query) params.set("q", next.query);
     if (next.favorites) params.set("view", "favorites");
-    if (next.shuffle) params.set("shuffle", Date.now().toString());
     const value = params.toString();
     return `${value ? `/?${value}` : "/"}#servers`;
   }
@@ -219,9 +226,7 @@ export default async function MarketplacePage({
             <h2>Worlds transmitting now</h2>
             <p>{favoritesOnly ? "Your saved worlds, ready for another session." : "Funded worlds and their live reward stores."}</p>
           </div>
-          <Link className="ghost-button" href={directoryHref({ tag: selectedTag, query, favorites: favoritesOnly, shuffle: true })}>
-            <RefreshCw size={16} /> Refresh list
-          </Link>
+          <DirectoryShuffleButton />
         </div>
 
         <div className="directory-toolbar">

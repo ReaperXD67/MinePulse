@@ -38,7 +38,7 @@ async function main() {
     }
   });
 
-  const unauthorized = await fetch(`${baseUrl}/api/admin/campaign-grants?q=campaign`);
+  const unauthorized = await fetch(`${baseUrl}/api/admin/users/search?q=campaign`);
   assert(unauthorized.status === 401, `Unauthenticated search returned ${unauthorized.status}`);
 
   const login = await fetch(`${baseUrl}/api/auth/login`, {
@@ -51,7 +51,7 @@ async function main() {
   assert(cookie, "Admin login did not return a session cookie");
   const headers = { "content-type": "application/json", cookie: cookie! };
 
-  const search = await fetch(`${baseUrl}/api/admin/campaign-grants?q=${encodeURIComponent(ownerEmail.slice(0, 24))}`, {
+  const search = await fetch(`${baseUrl}/api/admin/users/search?q=${encodeURIComponent(ownerEmail.slice(0, 24))}`, {
     headers: { cookie: cookie! }
   });
   const searchPayload = await search.json();
@@ -59,6 +59,11 @@ async function main() {
   assert(
     searchPayload.accounts?.some((account: { id: string }) => account.id === ownerId),
     "Search did not return the campaign owner"
+  );
+  assert(searchPayload.accounts.length <= 12, "Account search returned more than the bounded result set");
+  assert(
+    searchPayload.accounts.find((account: { id: string }) => account.id === ownerId)?.walletPoints === 0,
+    "Account search did not return the wallet balance"
   );
 
   const mismatched = await fetch(`${baseUrl}/api/admin/campaign-grants`, {

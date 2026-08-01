@@ -4,6 +4,7 @@ import {
   orderDirectory,
   standardVisibilityWeight
 } from "../lib/directory-order";
+import { createSeededRandom } from "../lib/random";
 
 function seededRandom(seed: number) {
   let state = seed >>> 0;
@@ -62,6 +63,22 @@ const popularServer = { likes: 999, favorites: 999, comments: 999 };
 assert.equal(standardVisibilityWeight(newServer), 100);
 assert.equal(standardVisibilityWeight(popularServer), 180);
 
+const stableDirectoryInput = {
+  premium: competitors,
+  standard: [standard],
+  premiumWeightFor: (entry: AuditServer) => entry.weight,
+  premiumTierFor: (entry: AuditServer) => entry.tier === "DIAMOND" ? "DIAMOND" as const : "GOLD" as const
+};
+const firstStableDraw = orderDirectory({
+  ...stableDirectoryInput,
+  random: createSeededRandom("same-browser-seed")
+}).servers.map((entry) => entry.name);
+const secondStableDraw = orderDirectory({
+  ...stableDirectoryInput,
+  random: createSeededRandom("same-browser-seed")
+}).servers.map((entry) => entry.name);
+assert.deepEqual(firstStableDraw, secondStableDraw, "The same browser seed produced a different directory order");
+
 console.log(JSON.stringify({
   ok: true,
   draws,
@@ -76,5 +93,6 @@ console.log(JSON.stringify({
     standard: FIRST_POSITION_CHANCES.STANDARD * 100
   },
   standardVisibilityWeight: { newServer: 100, cappedPopularServer: 180 },
-  rule: "Diamond leads 45%, Gold leads 35%, and a balanced standard server leads 20%."
+  stableDraw: firstStableDraw,
+  rule: "Diamond leads 45%, Gold leads 35%, and a balanced standard server leads 20%; one browser seed stays stable until an explicit shuffle."
 }, null, 2));
