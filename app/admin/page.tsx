@@ -37,7 +37,7 @@ export default async function AdminPage({
   const buyerDays = buyerWindow === "all" || ![5, 14, 30].includes(buyerWindow) ? 5 : buyerWindow;
   const buyerSince = buyers === "all" ? null : new Date(Date.now() - buyerDays * 24 * 60 * 60 * 1000);
 
-  const [stats, pointPackages, premiumTiers, servers, billing, promos, reports, enforcement, buyerUsers] = await Promise.all([
+  const [stats, pointPackages, premiumTiers, servers, billing, promos, reports, enforcement, accountModeration, buyerUsers] = await Promise.all([
     platformStats(),
     prisma.pointPackage.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.premiumTier.findMany({ orderBy: { priority: "desc" } }),
@@ -56,6 +56,14 @@ export default async function AdminPage({
       include: { server: { select: { name: true } }, admin: { select: { username: true } } },
       orderBy: { createdAt: "desc" },
       take: 12
+    }),
+    prisma.userModerationAction.findMany({
+      include: {
+        user: { select: { username: true, email: true } },
+        admin: { select: { username: true } }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20
     }),
     prisma.user.findMany({
       where: buyerSince ? { purchases: { some: { createdAt: { gte: buyerSince } } } } : { purchases: { some: {} } },
@@ -277,6 +285,14 @@ export default async function AdminPage({
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header compact-heading"><div><h2>Account moderation history</h2><p>Permanent and timed bans, restorations, responsible administrator, and recorded reason.</p></div></div>
+        <div className="table-shell"><table className="table"><thead><tr><th>When</th><th>Account</th><th>Action</th><th>Term</th><th>Admin</th><th>Reason</th></tr></thead><tbody>
+          {accountModeration.map((action) => <tr key={action.id}><td>{action.createdAt.toLocaleString()}</td><td><strong>{action.user.username}</strong><br /><span className="toast-line">{action.user.email}</span></td><td>{action.type}</td><td>{action.type === "BAN" ? action.expiresAt ? `Until ${action.expiresAt.toLocaleString()}` : "Permanent" : "Access restored"}</td><td>{action.admin?.username || "Former administrator"}</td><td>{action.reason}</td></tr>)}
+          {!accountModeration.length ? <tr><td colSpan={6}>No account moderation actions yet.</td></tr> : null}
+        </tbody></table></div>
       </section>
 
       <section className="panel">

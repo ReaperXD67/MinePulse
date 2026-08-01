@@ -5,6 +5,7 @@ import { createSession, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { clearLoginFailures, loginRateLimitStatus, recordLoginFailure } from "@/lib/auth-rate-limit";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
+import { accountBanIsActive, accountBanMessage } from "@/lib/account-ban";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,17 @@ export async function POST(request: Request) {
     }
 
     await clearLoginFailures(email);
+    if (accountBanIsActive(user)) {
+      return NextResponse.json({ error: accountBanMessage(user), code: "ACCOUNT_BANNED" }, { status: 403 });
+    }
+
+    if (user.bannedAt) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { bannedAt: null, bannedUntil: null, banReason: null }
+      });
+    }
+
     const session = await createSession(user.id, request);
     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     const response = NextResponse.json({

@@ -3593,6 +3593,50 @@ body::before {
   scroll-margin-top: 96px;
 }
 
+.admin-account-access-panel {
+  grid-column: 1 / -1;
+}
+
+.account-access-form {
+  grid-template-columns: minmax(160px, 0.35fr) minmax(280px, 1fr) auto;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.account-access-selection {
+  border-color: color-mix(in srgb, var(--cyan) 28%, var(--line));
+}
+
+.account-banned-label {
+  color: var(--rose);
+}
+
+.account-active-label,
+.account-unban-button {
+  color: var(--lime);
+}
+
+.account-ban-reason {
+  display: grid;
+  gap: 4px;
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--rose) 28%, var(--line));
+  background: color-mix(in srgb, var(--rose) 7%, transparent);
+}
+
+.account-ban-reason strong {
+  color: var(--rose);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+  .account-access-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 .grant-form {
   max-width: 820px;
 }

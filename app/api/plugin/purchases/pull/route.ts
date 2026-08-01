@@ -21,7 +21,13 @@ export async function POST(request: Request) {
       where: {
         serverId: server.id,
         status: "PENDING",
-        ...(input.minecraftUuid ? { buyer: { minecraftUuid: input.minecraftUuid } } : {})
+        buyer: {
+          OR: [
+            { bannedAt: null },
+            { bannedUntil: { lte: new Date() } }
+          ],
+          ...(input.minecraftUuid ? { minecraftUuid: input.minecraftUuid } : {})
+        }
       },
       include: { buyer: true, item: true },
       orderBy: { createdAt: "asc" },

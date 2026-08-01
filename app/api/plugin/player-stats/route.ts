@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authenticatePluginRequest, pluginJson, pluginRouteError, type PluginAuthContext } from "@/lib/plugin-auth";
+import { accountBanIsActive } from "@/lib/account-ban";
 
 export const runtime = "nodejs";
 
@@ -18,8 +19,9 @@ export async function POST(request: Request) {
 
     const player = await prisma.user.findUnique({
       where: { minecraftUuid: input.minecraftUuid },
-      select: { id: true, walletPoints: true }
+      select: { id: true, walletPoints: true, bannedAt: true, bannedUntil: true }
     });
+    const banned = Boolean(player && accountBanIsActive(player));
     const session = player
       ? await prisma.serverSession.findFirst({
           where: { serverId: server.id, userId: player.id },
@@ -37,6 +39,7 @@ export async function POST(request: Request) {
 
     return pluginJson(auth, {
       linked: Boolean(player),
+      banned,
       walletPoints: player?.walletPoints ?? 0,
       session: session ?? {
         activeSeconds: 0,

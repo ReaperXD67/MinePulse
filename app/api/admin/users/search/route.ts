@@ -4,6 +4,7 @@ import { UserRole } from "@/lib/generated/prisma/client";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
+import { accountBanIsActive } from "@/lib/account-ban";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,10 @@ export async function GET(request: Request) {
         email: true,
         minecraftName: true,
         walletPoints: true,
+        role: true,
+        bannedAt: true,
+        bannedUntil: true,
+        banReason: true,
         ownedServers: {
           select: { id: true, name: true, pointPool: true, status: true },
           orderBy: { updatedAt: "desc" }
@@ -36,7 +41,9 @@ export async function GET(request: Request) {
       take: 12
     });
 
-    return NextResponse.json({ accounts });
+    return NextResponse.json({
+      accounts: accounts.map((account) => ({ ...account, banActive: accountBanIsActive(account) }))
+    });
   } catch (error) {
     return routeError(error);
   }

@@ -28,7 +28,8 @@
     "test:minecraft-unlink": "tsx scripts/minecraft-unlink-audit.ts",
     "test:auth": "tsx scripts/auth-audit.ts",
     "test:security-boundaries": "tsx scripts/security-boundary-audit.ts",
-    "test:premium-order": "tsx scripts/premium-order-audit.ts"
+    "test:premium-order": "tsx scripts/premium-order-audit.ts",
+    "test:account-ban": "tsx scripts/account-ban-audit.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

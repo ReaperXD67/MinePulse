@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authenticatePluginRequest, pluginJson, pluginRouteError, type PluginAuthContext } from "@/lib/plugin-auth";
+import { accountBanIsActive } from "@/lib/account-ban";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,9 @@ export async function POST(request: Request) {
       });
       if (!link || link.expiresAt.getTime() < Date.now()) {
         throw new Response("Link code is invalid or expired", { status: 400 });
+      }
+      if (accountBanIsActive(link.user)) {
+        throw new Response("This KarixMC account is suspended and cannot link a Minecraft profile", { status: 403 });
       }
       if (link.user.minecraftUuid && link.user.minecraftUuid !== input.minecraftUuid) {
         throw new Response(

@@ -16,11 +16,13 @@ import {
   Search,
   ServerCog,
   ShieldCheck,
+  ShieldX,
   SlidersHorizontal,
   Trash2,
   Unlink,
   Wifi,
   WifiOff,
+  UserCheck,
   X
 } from "lucide-react";
 import { money, points, shortDate } from "@/lib/format";
@@ -80,6 +82,11 @@ type AdminAccount = {
   email: string;
   minecraftName: string | null;
   walletPoints: number;
+  role: string;
+  bannedAt: string | null;
+  bannedUntil: string | null;
+  banReason: string | null;
+  banActive: boolean;
   ownedServers: Array<{
     id: string;
     name: string;
@@ -207,6 +214,7 @@ export function AdminConsole({
   const [busy, setBusy] = useState(false);
   const walletAccount = useAdminAccountSearch();
   const serverAccount = useAdminAccountSearch();
+  const moderationAccount = useAdminAccountSearch();
   const selectedAccount = serverAccount.selected;
   const [confirmMinecraftReset, setConfirmMinecraftReset] = useState(false);
   const [campaignServerId, setCampaignServerId] = useState("");
@@ -424,6 +432,48 @@ export function AdminConsole({
     }
   }
 
+  async function moderateAccount(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const account = moderationAccount.selected;
+    if (!account) {
+      setMessage("Search for and select an account first");
+      return;
+    }
+
+    const form = new FormData(event.currentTarget);
+    const reason = String(form.get("reason") || "");
+    const duration = String(form.get("duration") || "permanent");
+    const method = account.banActive ? "DELETE" : "POST";
+    if (!account.banActive && !window.confirm(`Ban ${account.username} and immediately sign out this account?`)) return;
+
+    setBusy(true);
+    setMessage("");
+    const response = await fetch(`/api/admin/users/${account.id}/ban`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(account.banActive
+        ? { reason }
+        : { reason, durationHours: duration === "permanent" ? null : Number(duration) })
+    });
+    const payload = await response.json().catch(() => ({}));
+    setBusy(false);
+
+    if (!response.ok) {
+      setMessage(payload.error || "Account moderation failed");
+      return;
+    }
+
+    moderationAccount.setSelected({
+      ...account,
+      bannedAt: payload.account.bannedAt,
+      bannedUntil: payload.account.bannedUntil,
+      banReason: payload.account.banReason,
+      banActive: payload.account.banActive
+    });
+    setMessage(payload.message || "Account access updated");
+    router.refresh();
+  }
+
   return (
     <div className="dashboard-grid">
       <section className="panel admin-grant-panel">
@@ -549,6 +599,83 @@ export function AdminConsole({
             </button>
           </form>
         </div>
+        <p className="toast-line global-message" aria-live="polite">{message}</p>
+      </section>
+
+      <section className="panel admin-account-access-panel" id="account-access">
+        <div className="panel-header">
+          <div>
+            <h2>Account access</h2>
+            <p>Ban or restore a player or server owner. Every action is recorded in the moderation history.</p>
+          </div>
+          <ShieldX size={22} aria-hidden="true" />
+        </div>
+        <div className="form-grid grant-form">
+          <AdminAccountSearch
+            lookup={moderationAccount}
+            ariaLabel="Search account to ban or unban"
+            resultDetail={(account) => account.banActive ? "BANNED" : account.role}
+          />
+          {moderationAccount.selected ? (
+            <div className="admin-selected-account account-access-selection">
+              <div>
+                <strong>{moderationAccount.selected.username}</strong>
+                <span>{moderationAccount.selected.email} / {moderationAccount.selected.role}</span>
+              </div>
+              <div>
+                <strong className={moderationAccount.selected.banActive ? "account-banned-label" : "account-active-label"}>
+                  {moderationAccount.selected.banActive ? "Banned" : "Active"}
+                </strong>
+                <span>
+                  {moderationAccount.selected.banActive
+                    ? moderationAccount.selected.bannedUntil
+                      ? `Until ${shortDate(moderationAccount.selected.bannedUntil)}`
+                      : "Permanent restriction"
+                    : `${moderationAccount.selected.ownedServers.length} owned server(s)`}
+                </span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {moderationAccount.selected ? (
+          <form className="form-grid account-access-form" onSubmit={moderateAccount}>
+            {!moderationAccount.selected.banActive ? (
+              <select className="select" name="duration" defaultValue="168" aria-label="Ban duration" disabled={moderationAccount.selected.role === "ADMIN"}>
+                <option value="24">24 hours</option>
+                <option value="168">7 days</option>
+                <option value="720">30 days</option>
+                <option value="permanent">Permanent</option>
+              </select>
+            ) : null}
+            <input
+              className="field"
+              name="reason"
+              minLength={4}
+              maxLength={240}
+              placeholder={moderationAccount.selected.banActive ? "Reason for restoring access" : "Reason shown to the suspended member"}
+              required
+              disabled={moderationAccount.selected.role === "ADMIN"}
+            />
+            <button
+              className={`ghost-button ${moderationAccount.selected.banActive ? "account-unban-button" : "danger-button"}`}
+              type="submit"
+              disabled={busy || moderationAccount.selected.role === "ADMIN"}
+            >
+              {moderationAccount.selected.banActive ? <UserCheck size={16} /> : <Ban size={16} />}
+              {moderationAccount.selected.banActive ? "Unban account" : "Ban account"}
+            </button>
+          </form>
+        ) : null}
+
+        {moderationAccount.selected?.banActive && moderationAccount.selected.banReason ? (
+          <p className="account-ban-reason"><strong>Current reason</strong>{moderationAccount.selected.banReason}</p>
+        ) : null}
+        {moderationAccount.selected?.role === "ADMIN" ? (
+          <p className="toast-line">Administrator accounts are protected from this control to prevent a control-panel lockout.</p>
+        ) : (
+          <p className="toast-line">Banning signs the member out, blocks login and rewards, closes active play sessions, and pauses every active server they own. Unbanning never republishes those servers automatically.</p>
+        )}
         <p className="toast-line global-message" aria-live="polite">{message}</p>
       </section>
 

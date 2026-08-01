@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole, type User } from "@/lib/generated/prisma/client";
+import { accountBanIsActive } from "@/lib/account-ban";
 
 const COOKIE_NAME = "karixmc_session";
 const LEGACY_COOKIE_NAME = "minepulse_session";
@@ -28,6 +29,9 @@ export type SessionUser = Pick<
   | "minecraftName"
   | "bio"
   | "avatarUrl"
+  | "bannedAt"
+  | "bannedUntil"
+  | "banReason"
 >;
 
 export type AuthContext = {
@@ -48,7 +52,10 @@ const sessionUserSelect = {
   minecraftUuid: true,
   minecraftName: true,
   bio: true,
-  avatarUrl: true
+  avatarUrl: true,
+  bannedAt: true,
+  bannedUntil: true,
+  banReason: true
 } as const;
 
 function authSecret() {
@@ -161,6 +168,14 @@ export async function currentAuthContext(): Promise<AuthContext | null> {
   });
 
   if (!session || session.revokedAt || session.expiresAt <= now) return null;
+
+  if (accountBanIsActive(session.user, now)) {
+    await prisma.authSession.updateMany({
+      where: { id: session.id, revokedAt: null },
+      data: { revokedAt: now }
+    });
+    return null;
+  }
 
   if (now.getTime() - session.lastSeenAt.getTime() >= SESSION_TOUCH_INTERVAL_MS) {
     await prisma.authSession.updateMany({

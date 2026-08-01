@@ -5,6 +5,7 @@ import { claimableLevelRewards } from "@/lib/progression";
 import { prisma } from "@/lib/prisma";
 import { cappedRewardRate } from "@/lib/reward-rate";
 import { authenticatePluginRequest, pluginJson, pluginRouteError, type PluginAuthContext } from "@/lib/plugin-auth";
+import { accountBanIsActive } from "@/lib/account-ban";
 
 export const runtime = "nodejs";
 
@@ -32,7 +33,10 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
         passwordHash: true,
         walletPoints: true,
         level: true,
-        lifetimeEarnedPoints: true
+        lifetimeEarnedPoints: true,
+        bannedAt: true,
+        bannedUntil: true,
+        banReason: true
       }
     });
 
@@ -60,6 +64,30 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
         challengeAccepted: false,
         challenge: null,
         message: "Link your KarixMC account with /karixmc link <code> before rewards can start."
+      };
+    }
+
+    if (accountBanIsActive(player)) {
+      return {
+        ok: true,
+        linked: true,
+        serverId: server.id,
+        playerId: player.id,
+        earned: 0,
+        balanceAfter: player.walletPoints,
+        remainingPool: server.pointPool,
+        activeSeconds: 0,
+        afkSeconds: 0,
+        suspiciousScore: 0,
+        paidActivePlayers: 0,
+        rewardable: false,
+        rewardState: "ACCOUNT_BANNED",
+        rewardMessage: "KarixMC rewards are paused because this account is suspended.",
+        integrityVerified: true,
+        requiresChallenge: false,
+        challengeAccepted: false,
+        challenge: null,
+        message: "This KarixMC account is suspended. Contact support if you believe this is a mistake."
       };
     }
 
