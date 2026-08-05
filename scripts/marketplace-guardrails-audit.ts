@@ -1,11 +1,9 @@
 import crypto from "node:crypto";
 import { request, type APIRequestContext, type APIResponse } from "playwright";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "../lib/generated/prisma/client";
+import { createScriptPrisma } from "./database-client";
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:3001";
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || "file:./prisma/dev.db" });
-const prisma = new PrismaClient({ adapter });
+const prisma = createScriptPrisma();
 const stamp = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
 const password = `Guardrails!Audit!Passphrase!${stamp}`;
 const auditAddress = `2001:db8::${crypto.randomBytes(8).toString("hex")}`;

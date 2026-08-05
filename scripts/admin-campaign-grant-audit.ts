@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
-import { prisma } from "../lib/prisma";
+import { createScriptPrisma } from "./database-client";
+
+const prisma = createScriptPrisma();
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:3001";
 const stamp = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;

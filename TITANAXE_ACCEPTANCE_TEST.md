@@ -6,7 +6,7 @@ Use this checklist before connecting a production domain or enabling real paymen
 
 | Purpose | Value |
 | --- | --- |
-| Website | `http://51.83.180.202` |
+| Website | `https://karixmc.pl` |
 | Minecraft join address | `s130.titanaxe.com:27390` |
 | KarixMC server name | `test1` |
 | Server ID | `cmremn65y00025w9vva8q1kcx` |
@@ -34,13 +34,13 @@ Pass condition: the console has no KarixMCBridge stack trace and `/plugins` show
 4. Open `plugins/KarixMCBridge/config.yml` and enter exactly:
 
 ```yaml
-api-base-url: "http://51.83.180.202"
+api-base-url: "https://karixmc.pl"
 server-id: "cmremn65y00025w9vva8q1kcx"
 plugin-secret: "COPY_FROM_TEST1_CREATOR_STUDIO"
-allow-insecure-http: true
+allow-insecure-http: false
 ```
 
-Port 80 is automatic for this URL. Do not add `:3000` or any path after the IP. Creator Studio can download the complete `config.yml` after server creation or secret rotation.
+Port 443 is automatic for this HTTPS URL. Do not add `:3000` or any path after the domain. Creator Studio can download the complete `config.yml` after server creation or secret rotation.
 
 5. Save and fully restart the server.
 6. Check the console for policy-sync or invalid-credential errors.

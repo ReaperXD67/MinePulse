@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { bridgeIsOnline } from "@/lib/server-liveness";
+import { readSharedJson, writeSharedJson } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,6 +10,11 @@ let cachedResult: { expiresAt: number; serverIds: string[] } | null = null;
 
 async function liveServerIds(now: number) {
   if (cachedResult && cachedResult.expiresAt > now) return cachedResult.serverIds;
+  const shared = await readSharedJson<string[]>("marketplace:live-server-ids");
+  if (shared) {
+    cachedResult = { expiresAt: now + 2_000, serverIds: shared };
+    return shared;
+  }
 
   const servers = await prisma.server.findMany({
     where: {
@@ -24,6 +30,7 @@ async function liveServerIds(now: number) {
     .sort();
 
   cachedResult = { expiresAt: now + 5_000, serverIds };
+  await writeSharedJson("marketplace:live-server-ids", serverIds, 5);
   return serverIds;
 }
 

@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Gift, Sparkles, Trophy } from "lucide-react";
 import { points } from "@/lib/format";
 import { nextDailyClaimAt, nextLevelProgress } from "@/lib/progression";
 
 type DailyRewardPanelProps = {
+  renderedAt: number;
   walletPoints: number;
   level: number;
   lifetimeEarnedPoints: number;
@@ -14,6 +15,7 @@ type DailyRewardPanelProps = {
 };
 
 export function DailyRewardPanel({
+  renderedAt,
   walletPoints,
   level,
   lifetimeEarnedPoints,
@@ -22,9 +24,15 @@ export function DailyRewardPanel({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [now, setNow] = useState(renderedAt);
   const nextClaim = useMemo(() => nextDailyClaimAt(lastDailyClaimAt), [lastDailyClaimAt]);
-  const locked = Boolean(nextClaim && nextClaim.getTime() > Date.now());
+  const locked = Boolean(nextClaim && nextClaim.getTime() > now);
   const progress = nextLevelProgress(level, lifetimeEarnedPoints);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   async function claimReward() {
     setBusy(true);

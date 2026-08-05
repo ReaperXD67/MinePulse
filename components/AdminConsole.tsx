@@ -25,7 +25,7 @@ import {
   UserCheck,
   X
 } from "lucide-react";
-import { money, points, shortDate } from "@/lib/format";
+import { points, shortDate } from "@/lib/format";
 
 type PackageRow = {
   id: string;
@@ -106,13 +106,10 @@ function useAdminAccountSearch() {
   useEffect(() => {
     const normalizedQuery = query.trim();
     if (normalizedQuery.length < 2 || selected) {
-      setResults([]);
-      setSearching(false);
       return;
     }
 
     const controller = new AbortController();
-    setSearching(true);
     const timer = window.setTimeout(async () => {
       try {
         const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(normalizedQuery)}`, {
@@ -141,11 +138,14 @@ function useAdminAccountSearch() {
     changeQuery(value: string) {
       setQuery(value);
       setSelected(null);
+      setResults([]);
+      setSearching(value.trim().length >= 2);
     },
     select(account: AdminAccount) {
       setSelected(account);
       setQuery(`${account.username} - ${account.email}`);
       setResults([]);
+      setSearching(false);
     },
     setSelected,
     clear() {
@@ -186,7 +186,7 @@ function AdminAccountSearch({
       {lookup.results.length ? (
         <div className="admin-account-results" role="listbox" aria-label="Matching accounts">
           {lookup.results.map((account) => (
-            <button type="button" role="option" key={account.id} onClick={() => lookup.select(account)}>
+            <button type="button" role="option" aria-selected={lookup.selected?.id === account.id} key={account.id} onClick={() => lookup.select(account)}>
               <span><strong>{account.username}</strong><small>{account.minecraftName || account.email}</small></span>
               <span>{resultDetail(account)}</span>
             </button>
@@ -252,15 +252,16 @@ export function AdminConsole({
   }, [servers, serverBridge, serverPremium, serverQuery, serverStatus, serverTag, serverTrust]);
 
   const serverPageCount = Math.max(1, Math.ceil(filteredServers.length / SERVERS_PER_PAGE));
-  const visibleServers = filteredServers.slice((serverPage - 1) * SERVERS_PER_PAGE, serverPage * SERVERS_PER_PAGE);
+  const activeServerPage = Math.min(serverPage, serverPageCount);
+  const visibleServers = filteredServers.slice(
+    (activeServerPage - 1) * SERVERS_PER_PAGE,
+    activeServerPage * SERVERS_PER_PAGE
+  );
 
-  useEffect(() => {
+  function updateServerFilter(setter: (value: string) => void, value: string) {
+    setter(value);
     setServerPage(1);
-  }, [serverBridge, serverPremium, serverQuery, serverStatus, serverTag, serverTrust]);
-
-  useEffect(() => {
-    if (serverPage > serverPageCount) setServerPage(serverPageCount);
-  }, [serverPage, serverPageCount]);
+  }
 
   async function send(url: string, body: unknown, method = "PATCH") {
     setBusy(true);
@@ -768,34 +769,34 @@ export function AdminConsole({
             <input
               className="field"
               value={serverQuery}
-              onChange={(event) => setServerQuery(event.target.value)}
+              onChange={(event) => updateServerFilter(setServerQuery, event.target.value)}
               placeholder="Search server, owner, address, or tag"
               aria-label="Search servers"
             />
           </label>
-          <select className="select" value={serverStatus} onChange={(event) => setServerStatus(event.target.value)} aria-label="Filter by server status">
+          <select className="select" value={serverStatus} onChange={(event) => updateServerFilter(setServerStatus, event.target.value)} aria-label="Filter by server status">
             <option value="ALL">All statuses</option>
             <option value="ACTIVE">Active</option>
             <option value="PAUSED">Paused</option>
             <option value="REMOVED">Removed</option>
           </select>
-          <select className="select" value={serverBridge} onChange={(event) => setServerBridge(event.target.value)} aria-label="Filter by bridge connection">
+          <select className="select" value={serverBridge} onChange={(event) => updateServerFilter(setServerBridge, event.target.value)} aria-label="Filter by bridge connection">
             <option value="ALL">Any connection</option>
             <option value="ONLINE">Bridge online</option>
             <option value="OFFLINE">Bridge offline</option>
           </select>
-          <select className="select" value={serverTag} onChange={(event) => setServerTag(event.target.value)} aria-label="Filter by server tag">
+          <select className="select" value={serverTag} onChange={(event) => updateServerFilter(setServerTag, event.target.value)} aria-label="Filter by server tag">
             <option value="ALL">All tags</option>
             {serverTags.map((tag) => <option value={tag} key={tag}>{tag}</option>)}
           </select>
-          <select className="select" value={serverTrust} onChange={(event) => setServerTrust(event.target.value)} aria-label="Filter by trust status">
+          <select className="select" value={serverTrust} onChange={(event) => updateServerFilter(setServerTrust, event.target.value)} aria-label="Filter by trust status">
             <option value="ALL">Any trust</option>
             <option value="VERIFIED">Verified</option>
             <option value="WATCHLIST">Watchlist</option>
             <option value="SUSPENDED">Suspended</option>
             <option value="BLACKLISTED">Blacklisted</option>
           </select>
-          <select className="select" value={serverPremium} onChange={(event) => setServerPremium(event.target.value)} aria-label="Filter by premium plan">
+          <select className="select" value={serverPremium} onChange={(event) => updateServerFilter(setServerPremium, event.target.value)} aria-label="Filter by premium plan">
             <option value="ALL">Any plan</option>
             <option value="NONE">Standard</option>
             <option value="GOLD">Gold</option>
@@ -884,11 +885,11 @@ export function AdminConsole({
         </div>
 
         <div className="admin-fleet-pagination" aria-label="Server result pages">
-          <span>Showing {filteredServers.length ? (serverPage - 1) * SERVERS_PER_PAGE + 1 : 0}-{Math.min(serverPage * SERVERS_PER_PAGE, filteredServers.length)} of {filteredServers.length}</span>
+          <span>Showing {filteredServers.length ? (activeServerPage - 1) * SERVERS_PER_PAGE + 1 : 0}-{Math.min(activeServerPage * SERVERS_PER_PAGE, filteredServers.length)} of {filteredServers.length}</span>
           <div>
-            <button className="icon-button" type="button" title="Previous page" aria-label="Previous server page" disabled={serverPage === 1} onClick={() => setServerPage((page) => Math.max(1, page - 1))}><ChevronLeft size={17} /></button>
-            <strong>Page {serverPage} / {serverPageCount}</strong>
-            <button className="icon-button" type="button" title="Next page" aria-label="Next server page" disabled={serverPage === serverPageCount} onClick={() => setServerPage((page) => Math.min(serverPageCount, page + 1))}><ChevronRight size={17} /></button>
+            <button className="icon-button" type="button" title="Previous page" aria-label="Previous server page" disabled={activeServerPage === 1} onClick={() => setServerPage(Math.max(1, activeServerPage - 1))}><ChevronLeft size={17} /></button>
+            <strong>Page {activeServerPage} / {serverPageCount}</strong>
+            <button className="icon-button" type="button" title="Next page" aria-label="Next server page" disabled={activeServerPage === serverPageCount} onClick={() => setServerPage(Math.min(serverPageCount, activeServerPage + 1))}><ChevronRight size={17} /></button>
           </div>
         </div>
         <p className="toast-line global-message" aria-live="polite">{message}</p>

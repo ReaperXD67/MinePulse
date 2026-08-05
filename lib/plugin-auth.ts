@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
 import { revealPluginSecret } from "@/lib/plugin-credentials";
 import { readJsonDocument } from "@/lib/request-body";
+import { sharedRateLimit } from "@/lib/redis";
 import type { Server } from "@/lib/generated/prisma/client";
 
 const REQUEST_WINDOW_SECONDS = 90;
@@ -51,11 +52,22 @@ function validMac(received: string, payload: string, secret: string) {
   return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
 }
 
-function enforceRequestRate(serverId: string, path: string) {
+async function enforceRequestRate(serverId: string, path: string) {
   const minute = Math.floor(Date.now() / 60_000);
   const key = `${serverId}:${path}`;
-  const current = buckets.get(key);
   const limit = path.endsWith("/heartbeat/batch") ? 20 : path.endsWith("/heartbeat") ? 240 : 120;
+  const shared = await sharedRateLimit(`plugin:${key}`, limit, 60);
+  if (shared) {
+    if (!shared.allowed) {
+      throw new Response("Plugin request rate exceeded", {
+        status: 429,
+        headers: { "Retry-After": String(shared.retryAfterSeconds) }
+      });
+    }
+    return;
+  }
+
+  const current = buckets.get(key);
   const next = !current || current.minute !== minute ? { minute, count: 1 } : { minute, count: current.count + 1 };
   buckets.set(key, next);
 
@@ -122,7 +134,7 @@ export async function authenticatePluginRequest(request: Request, maximumBytes =
     throw new Response("Invalid plugin authentication", { status: 401 });
   }
 
-  enforceRequestRate(server.id, path);
+  await enforceRequestRate(server.id, path);
   await consumeNonce(server.id, nonce);
   return { body: raw, nonce, path, secret, server };
 }

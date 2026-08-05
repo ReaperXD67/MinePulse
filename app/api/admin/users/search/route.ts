@@ -17,9 +17,9 @@ export async function GET(request: Request) {
     const accounts = await prisma.user.findMany({
       where: {
         OR: [
-          { email: { contains: query } },
-          { username: { contains: query } },
-          { minecraftName: { contains: query } }
+          { email: { contains: query, mode: "insensitive" } },
+          { username: { contains: query, mode: "insensitive" } },
+          { minecraftName: { contains: query, mode: "insensitive" } }
         ]
       },
       select: {

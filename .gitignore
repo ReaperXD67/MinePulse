@@ -5,10 +5,14 @@ node_modules
 .next-dev.err.log
 .tmp-dev-out.log
 .tmp-dev-err.log
+.tmp-prod*.log
 prisma/*.db
 prisma/*.db-journal
 # Keep environment variables out of version control
 .env
+.env.*
+!.env.example
+!.env.production.example
 
 /lib/generated/prisma
 
@@ -17,3 +21,8 @@ minecraft-plugin/target/
 /public/uploads/
 /storage/media/
 *.tsbuildinfo
+
+# Local audit, load-test, and deployment staging artifacts
+/output/
+/reports/
+/tmp/

@@ -9,6 +9,8 @@ export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [requiresTotp, setRequiresTotp] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,13 +22,14 @@ export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, ...(totpCode ? { totpCode } : {}) })
     });
 
     const payload = await response.json().catch(() => ({}));
     setLoading(false);
 
     if (!response.ok) {
+      if (payload.code === "TWO_FACTOR_REQUIRED") setRequiresTotp(true);
       setMessage(payload.error || "Login failed");
       return;
     }
@@ -59,6 +62,12 @@ export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
             autoComplete="email"
           />
         </div>
+        {requiresTotp ? (
+          <div className="form-row">
+            <label htmlFor="totp-code">Authenticator code</label>
+            <input className="field" id="totp-code" inputMode="numeric" pattern="[0-9]{6}" minLength={6} maxLength={6} value={totpCode} onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, "").slice(0, 6))} autoComplete="one-time-code" required />
+          </div>
+        ) : null}
         <div className="form-row">
           <label htmlFor="password">Password</label>
           <input
@@ -75,6 +84,7 @@ export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
       <button className="solid-button" type="submit" disabled={loading}>
         <LogIn size={16} /> {loading ? "Checking..." : "Login"}
       </button>
+      <Link className="text-link" href="/forgot-password">Forgot password?</Link>
       <Link className="ghost-button auth-switch-link" href="/signup">Create an account</Link>
 
       <p className="toast-line">{message}</p>

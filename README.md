@@ -1,25 +1,27 @@
 # KarixMC
 
+> Production deployment, PostgreSQL migration, backup, monitoring, and rollback instructions are in [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md).
+
 KarixMC is a production-style MVP for a Minecraft server marketplace where verified playtime earns platform points. The visible Paper plugin and command namespace are `KarixMCBridge` and `/karixmc`; internal Java package names remain unchanged for binary stability.
 
 Members earn points on funded servers, then spend those earned points on ranks, crates, cosmetics, or any server-configured item. The same account can also publish servers, buy campaign credits with real money, choose reward rates per second, cap paid players, and buy Gold or Diamond placement. Admins control pricing, bonus promo codes, reports, punishments, campaign pools, premium state, server visibility, and platform statistics.
 
-## Live VPS Deployment (Controlled Beta)
+## Legacy VPS Deployment (Controlled Beta Only)
 
-The hosted web platform is available for controlled testing:
+The old HTTP/IP deployment may still be available for controlled regression testing:
 
 - **Live website:** [http://51.83.180.202](http://51.83.180.202)
 - **Create an account:** [http://51.83.180.202/signup](http://51.83.180.202/signup)
 - **Plugin download and setup:** [http://51.83.180.202/plugin](http://51.83.180.202/plugin)
 
-This VPS URL is the KarixMC website and plugin API, not automatically the Minecraft join address. A Paper server can run on another host; its temporary beta config can use `api-base-url: "http://51.83.180.202"`, while players join the hostname and port configured for that Minecraft server.
+This address is not the production target and must not receive real users, production credentials, or payments. A Paper server can run on another host; the website/API address and Minecraft join address remain separate.
 
-The current deployment uses temporary HTTP/IP access for beta testing. Before accepting public users or real payments, move to a domain with HTTPS, production secrets, PostgreSQL, backups, and the launch checks documented below.
+The domain launch must use the PostgreSQL/Redis/HTTPS architecture in [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md).
 
 ## Two Separate Currencies
 
 - **Wallet points** live in a member wallet. Verified play is the main source; level rewards, the 20-hour claim, and documented admin grants also add wallet points. Wallet points can buy server store items.
-- **Campaign credits** live in a server reward pool and can only pay verified player rewards. During controlled testing, administrators grant them with an audit reason; no payment checkout is connected.
+- **Campaign credits** live in a server reward pool and can only pay verified player rewards. Orders are coordinated through the official Discord and an administrator records the confirmed grant with an audit reason; no automated checkout is connected.
 
 Buying a store item never refills a server campaign. Promo codes such as `BOOST10` add bonus campaign credits without discounting the purchase price.
 
@@ -28,8 +30,10 @@ Reward rates support half-point steps such as `1`, `1.5`, `2`, `2.5`, and `3` po
 ## Stack
 
 - Next.js App Router
-- Prisma 7 with SQLite for local development
-- Cookie JWT authentication with admin protection and unified member accounts
+- Prisma 7 with PostgreSQL
+- Redis-backed shared caching and plugin rate limits
+- Opaque, hashed database sessions with verified email and administrator TOTP
+- Two Next.js replicas behind Nginx in production
 - Paper plugin in `minecraft-plugin/`
 - Local generated PNG artwork in `public/voxel-network.png`
 
@@ -38,9 +42,10 @@ Reward rates support half-point steps such as `1`, `1.5`, `2`, `2.5`, and `3` po
 ```bash
 npm install
 npm run assets:generate
+npm run infra:up
 npm run db:generate
-npm run db:apply
-npm run db:seed
+npm run db:migrate
+npm run db:seed:demo
 npm run dev
 ```
 
@@ -48,7 +53,7 @@ Open `http://localhost:3000`.
 
 Testers can create their own accounts at `http://localhost:3000/signup`. Use separate accounts for each tester so wallets, Minecraft links, purchases, friends, and profile edits do not collide.
 
-`db:apply` applies the generated SQLite migration directly. The Prisma schema and generated client still remain the source of truth; this command exists because Prisma 7's schema engine can be opaque on some local Windows SQLite setups.
+Copy `.env.example` to `.env` before the first run. The local Docker infrastructure binds PostgreSQL and Redis only to `127.0.0.1`. Stop it with `npm run infra:down`.
 
 Local seeded accounts (development and automated testing only; do not run `db:seed` on production):
 
@@ -66,7 +71,7 @@ For the hosted Titanaxe server and final pre-domain checks, use [TITANAXE_ACCEPT
 Docker Desktop can launch a real Paper 1.21.4 server with the downloadable KarixMC Bridge already mounted:
 
 ```bash
-npm run db:seed
+npm run db:seed:demo
 npm run dev
 npm run game:test:up
 npm run game:test:status
@@ -141,10 +146,10 @@ For local testing where Paper and the website run on the same machine, keep `api
 - `PLUGIN_SECRET_ENCRYPTION_KEY` must be a separate strong value of at least 32 characters. Plugin credentials are encrypted at rest and shown only once after server creation or rotation.
 - Authentication uses opaque, hashed, database-backed sessions. Users can review and revoke devices from Account > Security, and password changes revoke every other session.
 - New passwords require a passphrase of at least 15 characters. Login is throttled by account and connection, and public registration cannot assign privileged roles.
-- Set `APP_BASE_URL` to the public website URL testers open in the browser, for example `http://51.83.180.202` during temporary VPS testing. This prevents redirects from using an internal bind address.
-- `AUTH_COOKIE_SECURE="false"` is allowed only for temporary HTTP/IP-based VPS testing. Use HTTPS and remove it or set it to `"true"` before real public launch.
-- No payment method is connected in the testing build. Campaign credits and premium time are granted by an administrator. Select and security-review a payment provider only after HTTPS, PostgreSQL, backups, refund rules, merchant verification, and signed webhook tests are ready.
-- SQLite is fine for local MVP testing. Use Postgres before handling real money or large traffic.
+- Set `APP_BASE_URL` to the final HTTPS domain. Production validation rejects HTTP, localhost, placeholder domains, and URL paths.
+- Production requires `AUTH_COOKIE_SECURE="true"`, verified email delivery, administrator TOTP, PostgreSQL, Redis, and independent secrets.
+- No automated payment method is connected. Campaign credit and premium orders are coordinated through the official Discord, then granted by an administrator after manual confirmation. Never request or accept account passwords, TOTP codes, plugin secrets, or private keys through Discord. Select and security-review an automated payment provider only after HTTPS, PostgreSQL, backups, refund rules, merchant verification, and signed webhook tests are ready.
+- SQLite is now only a read-only source for the one-time beta-data importer. All active local and production runtime data uses PostgreSQL.
 - Do not reset the database during normal deployments. Removing and republishing an address creates a fresh server identity while retaining the removed record for audit history; account and admin controls provide targeted Minecraft unlinking.
 
 Run `npm run test:auth` against a local production server on port 3001 to verify registration, password hashing, session revocation, logout, password rotation, and brute-force throttling.

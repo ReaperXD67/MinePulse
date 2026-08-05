@@ -2,13 +2,11 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { rm } from "node:fs/promises";
 import { request, type APIRequestContext, type APIResponse } from "playwright";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "../lib/generated/prisma/client";
+import { createScriptPrisma } from "./database-client";
 import sharp from "sharp";
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:3001";
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || "file:./prisma/dev.db" });
-const prisma = new PrismaClient({ adapter });
+const prisma = createScriptPrisma();
 const stamp = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
 const ownerEmail = `security-owner-${stamp}@example.test`;
 const secondEmail = `security-second-${stamp}@example.test`;
@@ -43,7 +41,15 @@ async function register(context: APIRequestContext, email: string, username: str
   const response = await context.post("/api/auth/register", { data: { email, username, password } });
   const payload = await body(response);
   assert(response.ok(), `Registration failed (${response.status()}): ${JSON.stringify(payload)}`);
-  return payload.user.id as string;
+  if (payload.user?.id) return payload.user.id as string;
+
+  const pending = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  assert(pending, "Email-required registration did not create the pending account");
+  await prisma.user.update({ where: { id: pending.id }, data: { emailVerifiedAt: new Date() } });
+  const login = await context.post("/api/auth/login", { data: { email, password } });
+  const loginPayload = await body(login);
+  assert(login.ok(), `Verified audit login failed (${login.status()}): ${JSON.stringify(loginPayload)}`);
+  return pending.id;
 }
 
 function serverPayload(host: string, overrides: Record<string, unknown> = {}) {

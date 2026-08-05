@@ -88,10 +88,12 @@ function pluginConfigText(appBaseUrl: string, serverId: string, pluginSecret: st
 
 export function OwnerConsole({
   servers,
-  appBaseUrl
+  appBaseUrl,
+  discordUrl
 }: {
   servers: OwnerServerView[];
   appBaseUrl: string;
+  discordUrl: string;
 }) {
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info");
@@ -131,14 +133,9 @@ export function OwnerConsole({
   }, []);
 
   useEffect(() => {
-    setServerState(servers);
-  }, [servers]);
-
-  useEffect(() => {
     const syncVisibleServers = () => {
       if (document.visibilityState === "visible") void refreshServers();
     };
-    void refreshServers();
     const timer = window.setInterval(syncVisibleServers, 10_000);
     window.addEventListener("focus", syncVisibleServers);
     document.addEventListener("visibilitychange", syncVisibleServers);
@@ -579,14 +576,16 @@ export function OwnerConsole({
             <div className="management-side-stack">
               <section className="subpanel">
                 <div className="panel-header compact-heading"><div><p className="eyebrow"><Coins size={14} /> Campaign</p><h4>Testing access</h4></div><span className="status-pill">Admin managed</span></div>
-                <p className="supporting-copy"><strong>No payment method is connected.</strong> KarixMC does not collect money or open a mock checkout during testing. An administrator can grant campaign credits or premium time from the admin panel.</p>
+                <p className="supporting-copy"><strong>Purchases are handled by KarixMC staff in the official Discord.</strong> Share only your account email, server name, and requested package. After confirmation, an administrator records the campaign credits or premium time here.</p>
                 <div className="integrity-grid campaign-access-grid">
                   <div><span>Campaign pool</span><strong>{points(server.pointPool)} credits</strong></div>
                   <div><span>Visibility</span><strong>{activePremiumPlan(server.premiumPlan as "NONE" | "GOLD" | "DIAMOND", server.premiumUntil) === "NONE" ? "Standard" : server.premiumPlan}</strong></div>
                 </div>
                 {activePremiumPlan(server.premiumPlan as "NONE" | "GOLD" | "DIAMOND", server.premiumUntil) !== "NONE" ? (
                   <p className="toast-line">{server.premiumPlan} active until {shortDate(server.premiumUntil!)}</p>
-                ) : <p className="toast-line">Contact an administrator when this server needs testing credits or premium placement.</p>}
+                ) : <p className="toast-line">Contact the purchase desk when this server needs campaign credits or premium placement.</p>}
+                <a className="ghost-button campaign-discord-button" href={discordUrl} target={discordUrl.startsWith("http") ? "_blank" : undefined} rel={discordUrl.startsWith("http") ? "noreferrer" : undefined}><LifeBuoy size={15} /> Official Discord purchase desk</a>
+                <p className="credential-help"><ShieldCheck size={13} /> Staff never need your password, TOTP code, plugin secret, or private key.</p>
               </section>
 
               <section className="subpanel">

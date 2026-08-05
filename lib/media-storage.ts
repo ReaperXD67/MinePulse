@@ -18,7 +18,7 @@ export function managedMediaUrl(userId: string, scopeId: string, kind: "avatar" 
 export function managedMediaFilePath(value: string | null | undefined) {
   const match = (value || "").match(MANAGED_MEDIA_PATH);
   if (!match) return null;
-  return path.join(mediaStorageRoot(), match[1], match[2], match[3], match[4]);
+  return path.join(/* turbopackIgnore: true */ mediaStorageRoot(), match[1], match[2], match[3], match[4]);
 }
 
 export async function deleteManagedMedia(values: Array<string | null | undefined>) {
@@ -51,11 +51,11 @@ async function directoryUsage(directory: string): Promise<{ files: number; bytes
 }
 
 export function accountMediaUsage(userId: string) {
-  return directoryUsage(path.join(mediaStorageRoot(), userId));
+  return directoryUsage(path.join(/* turbopackIgnore: true */ mediaStorageRoot(), userId));
 }
 
 export function mediaDirectory(userId: string, scopeId: string, kind: "avatar" | "banner" | "gallery") {
-  return path.join(mediaStorageRoot(), userId, scopeId, kind);
+  return path.join(/* turbopackIgnore: true */ mediaStorageRoot(), userId, scopeId, kind);
 }
 
 export function mediaDirectoryUsage(directory: string) {

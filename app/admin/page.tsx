@@ -10,6 +10,7 @@ import { money, points } from "@/lib/format";
 import { platformStats } from "@/lib/stats";
 import { prisma } from "@/lib/prisma";
 import { bridgeIsOnline } from "@/lib/server-liveness";
+import { serverNowMs } from "@/lib/server-time";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +34,10 @@ export default async function AdminPage({
   }
 
   const { buyers } = await searchParams;
+  const renderedAt = serverNowMs();
   const buyerWindow = buyers === "all" ? "all" : Number(buyers || 5);
   const buyerDays = buyerWindow === "all" || ![5, 14, 30].includes(buyerWindow) ? 5 : buyerWindow;
-  const buyerSince = buyers === "all" ? null : new Date(Date.now() - buyerDays * 24 * 60 * 60 * 1000);
+  const buyerSince = buyers === "all" ? null : new Date(renderedAt - buyerDays * 24 * 60 * 60 * 1000);
 
   const [stats, pointPackages, premiumTiers, servers, billing, promos, reports, enforcement, accountModeration, buyerUsers] = await Promise.all([
     platformStats(),
@@ -91,7 +93,7 @@ export default async function AdminPage({
   ]);
 
   const buyerWindowLabel = buyers === "all" ? "all time" : `${buyerDays} days`;
-  const bridgeCheckedAt = Date.now();
+  const bridgeCheckedAt = renderedAt;
 
   return (
     <main className="container dashboard">

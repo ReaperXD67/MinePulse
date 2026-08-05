@@ -4,9 +4,9 @@ This guide is for testing the KarixMC website with a real Paper Minecraft server
 
 ## Test addresses
 
-- Website: `http://51.83.180.202`
-- Plugin page: `http://51.83.180.202/plugin`
-- Account and Creator Studio: `http://51.83.180.202/account`
+- Website: `https://karixmc.pl`
+- Plugin page: `https://karixmc.pl/plugin`
+- Account and Creator Studio: `https://karixmc.pl/account`
 - Minecraft join address: the address of your separate Minecraft server, not the website VPS address
 
 The website VPS and Minecraft server may be on different machines. The Minecraft server needs outbound access to the KarixMC website. The IP-based HTTP URL is temporary beta infrastructure; production must use HTTPS.
@@ -31,7 +31,7 @@ Requirements:
 
 - Paper or Purpur server, version 1.20.x or 1.21.x
 - Java 17 or newer; Java 21 is recommended for modern 1.21 servers
-- Outbound network access from the Minecraft host to `51.83.180.202` on port 80 during the temporary beta
+- Outbound network access from the Minecraft host to `karixmc.pl` on TCP port 443
 - Do not install both the old and new bridge jars
 
 If the old plugin is installed:
@@ -43,7 +43,7 @@ If the old plugin is installed:
 
 ## Part 2 - Create the owner account and server listing
 
-1. Open `http://51.83.180.202/signup`.
+1. Open `https://karixmc.pl/signup`.
 2. Create a separate account for the server owner.
 3. Sign in and open `Account -> Your servers`.
 4. Select `List a new server`.
@@ -62,7 +62,7 @@ The website prevents the same host and port from being registered twice. Contact
 
 ## Part 3 - Install and configure KarixMCBridge
 
-1. Download `KarixMCBridge-0.6.2.jar` from `http://51.83.180.202/plugin`.
+1. Download `KarixMCBridge-0.6.4.jar` from `https://karixmc.pl/plugin`.
 2. Put the jar in the Minecraft server's `plugins/` directory.
 3. Start Paper once.
 4. Stop Paper after `plugins/KarixMCBridge/config.yml` is created.
@@ -71,13 +71,13 @@ The website prevents the same host and port from being registered twice. Contact
 7. Edit `plugins/KarixMCBridge/config.yml`:
 
 ```yaml
-api-base-url: "http://51.83.180.202"
+api-base-url: "https://karixmc.pl"
 server-id: "COPY_THE_SERVER_ID_FROM_CREATOR_STUDIO"
 plugin-secret: "COPY_THE_PLUGIN_SECRET_FROM_CREATOR_STUDIO"
-allow-insecure-http: true
+allow-insecure-http: false
 ```
 
-The website runs through standard HTTP port 80. Do not add `:3000`, `/api`, `/plugin`, or `/account` to `api-base-url`. After creating a server or rotating its secret, use **Download config.yml** in Creator Studio to avoid missing one of these four settings.
+The website runs through standard HTTPS port 443. Do not add `:3000`, `/api`, `/plugin`, or `/account` to `api-base-url`. After creating a server or rotating its secret, use **Download config.yml** in Creator Studio to avoid missing one of these four settings.
 
 8. Save the file and start Paper again.
 9. Run `/plugins`. `KarixMCBridge` should be green.
@@ -91,7 +91,7 @@ Important:
 - There is no separate wallet URL. The wallet is part of the KarixMC account page.
 - Keep the plugin secret private. If it leaks, use Rotate secret in Creator Studio, update `config.yml`, and restart Paper.
 - The Server ID is a public routing identifier. It is safe to display; it cannot sign a request without the private plugin secret.
-- `allow-insecure-http: true` is only for this temporary IP beta. Set it to `false` when the domain has HTTPS.
+- Keep `allow-insecure-http: false` for the production domain. Public HTTP mode is only for isolated local testing.
 - `Plugin reached website` can appear with zero players online.
 - `Last player activity` appears only after a player joins and sends a heartbeat.
 
@@ -356,8 +356,8 @@ No plugin can fully stop a machine owner from modifying their own server softwar
 ### Creator Studio says Waiting for plugin
 
 - Check all three `config.yml` values.
-- From the Minecraft host, test `curl http://51.83.180.202/plugin`.
-- Confirm outbound TCP port 80 is allowed during the temporary beta; production uses HTTPS on port 443.
+- From the Minecraft host, test `curl https://karixmc.pl/plugin`.
+- Confirm outbound TCP port 443 is allowed for production HTTPS.
 - Do not use `localhost` when the website is on another machine.
 - Synchronize the Minecraft host clock with NTP.
 - Restart Paper after changing the local connection values.

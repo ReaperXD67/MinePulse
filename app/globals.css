@@ -4631,6 +4631,56 @@ body::before {
     var(--panel);
 }
 
+.manual-purchase-desk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.manual-purchase-desk > div {
+  display: grid;
+  gap: 7px;
+}
+
+.manual-purchase-desk .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.manual-purchase-desk strong {
+  font-size: 1.05rem;
+}
+
+.manual-purchase-desk p,
+.manual-purchase-safety {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.manual-purchase-safety {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 0.82rem;
+}
+
+.manual-purchase-safety svg,
+.campaign-discord-button + .credential-help svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--lime);
+}
+
+.campaign-discord-button {
+  margin-top: 14px;
+}
+
 @media (max-width: 1120px) {
   .arena-layer {
     grid-template-columns: 1fr;
@@ -4644,6 +4694,15 @@ body::before {
 }
 
 @media (max-width: 760px) {
+  .manual-purchase-desk {
+    grid-template-columns: 1fr;
+  }
+
+  .manual-purchase-desk .solid-button {
+    width: 100%;
+    justify-content: center;
+  }
+
   .arena-hero,
   .arena-layer {
     min-height: 780px;

@@ -59,6 +59,13 @@ function mediaUploadPolicy(userId: string): LimitPolicy {
   };
 }
 
+function emailActionPolicy(request: Request, scope: string, identity: string): LimitPolicy[] {
+  return [
+    { scope: `${scope}-account`, identity: identity.toLowerCase(), limit: 3, windowMs: 60 * 60 * 1000, blockMs: 60 * 60 * 1000 },
+    { scope: `${scope}-ip`, identity: authRequestFingerprint(request), limit: 10, windowMs: 60 * 60 * 1000, blockMs: 60 * 60 * 1000 }
+  ];
+}
+
 async function statusForPolicies(policies: LimitPolicy[]): Promise<LimitStatus> {
   const now = new Date();
   const rows = await prisma.authThrottle.findMany({
@@ -146,4 +153,12 @@ export function mediaUploadRateLimitStatus(userId: string) {
 
 export function recordMediaUploadAttempt(userId: string) {
   return recordPolicyAttempt(mediaUploadPolicy(userId));
+}
+
+export function emailActionRateLimitStatus(request: Request, scope: string, identity: string) {
+  return statusForPolicies(emailActionPolicy(request, scope, identity));
+}
+
+export async function recordEmailAction(request: Request, scope: string, identity: string) {
+  for (const policy of emailActionPolicy(request, scope, identity)) await recordPolicyAttempt(policy);
 }

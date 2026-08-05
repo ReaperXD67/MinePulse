@@ -1,0 +1,10 @@
+[Unit]
+Description=KarixMC application readiness check
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=karixmc
+WorkingDirectory=/opt/karixmc
+ExecStart=/opt/karixmc/deploy/scripts/monitor-health.sh

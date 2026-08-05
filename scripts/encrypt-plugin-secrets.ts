@@ -1,8 +1,7 @@
-import { prisma } from "../lib/prisma";
 import { protectPluginSecret } from "../lib/plugin-credentials";
-import { loadEnvConfig } from "@next/env";
+import { createScriptPrisma } from "./database-client";
 
-loadEnvConfig(process.cwd());
+const prisma = createScriptPrisma();
 
 async function main() {
   const servers = await prisma.server.findMany({ select: { id: true, pluginSecret: true } });

@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import {
   BillingKind,
   LedgerType,
@@ -11,9 +11,16 @@ import {
 } from "../lib/generated/prisma/client";
 import { protectPluginSecret } from "../lib/plugin-credentials";
 
-const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL || "file:./prisma/dev.db"
-});
+if (process.env.ALLOW_DEMO_SEED !== "true") {
+  throw new Error("Demo seeding is disabled. Set ALLOW_DEMO_SEED=true only for local or staging environments.");
+}
+
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString?.startsWith("postgresql://") && !connectionString?.startsWith("postgres://")) {
+  throw new Error("DATABASE_URL must point to PostgreSQL before seeding");
+}
+
+const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {

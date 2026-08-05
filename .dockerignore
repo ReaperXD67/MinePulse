@@ -1,0 +1,17 @@
+.git
+.next
+node_modules
+.env
+.env.*
+!.env.example
+prisma/*.db
+prisma/*.db-*
+storage/media
+public/uploads
+tmp
+output
+reports
+.screenshots
+minecraft-plugin/target
+*.log
+*.tsbuildinfo

@@ -6,8 +6,8 @@ Use this document to test the website and KarixMCBridge 0.6.2 before connecting 
 
 | Component | Test value |
 | --- | --- |
-| Website | `http://51.83.180.202` |
-| Plugin download | `http://51.83.180.202/downloads/KarixMCBridge-0.6.2.jar` |
+| Website | `https://karixmc.pl` |
+| Plugin download | `https://karixmc.pl/downloads/KarixMCBridge-0.6.4.jar` |
 | Minecraft software | Paper or Purpur 1.20.x/1.21.x |
 | Java | Java 17 or newer; Java 21 recommended |
 | Website accounts | One separate account per tester |
@@ -111,16 +111,16 @@ Pass:
 ## 7. Plugin Installation And Connection
 
 1. Stop Paper and ensure only one KarixMC bridge JAR is in `plugins/`.
-2. Install `KarixMCBridge-0.6.2.jar`.
+2. Install `KarixMCBridge-0.6.4.jar`.
 3. In Creator Studio, rotate the plugin secret if the current secret is unknown.
 4. Download the complete `config.yml` and put it at `plugins/KarixMCBridge/config.yml`.
 5. For the current HTTP beta, the file must contain:
 
 ```yaml
-api-base-url: "http://51.83.180.202"
+api-base-url: "https://karixmc.pl"
 server-id: "THE_SERVER_ID_FROM_CREATOR_STUDIO"
 plugin-secret: "THE_PRIVATE_ONE_TIME_SECRET"
-allow-insecure-http: true
+allow-insecure-http: false
 ```
 
 6. Fully restart Paper. Do not use `/reload`.
@@ -131,7 +131,7 @@ Pass:
 - KarixMCBridge is green and there is no stack trace.
 - The console shows temporary HTTP beta mode and a successful policy sync, not a configuration error.
 - Creator Studio shows the plugin version and recent config sync.
-- Port 80 is automatic; `:3000`, `/api`, `/plugin`, and `/account` are not present in the API URL.
+- Port 443 is automatic for HTTPS; `:3000`, `/api`, `/plugin`, and `/account` are not present in the API URL.
 
 ## 8. Campaign Credits And Directory Eligibility
 

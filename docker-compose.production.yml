@@ -1,0 +1,125 @@
+x-app-common: &app-common
+  image: karixmc-app:${APP_IMAGE_TAG:-latest}
+  build:
+    context: .
+    target: runner
+  restart: unless-stopped
+  env_file: ${APP_ENV_FILE:-.env.production}
+  environment:
+    DATABASE_URL: postgresql://${POSTGRES_USER:-karixmc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-karixmc}
+    REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    MEDIA_ROOT: /app/storage/media
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+    interval: 15s
+    timeout: 5s
+    retries: 8
+    start_period: 30s
+  mem_limit: 2g
+  cpus: 2
+  read_only: true
+  tmpfs:
+    - /tmp:size=128m,mode=1777
+  security_opt:
+    - no-new-privileges:true
+  logging: &app-logging
+    driver: json-file
+    options:
+      max-size: "20m"
+      max-file: "5"
+  networks: [backend, outbound]
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-karixmc}
+      POSTGRES_USER: ${POSTGRES_USER:-karixmc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-karixmc} -d ${POSTGRES_DB:-karixmc}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    mem_limit: 6g
+    cpus: 3
+    security_opt:
+      - no-new-privileges:true
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    networks: [backend]
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}" --maxmemory 384mb --maxmemory-policy allkeys-lru
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    mem_limit: 512m
+    cpus: 1
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+    networks: [backend]
+
+  migrate:
+    build:
+      context: .
+      target: migrations
+    env_file: ${APP_ENV_FILE:-.env.production}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-karixmc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-karixmc}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: [tools]
+    networks: [backend]
+
+  app:
+    <<: *app-common
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ${MEDIA_HOST_PATH:-/var/lib/karixmc/media}:/app/storage/media
+      - next_cache:/app/.next/cache
+
+  app_replica:
+    <<: *app-common
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - ${MEDIA_HOST_PATH:-/var/lib/karixmc/media}:/app/storage/media
+      - next_cache_replica:/app/.next/cache
+
+networks:
+  backend:
+    internal: true
+  outbound:
+
+volumes:
+  postgres_data:
+  redis_data:
+  next_cache:
+  next_cache_replica:

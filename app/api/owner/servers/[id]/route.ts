@@ -91,8 +91,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const { id } = await context.params;
     const { user, server } = await authorize(id);
     const input = schema.parse(await request.json());
-    const version = input.version || (input.minVersion && input.maxVersion
-      ? normalizeVersionRange(input.minVersion, input.maxVersion)
+    const { minVersion, maxVersion, ...serverInput } = input;
+    const version = input.version || (minVersion && maxVersion
+      ? normalizeVersionRange(minVersion, maxVersion)
       : server.version);
     const galleryImages = input.galleryImages === undefined
       ? server.galleryImages
@@ -119,7 +120,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     const policyChanged = Object.keys(input).some((key) => policyFields.has(key));
-    const { minVersion: _minVersion, maxVersion: _maxVersion, ...serverInput } = input;
     const updated = await prisma.server.update({
       where: { id },
       data: {

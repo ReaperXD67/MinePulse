@@ -31,6 +31,12 @@ export function SignupForm() {
       return;
     }
 
+    if (payload.requiresEmailVerification) {
+      setMessage(payload.message || "Check your email to activate your account.");
+      setPassword("");
+      return;
+    }
+
     router.push("/account");
     router.refresh();
   }

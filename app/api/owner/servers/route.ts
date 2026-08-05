@@ -86,6 +86,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireMember();
     const input = schema.parse(await request.json());
+    const { minVersion, maxVersion, ...serverInput } = input;
     const activeListingCount = await prisma.server.count({
       where: { ownerId: user.id, status: { not: "REMOVED" } }
     });
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const version = input.version || normalizeVersionRange(input.minVersion || "", input.maxVersion || "");
+    const version = input.version || normalizeVersionRange(minVersion || "", maxVersion || "");
     const tags = normalizeServerTags(input.tags);
     const galleryImages = normalizeGalleryImages(input.galleryImages, user.id);
     const bannerImage = normalizeBannerImage(input.bannerImage, user.id);
@@ -131,7 +132,6 @@ export async function POST(request: Request) {
     }
 
     const pluginSecret = makePluginSecret();
-    const { minVersion: _minVersion, maxVersion: _maxVersion, ...serverInput } = input;
     const serverData = {
       ...serverInput,
       ...address,

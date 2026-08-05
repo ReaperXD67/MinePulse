@@ -1,17 +1,16 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
+import * as OTPAuth from "otpauth";
 import { chromium, request, type APIResponse } from "playwright";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { loadEnvConfig } from "@next/env";
-import { PrismaClient } from "../lib/generated/prisma/client";
+import { createAdminTotp, protectAdminTotpSecret } from "../lib/admin-mfa";
 import { protectPluginSecret } from "../lib/plugin-credentials";
+import { createScriptPrisma } from "./database-client";
 
 loadEnvConfig(process.cwd());
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:3001";
-const prisma = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || "file:./prisma/dev.db" })
-});
+const prisma = createScriptPrisma();
 const stamp = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
 const password = `Karix!Ban!Audit!${stamp}`;
 const secret = crypto.randomBytes(32).toString("hex");
@@ -63,17 +62,20 @@ async function signedHeartbeat(serverId: string) {
 
 async function main() {
   const passwordHash = await bcrypt.hash(password, 12);
+  const adminEmail = `ban-admin-${stamp}@example.test`;
+  const adminTotp = createAdminTotp(adminEmail);
   const [admin, player, ordinary, owner, bridgeOwner, expired] = await Promise.all([
-    prisma.user.create({ data: { email: `ban-admin-${stamp}@example.test`, username: "Ban Audit Admin", role: "ADMIN", passwordHash } }),
-    prisma.user.create({ data: { email: `ban-player-${stamp}@example.test`, username: "Ban Audit Player", passwordHash, minecraftUuid, minecraftName: "BanAuditPlayer" } }),
-    prisma.user.create({ data: { email: `ban-ordinary-${stamp}@example.test`, username: "Ban Audit Ordinary", passwordHash } }),
-    prisma.user.create({ data: { email: `ban-owner-${stamp}@example.test`, username: "Ban Audit Owner", role: "OWNER", passwordHash } }),
-    prisma.user.create({ data: { email: `ban-bridge-${stamp}@example.test`, username: "Ban Audit Bridge Owner", role: "OWNER", passwordHash } }),
+    prisma.user.create({ data: { email: adminEmail, username: "Ban Audit Admin", role: "ADMIN", passwordHash, emailVerifiedAt: new Date(), adminTotpSecret: protectAdminTotpSecret(adminTotp.secret), adminTotpEnabledAt: new Date() } }),
+    prisma.user.create({ data: { email: `ban-player-${stamp}@example.test`, username: "Ban Audit Player", passwordHash, emailVerifiedAt: new Date(), minecraftUuid, minecraftName: "BanAuditPlayer" } }),
+    prisma.user.create({ data: { email: `ban-ordinary-${stamp}@example.test`, username: "Ban Audit Ordinary", passwordHash, emailVerifiedAt: new Date() } }),
+    prisma.user.create({ data: { email: `ban-owner-${stamp}@example.test`, username: "Ban Audit Owner", role: "OWNER", passwordHash, emailVerifiedAt: new Date() } }),
+    prisma.user.create({ data: { email: `ban-bridge-${stamp}@example.test`, username: "Ban Audit Bridge Owner", role: "OWNER", passwordHash, emailVerifiedAt: new Date() } }),
     prisma.user.create({
       data: {
         email: `ban-expired-${stamp}@example.test`,
         username: "Ban Audit Expired",
         passwordHash,
+        emailVerifiedAt: new Date(),
         bannedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
         bannedUntil: new Date(Date.now() - 60 * 60 * 1000),
         banReason: "Expired audit restriction"
@@ -130,7 +132,15 @@ async function main() {
       [ordinaryClient, ordinary.email],
       [ownerClient, owner.email]
     ] as const) {
-      const login = await client.post("/api/auth/login", { data: { email, password } });
+      const totpCode = email === admin.email ? new OTPAuth.TOTP({
+        issuer: "KarixMC",
+        label: admin.email,
+        algorithm: "SHA1",
+        digits: 6,
+        period: 30,
+        secret: OTPAuth.Secret.fromBase32(adminTotp.secret)
+      }).generate() : undefined;
+      const login = await client.post("/api/auth/login", { data: { email, password, ...(totpCode ? { totpCode } : {}) } });
       assert(login.ok(), `Initial login failed for ${email}: ${login.status()} ${JSON.stringify(await json(login))}`);
     }
 

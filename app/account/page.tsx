@@ -13,6 +13,7 @@ import { ownerServerInclude, serializeOwnerServer } from "@/lib/owner-server-vie
 import { prisma } from "@/lib/prisma";
 import { serverJoinAddress } from "@/lib/server-address";
 import { safeMediaPath } from "@/lib/server-profile";
+import { serverNowMs } from "@/lib/server-time";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export default async function AccountPage() {
     redirect("/login");
   }
   const user = auth.user;
+  const renderedAt = serverNowMs();
   const activeAuthSessions = await listActiveSessions(user.id, auth.sessionId);
 
   const [profile, purchases, sessions, favorites, ledger, servers, billing, tickets, friendships] =
@@ -90,7 +92,7 @@ export default async function AccountPage() {
   const friendRows = friendships.map((link) => {
     const latest = link.friend.sessions[0];
     const online = Boolean(
-      latest?.status === "ACTIVE" && Date.now() - latest.lastHeartbeatAt.getTime() <= 120000
+      latest?.status === "ACTIVE" && renderedAt - latest.lastHeartbeatAt.getTime() <= 120000
     );
 
     return {
@@ -161,6 +163,7 @@ export default async function AccountPage() {
       </section>
 
       <DailyRewardPanel
+        renderedAt={renderedAt}
         walletPoints={profile?.walletPoints ?? 0}
         level={profile?.level ?? 0}
         lifetimeEarnedPoints={profile?.lifetimeEarnedPoints ?? 0}
@@ -264,6 +267,7 @@ export default async function AccountPage() {
 
       <OwnerConsole
         appBaseUrl={process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}
+        discordUrl={process.env.NEXT_PUBLIC_DISCORD_URL || "/plugin#support"}
         servers={servers.map(serializeOwnerServer)}
       />
 

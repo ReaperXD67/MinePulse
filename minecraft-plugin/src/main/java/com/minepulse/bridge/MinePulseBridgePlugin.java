@@ -773,7 +773,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       String path = uri.getRawPath() == null ? "" : uri.getRawPath();
       boolean loopback = host.equals("localhost") || host.equals("127.0.0.1") || host.equals("::1");
       if (host.isBlank() || uri.getRawUserInfo() != null || uri.getRawQuery() != null || uri.getRawFragment() != null) {
-        return "KarixMC api-base-url is invalid. Use only the website origin, for example http://51.83.180.202, with no login, query, or fragment.";
+        return "KarixMC api-base-url is invalid. Use only the website origin, for example https://karixmc.pl, with no login, query, or fragment.";
       }
       if (!path.isBlank() && !path.equals("/")) {
         return "KarixMC api-base-url must be the website origin only. Remove " + path + "; do not add /api, /plugin, or /account.";
@@ -785,7 +785,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       }
       return "KarixMC api-base-url must begin with https://. Temporary testing may use http:// only with allow-insecure-http: true.";
     } catch (IllegalArgumentException error) {
-      return "KarixMC api-base-url is malformed. Use the website origin only, for example http://51.83.180.202.";
+      return "KarixMC api-base-url is malformed. Use the website origin only, for example https://karixmc.pl.";
     }
   }
 

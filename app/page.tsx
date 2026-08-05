@@ -1,4 +1,4 @@
-import { Coins, Crosshair, LayoutGrid, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
+import { Crosshair, LayoutGrid, MessageCircle, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
@@ -9,10 +9,8 @@ import { currentUser } from "@/lib/auth";
 import { FIRST_POSITION_CHANCES, orderDirectory } from "@/lib/directory-order";
 import { DEFAULT_DIRECTORY_SEED, DIRECTORY_SEED_COOKIE } from "@/lib/directory-seed";
 import { compact, minutesLabel, money, points } from "@/lib/format";
+import { getMarketplaceSnapshot } from "@/lib/marketplace-snapshot";
 import { prisma } from "@/lib/prisma";
-import { activePremiumPlan } from "@/lib/premium";
-import { safeMediaPath } from "@/lib/server-profile";
-import { bridgeStateAt } from "@/lib/server-liveness";
 import { createSeededRandom } from "@/lib/random";
 
 export const dynamic = "force-dynamic";
@@ -30,80 +28,20 @@ export default async function MarketplacePage({
   const query = typeof q === "string" ? q.trim().slice(0, 80) : "";
   const favoritesOnly = view === "favorites" && Boolean(user);
 
-  const [servers, platform, pointPackages, premiumTiers] = await Promise.all([
-    prisma.server.findMany({
-      where: {
-        status: "ACTIVE",
-        trustStatus: { in: ["VERIFIED", "WATCHLIST"] },
-        pointPool: { gt: 0 }
-      },
-      include: {
-        items: {
-          where: { status: "ACTIVE" },
-          orderBy: { pricePoints: "asc" },
-          take: 3
-        },
-        hourlyStats: {
-          orderBy: { hourStart: "desc" },
-          take: 1
-        },
-        _count: {
-          select: {
-            likes: true,
-            favorites: true,
-            comments: true
-          }
-        },
-        likes: { where: { userId: user?.id || "__guest__" } },
-        favorites: { where: { userId: user?.id || "__guest__" } }
-      }
-    }),
-    Promise.all([
-      prisma.user.count(),
-      prisma.server.aggregate({ _sum: { pointPool: true } }),
-      prisma.purchase.count({ where: { status: "PENDING" } }),
-      prisma.serverSession.aggregate({ _sum: { activeSeconds: true } })
-    ]),
-    prisma.pointPackage.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
-    prisma.premiumTier.findMany({ where: { active: true }, orderBy: { priority: "desc" } })
-  ]);
+  const snapshot = await getMarketplaceSnapshot();
+  const [likedRows, favoriteRows] = user ? await Promise.all([
+    prisma.serverLike.findMany({ where: { userId: user.id }, select: { serverId: true } }),
+    prisma.favorite.findMany({ where: { userId: user.id }, select: { serverId: true } })
+  ]) : [[], []];
+  const likedServerIds = new Set(likedRows.map((row) => row.serverId));
+  const favoriteServerIds = new Set(favoriteRows.map((row) => row.serverId));
+  const { platform, pointPackages, premiumTiers } = snapshot;
 
-  const visibleServers = servers.map<MarketplaceServer>((server) => {
-    const premiumPlan = activePremiumPlan(server.premiumPlan, server.premiumUntil, now);
-    return {
-      id: server.id,
-      slug: server.slug,
-      name: server.name,
-      host: server.host,
-      port: server.port,
-      version: server.version,
-      region: server.region,
-      tags: server.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
-      description: server.description,
-      bannerImage: safeMediaPath(server.bannerImage) || "/voxel-network.png",
-      pointPool: server.pointPool,
-      rewardRatePerSecond: server.rewardRatePerSecond,
-      maxPaidPlayers: server.maxPaidPlayers,
-      averageOnline: server.hourlyStats[0]?.sampleCount
-        ? Math.round(server.hourlyStats[0].onlinePlayerTotal / server.hourlyStats[0].sampleCount)
-        : 0,
-      premiumPlan,
-      premiumUntil: premiumPlan === "NONE" ? null : server.premiumUntil?.toISOString() ?? null,
-      trustStatus: server.trustStatus,
-      bridgeState: bridgeStateAt(server, now.getTime()),
-      likes: server._count.likes,
-      favorites: server._count.favorites,
-      comments: server._count.comments,
-      liked: Boolean(server.likes?.length),
-      favorited: Boolean(server.favorites?.length),
-      items: server.items.map((item) => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        pricePoints: item.pricePoints
-      }))
-    };
-  }).filter((server) => server.bridgeState === "online");
+  const visibleServers = snapshot.servers.map<MarketplaceServer>((server) => ({
+    ...server,
+    liked: likedServerIds.has(server.id),
+    favorited: favoriteServerIds.has(server.id)
+  }));
 
   const availableTags = Array.from(
     new Set(visibleServers.flatMap((server) => server.tags.map((serverTag) => serverTag.trim()).filter(Boolean)))
@@ -147,7 +85,7 @@ export default async function MarketplacePage({
     premiumTierFor: (server) => server.premiumPlan === "DIAMOND" ? "DIAMOND" : "GOLD",
     random: createSeededRandom(directorySeed)
   });
-  const [usersCount, pools, purchaseCount, playtime] = platform;
+  const { usersCount, pointPool, pendingPurchases, activeSeconds } = platform;
   const goldTier = premiumTiers.find((tier) => tier.code === "GOLD");
   const diamondTier = premiumTiers.find((tier) => tier.code === "DIAMOND");
   const diamondFirstPercent = FIRST_POSITION_CHANCES.DIAMOND * 100;
@@ -155,6 +93,7 @@ export default async function MarketplacePage({
   const standardFirstPercent = FIRST_POSITION_CHANCES.STANDARD * 100;
   const canManageServers = Boolean(user);
   const favoriteCount = visibleServers.filter((server) => server.favorited).length;
+  const discordUrl = process.env.NEXT_PUBLIC_DISCORD_URL || "/plugin#support";
 
   function directoryHref(next: { tag?: string; query?: string; favorites?: boolean }) {
     const params = new URLSearchParams();
@@ -203,10 +142,10 @@ export default async function MarketplacePage({
             <div className="beacon-orbit" aria-hidden="true"><i /><i /><i /><strong>KX</strong></div>
             <div className="beacon-readout">
               <p>Network telemetry</p>
-              <div title="Campaign credits currently available to reward players across all servers"><span>Reward pools</span><strong>{points(pools._sum.pointPool ?? 0)} pts</strong><small>available for play rewards</small></div>
+              <div title="Campaign credits currently available to reward players across all servers"><span>Reward pools</span><strong>{points(pointPool)} pts</strong><small>available for play rewards</small></div>
               <div title="Registered KarixMC accounts"><span>Member accounts</span><strong>{usersCount}</strong><small>registered profiles</small></div>
-              <div title="Total active playtime accepted by the KarixMC verification service"><span>Verified playtime</span><strong>{minutesLabel(playtime._sum.activeSeconds ?? 0)}</strong><small>AFK time excluded</small></div>
-              <div title="Purchased server items waiting for an in-game delivery confirmation"><span>Pending deliveries</span><strong>{purchaseCount}</strong><small>items awaiting the plugin</small></div>
+              <div title="Total active playtime accepted by the KarixMC verification service"><span>Verified playtime</span><strong>{minutesLabel(activeSeconds)}</strong><small>AFK time excluded</small></div>
+              <div title="Purchased server items waiting for an in-game delivery confirmation"><span>Pending deliveries</span><strong>{pendingPurchases}</strong><small>items awaiting the plugin</small></div>
             </div>
           </aside>
         </div>
@@ -331,6 +270,17 @@ export default async function MarketplacePage({
               </div>
             ))}
           </div>
+          <div className="manual-purchase-desk">
+            <div>
+              <span className="eyebrow"><MessageCircle size={14} /> Discord purchase desk</span>
+              <strong>Campaign credits, confirmed by a real administrator.</strong>
+              <p>Choose a package, contact KarixMC staff in the official Discord, and include your account email plus the server name that should receive the credits.</p>
+            </div>
+            <a className="solid-button" href={discordUrl} target={discordUrl.startsWith("http") ? "_blank" : undefined} rel={discordUrl.startsWith("http") ? "noreferrer" : undefined}>
+              <MessageCircle size={17} /> Contact purchase desk
+            </a>
+          </div>
+          <p className="manual-purchase-safety"><ShieldCheck size={15} /> KarixMC staff will never ask for your password, TOTP code, plugin secret, or private key. Credits appear only after an administrator records the confirmed order.</p>
         </div>
 
         <div className="panel">

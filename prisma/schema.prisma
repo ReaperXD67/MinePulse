@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 enum UserRole {
@@ -16,6 +16,11 @@ enum UserRole {
 enum UserModerationType {
   BAN
   UNBAN
+}
+
+enum AccountTokenKind {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
 }
 
 enum ServerStatus {
@@ -126,6 +131,9 @@ model User {
   minecraftLinkedAt    DateTime?
   minecraftConsentVersion String?
   passwordHash         String?
+  emailVerifiedAt      DateTime?
+  adminTotpSecret      String?
+  adminTotpEnabledAt   DateTime?
   role                 UserRole  @default(PLAYER)
   walletPoints         Int       @default(0)
   level                Int       @default(0)
@@ -161,6 +169,22 @@ model User {
   authSessions       AuthSession[]
   moderationActionsReceived UserModerationAction[] @relation("AccountModerationTarget")
   moderationActionsIssued   UserModerationAction[] @relation("AccountModerationAdmin")
+  accountTokens              AccountToken[]
+}
+
+model AccountToken {
+  id         String           @id @default(cuid())
+  userId     String
+  kind       AccountTokenKind
+  tokenHash  String           @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind, createdAt])
+  @@index([expiresAt, consumedAt])
 }
 
 model UserModerationAction {

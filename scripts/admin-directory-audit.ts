@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
-import { prisma } from "../lib/prisma";
+import { createScriptPrisma } from "./database-client";
+
+const prisma = createScriptPrisma();
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:3001";
 const screenshots = {

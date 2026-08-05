@@ -6,6 +6,7 @@ import { recordSignupAttempt, signupRateLimitStatus } from "@/lib/auth-rate-limi
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
 import { passwordPolicy, passwordPolicyError } from "@/lib/password-policy";
+import { emailDeliveryRequired, sendVerificationEmail } from "@/lib/account-email";
 
 export const runtime = "nodejs";
 
@@ -42,14 +43,25 @@ export async function POST(request: Request) {
     }
 
     await recordSignupAttempt(request);
+    const requiresEmailVerification = emailDeliveryRequired();
     const user = await prisma.user.create({
       data: {
         email,
         username: input.username,
         passwordHash: await hashPassword(input.password),
-        role: UserRole.PLAYER
+        role: UserRole.PLAYER,
+        emailVerifiedAt: requiresEmailVerification ? null : new Date()
       }
     });
+    if (requiresEmailVerification) {
+      const delivered = await sendVerificationEmail(user).then(() => true).catch(() => false);
+      return NextResponse.json({
+        requiresEmailVerification: true,
+        message: delivered
+          ? "Account created. Check your email to activate it."
+          : "Account created, but the verification email could not be delivered. Use resend verification shortly."
+      }, { status: delivered ? 201 : 202 });
+    }
     const session = await createSession(user.id, request);
     const response = NextResponse.json({
       user: {
