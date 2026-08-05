@@ -55,6 +55,17 @@ Point the DNS records to the VPS first. Log in with a temporary privileged accou
 sudo bash deploy/scripts/provision-ubuntu.sh
 ```
 
+Some LXC providers disable the kernel mount permissions required by Docker. If
+`docker run` fails while mounting `/proc`, use the supported native path:
+
+```bash
+sudo APP_ENV_FILE=/opt/karixmc/.env.production bash deploy/scripts/provision-native-ubuntu.sh
+```
+
+For that path, set `DATABASE_URL` and `REDIS_URL` to loopback addresses instead
+of Docker service names. PostgreSQL, Redis, and two loopback-only Next.js
+workers are then managed by systemd; the public Nginx topology is unchanged.
+
 Add an SSH key for the `karixmc` user and verify a second SSH session before disabling root login and password authentication in `/etc/ssh/sshd_config`.
 
 ## 2. Configure production
@@ -119,6 +130,12 @@ sudo DOMAIN=your-domain.example LETSENCRYPT_EMAIL=ops@your-domain.example \
 sudo bash deploy/scripts/install-operations-timers.sh
 ```
 
+On a native LXC deployment, replace the first command with:
+
+```bash
+sudo APP_ENV_FILE=/opt/karixmc/.env.production bash deploy/scripts/deploy-native.sh
+```
+
 Nginx exposes only ports 80 and 443, redirects HTTP to HTTPS, load-balances the two loopback-only app replicas, sets security headers, and applies tighter limits to authentication and plugin endpoints. PostgreSQL and Redis have no public host ports.
 
 ## 6. Verify launch
@@ -129,6 +146,13 @@ curl -fsS -H "Authorization: Bearer $HEALTHCHECK_TOKEN" \
   https://your-domain.example/api/health/ready
 docker compose --env-file .env.production -f docker-compose.production.yml ps
 docker compose --env-file .env.production -f docker-compose.production.yml logs --tail=200 app app_replica postgres redis
+```
+
+For a native LXC deployment, replace the Docker status commands with:
+
+```bash
+systemctl status karixmc-app@3000 karixmc-app@3001 postgresql redis-server nginx
+journalctl -u karixmc-app@3000 -u karixmc-app@3001 --no-pager -n 200
 ```
 
 Run a staged load test before changing DNS traffic or announcing the site:
