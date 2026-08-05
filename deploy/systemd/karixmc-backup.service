@@ -1,10 +1,10 @@
 [Unit]
 Description=KarixMC PostgreSQL and media backup
-After=docker.service
-Requires=docker.service
+After=network-online.target postgresql.service
+Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=karixmc
+User=root
 WorkingDirectory=/opt/karixmc
 ExecStart=/opt/karixmc/deploy/scripts/backup.sh

@@ -65,6 +65,8 @@ sudo APP_ENV_FILE=/opt/karixmc/.env.production bash deploy/scripts/provision-nat
 For that path, set `DATABASE_URL` and `REDIS_URL` to loopback addresses instead
 of Docker service names. PostgreSQL, Redis, and two loopback-only Next.js
 workers are then managed by systemd; the public Nginx topology is unchanged.
+Also set `DEPLOYMENT_MODE=native` and use `HEALTHCHECK_BASE_URL=http://127.0.0.1`
+so operational timers can verify the app before public DNS is available.
 
 Add an SSH key for the `karixmc` user and verify a second SSH session before disabling root login and password authentication in `/etc/ssh/sshd_config`.
 

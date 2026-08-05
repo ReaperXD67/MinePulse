@@ -10,7 +10,8 @@ set +a
 
 : "${APP_BASE_URL:?APP_BASE_URL is required}"
 : "${HEALTHCHECK_TOKEN:?HEALTHCHECK_TOKEN is required}"
-HEALTH_URL="${APP_BASE_URL%/}/api/health/ready"
+HEALTH_BASE_URL="${HEALTHCHECK_BASE_URL:-${APP_BASE_URL}}"
+HEALTH_URL="${HEALTH_BASE_URL%/}/api/health/ready"
 TEMP_RESPONSE="$(mktemp)"
 trap 'rm -f "${TEMP_RESPONSE}"' EXIT
 

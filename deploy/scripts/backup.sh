@@ -15,8 +15,14 @@ WORK_DIR="${BACKUP_DIRECTORY}/${STAMP}"
 COMPOSE=(docker compose --env-file "${ENV_FILE}" -f docker-compose.production.yml)
 
 install -d -m 0700 "${WORK_DIR}"
-"${COMPOSE[@]}" exec -T postgres pg_dump \
-  -U "${POSTGRES_USER:-karixmc}" -d "${POSTGRES_DB:-karixmc}" -Fc > "${WORK_DIR}/database.dump"
+if [[ "${DEPLOYMENT_MODE:-docker}" == "native" ]]; then
+  PGPASSWORD="${POSTGRES_PASSWORD}" pg_dump \
+    -h 127.0.0.1 -U "${POSTGRES_USER:-karixmc}" -d "${POSTGRES_DB:-karixmc}" \
+    -Fc > "${WORK_DIR}/database.dump"
+else
+  "${COMPOSE[@]}" exec -T postgres pg_dump \
+    -U "${POSTGRES_USER:-karixmc}" -d "${POSTGRES_DB:-karixmc}" -Fc > "${WORK_DIR}/database.dump"
+fi
 tar -C "${MEDIA_HOST_PATH:-/var/lib/karixmc/media}" -czf "${WORK_DIR}/media.tar.gz" .
 (cd "${WORK_DIR}" && sha256sum database.dump media.tar.gz > SHA256SUMS)
 
