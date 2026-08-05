@@ -52,6 +52,10 @@ else {
   try {
     const smtpUrl = new URL(process.env.SMTP_URL);
     if (!["smtp:", "smtps:"].includes(smtpUrl.protocol)) errors.push("SMTP_URL must use smtp:// or smtps://");
+    if (smtpUrl.hostname.endsWith(".invalid") || smtpUrl.hostname.endsWith(".example") || smtpUrl.hostname === "localhost") {
+      errors.push("SMTP_URL still uses a non-production hostname");
+    }
+    if (!smtpUrl.username || !smtpUrl.password) errors.push("SMTP_URL must include authenticated provider credentials");
   } catch {
     errors.push("SMTP_URL must be a valid URL");
   }
