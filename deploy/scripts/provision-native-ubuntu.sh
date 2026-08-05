@@ -27,6 +27,9 @@ fi
 if ! id "${DEPLOY_USER}" >/dev/null 2>&1; then
   adduser --disabled-password --gecos "" "${DEPLOY_USER}"
 fi
+if getent group docker >/dev/null 2>&1; then
+  gpasswd --delete "${DEPLOY_USER}" docker >/dev/null 2>&1 || true
+fi
 
 install -d -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" "${APP_DIR}"
 install -d -m 0750 -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" /var/lib/karixmc/media
