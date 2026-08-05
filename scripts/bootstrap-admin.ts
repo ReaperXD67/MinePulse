@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { UserRole } from "../lib/generated/prisma/client";
-import { passwordPolicyError } from "../lib/password-policy";
+import { passwordPolicyError } from "../lib/password-policy-core";
 import { createScriptPrisma } from "./database-client";
 import { createAdminTotp, protectAdminTotpSecret } from "../lib/admin-mfa";
 
