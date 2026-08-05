@@ -19,6 +19,7 @@ source "${ENV_FILE}"
 set +a
 
 npm ci
+npm run db:generate
 npm run production:validate
 npx prisma migrate deploy
 npm run db:seed:production
