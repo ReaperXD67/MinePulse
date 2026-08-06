@@ -24,6 +24,12 @@ npm run production:validate
 npx prisma migrate deploy
 npm run db:seed:production
 npm run build
+
+# The standalone server excludes static assets by design; assemble the complete runtime bundle.
+rm -rf .next/standalone/public .next/standalone/.next/static
+cp -a public .next/standalone/public
+install -d .next/standalone/.next .next/standalone/.next/cache
+cp -a .next/static .next/standalone/.next/static
 chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${APP_DIR}/.next" /var/lib/karixmc/media
 
 systemctl restart karixmc-app@3000 karixmc-app@3001

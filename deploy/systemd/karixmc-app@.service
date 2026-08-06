@@ -12,16 +12,19 @@ WorkingDirectory=/opt/karixmc
 EnvironmentFile=/opt/karixmc/.env.production
 Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1
-ExecStart=/usr/bin/node /opt/karixmc/node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port %i
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=%i
+ExecStart=/usr/bin/node /opt/karixmc/.next/standalone/server.js
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=20
 KillSignal=SIGTERM
+SuccessExitStatus=143 SIGTERM
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
-ReadWritePaths=/var/lib/karixmc/media /opt/karixmc/.next/cache
+ReadWritePaths=/var/lib/karixmc/media /opt/karixmc/.next/cache /opt/karixmc/.next/standalone/.next/cache
 MemoryMax=2G
 CPUQuota=200%
 TasksMax=512
