@@ -1,5 +1,13 @@
-# KarixMC
+# MinePulse / KarixMC
 
+[![Next.js](https://img.shields.io/badge/Next.js-App_Router-111827?logo=next.js)](./package.json)
+[![Paper](https://img.shields.io/badge/Minecraft-Paper_Plugin-5a8f29)](./minecraft-plugin)
+[![PostgreSQL](https://img.shields.io/badge/data-PostgreSQL-336791?logo=postgresql&logoColor=white)](./prisma)
+[![Security](https://img.shields.io/badge/security-documented-16a085)](./SECURITY.md)
+
+**A two-sided Minecraft marketplace where rewards are backed by verified server playtime—not browser trust.**
+
+> [!IMPORTANT]
 > Production deployment, PostgreSQL migration, backup, monitoring, and rollback instructions are in [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md).
 
 KarixMC is a production-style MVP for a Minecraft server marketplace where verified playtime earns platform points. The visible Paper plugin and command namespace are `KarixMCBridge` and `/karixmc`; internal Java package names remain unchanged for binary stability.
