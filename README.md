@@ -1,4 +1,8 @@
-# MinePulse / KarixMC
+<div align="center">
+
+![MinePulse / KarixMC — animated project overview](./docs/assets/readme/minepulse-hero.svg)
+
+</div>
 
 [![Next.js](https://img.shields.io/badge/Next.js-App_Router-111827?logo=next.js)](./package.json)
 [![Paper](https://img.shields.io/badge/Minecraft-Paper_Plugin-5a8f29)](./minecraft-plugin)
