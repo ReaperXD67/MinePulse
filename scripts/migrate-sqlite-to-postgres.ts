@@ -1,8 +1,16 @@
 import "dotenv/config";
+import crypto from "node:crypto";
 import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
+import bcrypt from "bcryptjs";
 import initSqlJs, { type Database } from "sql.js";
 import { Client } from "pg";
+
+const DEMO_ACCOUNT_EMAILS = [
+  "admin@minepulse.local",
+  "owner@minepulse.local",
+  "player@minepulse.local"
+] as const;
 
 const TABLE_ORDER = [
   "User",
@@ -137,6 +145,28 @@ async function main() {
       summary[table] = sourceRows.length;
     }
 
+    // Development seed credentials are intentionally published in the repository.
+    // Preserve referenced demo rows during a recovery import, but make the known
+    // passwords and any imported sessions unusable before the transaction commits.
+    const demoAccounts = await postgres.query<{ id: string }>(
+      `SELECT id FROM "User" WHERE lower(email) = ANY($1::text[])`,
+      [DEMO_ACCOUNT_EMAILS]
+    );
+    const credentialsInvalidatedAt = new Date();
+    for (const account of demoAccounts.rows) {
+      const passwordHash = await bcrypt.hash(crypto.randomBytes(48).toString("base64url"), 12);
+      await postgres.query(
+        `UPDATE "User" SET "passwordHash" = $1, "passwordChangedAt" = $2 WHERE id = $3`,
+        [passwordHash, credentialsInvalidatedAt, account.id]
+      );
+    }
+    if (demoAccounts.rowCount) {
+      await postgres.query(
+        `UPDATE "AuthSession" SET "revokedAt" = $1 WHERE "userId" = ANY($2::text[]) AND "revokedAt" IS NULL`,
+        [credentialsInvalidatedAt, demoAccounts.rows.map((account) => account.id)]
+      );
+    }
+
     await postgres.query("COMMIT");
 
     for (const [table, expected] of Object.entries(summary)) {
@@ -145,7 +175,12 @@ async function main() {
       if (actual !== expected) throw new Error(`Verification failed for ${table}: expected ${expected}, found ${actual}`);
     }
 
-    console.log(JSON.stringify({ ok: true, source, imported: summary }, null, 2));
+    console.log(JSON.stringify({
+      ok: true,
+      source,
+      imported: summary,
+      sanitizedDemoAccounts: demoAccounts.rowCount || 0
+    }, null, 2));
   } catch (error) {
     await postgres.query("ROLLBACK").catch(() => undefined);
     throw error;

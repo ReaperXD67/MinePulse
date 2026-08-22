@@ -18,17 +18,15 @@ KarixMC is a production-style MVP for a Minecraft server marketplace where verif
 
 Members earn points on funded servers, then spend those earned points on ranks, crates, cosmetics, or any server-configured item. The same account can also publish servers, buy campaign credits with real money, choose reward rates per second, cap paid players, and buy Gold or Diamond placement. Admins control pricing, bonus promo codes, reports, punishments, campaign pools, premium state, server visibility, and platform statistics.
 
-## Legacy VPS Deployment (Controlled Beta Only)
+## Production Deployment
 
-The old HTTP/IP deployment may still be available for controlled regression testing:
+- **Live website:** [https://karixmc.pl](https://karixmc.pl)
+- **Create an account:** [https://karixmc.pl/signup](https://karixmc.pl/signup)
+- **Plugin download and setup:** [https://karixmc.pl/plugin](https://karixmc.pl/plugin)
 
-- **Live website:** [http://51.83.180.202](http://51.83.180.202)
-- **Create an account:** [http://51.83.180.202/signup](http://51.83.180.202/signup)
-- **Plugin download and setup:** [http://51.83.180.202/plugin](http://51.83.180.202/plugin)
+The public site runs on two loopback-only application replicas behind Nginx HTTPS, with PostgreSQL, Redis, encrypted recurring backups, and provider plus host-level traffic protection. Ports 3000 and 3001 are internal only; browsers and plugins must use the normal HTTPS URL without a port or `/api` suffix. A Paper server can run on another host, so the website/API address and Minecraft join address remain separate.
 
-This address is not the production target and must not receive real users, production credentials, or payments. A Paper server can run on another host; the website/API address and Minecraft join address remain separate.
-
-The domain launch must use the PostgreSQL/Redis/HTTPS architecture in [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md).
+Deployment, recovery, monitoring, and rollback procedures are in [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md).
 
 ## Two Separate Currencies
 
@@ -149,7 +147,7 @@ plugin-secret: "from owner panel"
 allow-insecure-http: false
 ```
 
-For local testing where Paper and the website run on the same machine, keep `api-base-url: "http://localhost:3000"`. If Paper runs elsewhere, `localhost` is wrong; use the HTTPS URL reachable from that Minecraft server. Public HTTP is rejected by default. `allow-insecure-http: true` exists only for a temporary isolated test environment and must be disabled before launch. The temporary VPS URL uses normal port 80, so `http://51.83.180.202` is complete and must not include `:3000` or an `/api` suffix.
+For local testing where Paper and the website run on the same machine, keep `api-base-url: "http://localhost:3000"`. If Paper runs elsewhere, `localhost` is wrong; use `https://karixmc.pl`. Public HTTP is rejected by default. `allow-insecure-http: true` exists only for a temporary isolated test environment and must be disabled before launch. The production URL must not include `:3000` or an `/api` suffix.
 
 ## Deploy Notes
 
@@ -159,6 +157,7 @@ For local testing where Paper and the website run on the same machine, keep `api
 - Authentication uses opaque, hashed, database-backed sessions. Users can review and revoke devices from Account > Security, and password changes revoke every other session.
 - New passwords require a passphrase of at least 15 characters. Login is throttled by account and connection, and public registration cannot assign privileged roles.
 - Set `APP_BASE_URL` to the final HTTPS domain. Production validation rejects HTTP, localhost, placeholder domains, and URL paths.
+- Transactional email uses Nodemailer with Resend's free SMTP relay. Set `SMTP_URL` and `EMAIL_FROM`, then run `npm run email:check` to authenticate or `npm run email:check -- you@example.com` to send one test message. See `PRODUCTION_RUNBOOK.md` for DNS and production setup.
 - Production requires `AUTH_COOKIE_SECURE="true"`, verified email delivery, administrator TOTP, PostgreSQL, Redis, and independent secrets.
 - No automated payment method is connected. Campaign credit and premium orders are coordinated through the official Discord, then granted by an administrator after manual confirmation. Never request or accept account passwords, TOTP codes, plugin secrets, or private keys through Discord. Select and security-review an automated payment provider only after HTTPS, PostgreSQL, backups, refund rules, merchant verification, and signed webhook tests are ready.
 - SQLite is now only a read-only source for the one-time beta-data importer. All active local and production runtime data uses PostgreSQL.

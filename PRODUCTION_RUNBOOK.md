@@ -2,7 +2,7 @@
 
 ## Release status
 
-This branch is a production candidate for a 50-200 concurrent-user public beta. It uses PostgreSQL for durable data, Redis for shared rate limits and short-lived marketplace caching, two isolated Next.js application replicas, Nginx for TLS and load balancing, persistent compressed media, and recurring database/media backups.
+The public beta is live at `https://karixmc.pl`. It uses PostgreSQL for durable data, Redis for shared rate limits and short-lived marketplace caching, two isolated Next.js application replicas, Nginx for TLS and load balancing, persistent media, and recurring encrypted database/media backups.
 
 Automated payment collection remains deliberately disabled with `PAYMENTS_ENABLED=false`. Campaign credit and premium orders are coordinated through the official Discord, then recorded by an administrator after manual confirmation. Staff must never request account passwords, TOTP codes, plugin secrets, or private keys through Discord.
 
@@ -25,7 +25,7 @@ flowchart LR
   B --> O[Off-site object storage]
 ```
 
-The proposed 8-vCPU, 16 GB RAM, 100 GB SSD VPS is suitable for this beta. Container limits reserve 2 GB and 2 CPUs for each app replica, 6 GB and 3 CPUs for PostgreSQL, and 512 MB for Redis, leaving capacity for Ubuntu, Nginx, Docker, backups, and short spikes.
+Production runs on an Ubuntu 24.04 Contabo Cloud VPS with 12 vCPU, 48 GB RAM, and 400 GB SSD. Container limits reserve 2 GB and 2 CPUs for each app replica, 6 GB and 3 CPUs for PostgreSQL, and 512 MB for Redis, leaving substantial capacity for Ubuntu, Nginx, Docker, backups, and short spikes.
 
 ## Confirmed launch identity
 
@@ -33,19 +33,19 @@ The proposed 8-vCPU, 16 GB RAM, 100 GB SSD VPS is suitable for this beta. Contai
 - Official Discord: `https://discord.gg/6sWTyFEXxR`
 - Initial administrator/support contact: `karixai@proton.me`
 - Operator display name: `KarixMC` (independent project; no company is being claimed)
-- Data decision: start production with a fresh PostgreSQL database; keep the current VPS and its database as isolated staging.
+- Production host: `169.58.213.35` (`/opt/karixmc`, Docker deployment)
+- Data recovery: the previous VPS was unreachable, so the newest intact local SQLite snapshot was imported transactionally into PostgreSQL and verified by table counts. Treat the encrypted off-server backup as the recovery baseline.
 
 ## Information still required
 
 Do not send production passwords or private keys in chat or commit them to Git.
 
-1. DNS access to create `A` records for `karixmc.pl` and `www.karixmc.pl` pointing to `54.37.223.34`.
-2. SMTP credentials and a verified sender such as `no-reply@karixmc.pl` for signup verification and password recovery. A normal Proton mailbox address is the recipient/contact identity, not a transactional SMTP service by itself.
-3. A human legal review of the privacy, terms, manual-order, and refund wording for the countries served. Add a postal operator address only if counsel confirms it is required and accurate.
-4. An `age` backup public recipient and an off-site destination supported by `rclone`.
-5. An alert webhook plus an external uptime monitor. The VPS timer cannot report when the entire VPS is offline.
-6. Enter the initial administrator password and TOTP setup privately on the VPS.
-7. Later: the selected automated payment provider and supported currencies. Keep automated payments disabled until then.
+1. A Resend account, verified sending domain, and SMTP API key for signup verification and password recovery. The normal Proton mailbox remains the recipient/contact identity, not the transactional sender.
+2. A human legal review of the privacy, terms, manual-order, and refund wording for the countries served. Add a postal operator address only if counsel confirms it is required and accurate.
+3. An off-site object-storage target supported by `rclone`; encrypted backups currently run on the VPS and the first recovery copy has been verified off-server.
+4. An alert webhook plus an external uptime monitor. The VPS timer cannot report when the entire VPS is offline.
+5. Complete the administrator password and TOTP bootstrap privately on the VPS, then set `ADMIN_2FA_REQUIRED=true`.
+6. Later: the selected automated payment provider and supported currencies. Keep automated payments disabled until then.
 
 ## 1. Prepare the VPS
 
@@ -93,6 +93,30 @@ docker compose --env-file .env.production -f docker-compose.production.yml run -
 
 Warnings about missing encrypted/off-site backups or alerts must be resolved before public launch.
 
+### Configure the free email relay
+
+Resend is the selected SMTP provider because its free transactional tier currently includes 3,000 emails per month with a 100-email daily limit, supports SMTP directly, and requires no application SDK. Check the [current Resend pricing](https://resend.com/pricing) before launch because free-plan limits can change.
+
+1. Create a Resend account and add `karixmc.pl` under **Domains**.
+2. Copy every SPF and DKIM record shown by Resend into the domain's DNS settings, then wait for the domain to show **Verified**. Add DMARC after SPF and DKIM are working.
+3. Create a sending API key. Store it only in the untracked `.env.production` file.
+4. Configure the production values. The SMTP username is literally `resend`; the API key is the password:
+
+```dotenv
+EMAIL_REQUIRED="true"
+SMTP_URL="smtps://resend:re_your_real_api_key@smtp.resend.com:465"
+EMAIL_FROM="KarixMC <no-reply@karixmc.pl>"
+```
+
+5. Check authentication, then send one end-to-end message to the operator mailbox:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml run --rm migrate npm run email:check
+docker compose --env-file .env.production -f docker-compose.production.yml run --rm migrate npm run email:check -- karixai@proton.me
+```
+
+The first command does not send mail. The second sends one explicit test message. Confirm that it arrives (including checking spam), then test signup verification and password recovery through the website. Resend's SMTP host, ports, and authentication format are documented in the [SMTP guide](https://resend.com/docs/send-with-smtp).
+
 ## 3. Migrate beta data
 
 Put the old site in maintenance mode so no writes happen during the final copy. Preserve the SQLite source as a read-only rollback artifact.
@@ -104,7 +128,7 @@ docker compose --env-file .env.production -f docker-compose.production.yml run -
 docker compose --env-file .env.production -f docker-compose.production.yml run --rm migrate npm run db:seed:production
 ```
 
-The importer refuses a non-empty destination unless `--force` is explicitly supplied, imports tables in foreign-key order inside one transaction, converts SQLite dates and booleans, and verifies every destination row count. Never use `--force` without a fresh backup.
+The importer refuses a non-empty destination unless `--force` is explicitly supplied, imports tables in foreign-key order inside one transaction, converts SQLite dates and booleans, invalidates the three documented development-account passwords and sessions, and verifies every destination row count. Never use `--force` without a fresh backup.
 
 Imported beta accounts are not silently marked email-verified. Existing testers must verify their email before logging into public production.
 

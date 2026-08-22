@@ -56,6 +56,13 @@ else {
       errors.push("SMTP_URL still uses a non-production hostname");
     }
     if (!smtpUrl.username || !smtpUrl.password) errors.push("SMTP_URL must include authenticated provider credentials");
+    if (/replace|example|changeme|your[_-]/i.test(smtpUrl.password)) errors.push("SMTP_URL still contains a placeholder password");
+    if (smtpUrl.hostname === "smtp.resend.com") {
+      if (smtpUrl.username !== "resend") errors.push("Resend SMTP_URL username must be resend");
+      const port = smtpUrl.port || (smtpUrl.protocol === "smtps:" ? "465" : "587");
+      const allowedPorts = smtpUrl.protocol === "smtps:" ? ["465", "2465"] : ["25", "587", "2587"];
+      if (!allowedPorts.includes(port)) errors.push(`Port ${port} does not match the selected Resend SMTP security mode`);
+    }
   } catch {
     errors.push("SMTP_URL must be a valid URL");
   }
