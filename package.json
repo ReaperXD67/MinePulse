@@ -20,6 +20,8 @@
     "db:import-sqlite": "tsx scripts/migrate-sqlite-to-postgres.ts",
     "production:validate": "tsx scripts/validate-production-env.ts",
     "email:check": "tsx scripts/check-smtp.ts",
+    "showcase:bootstrap": "tsx scripts/bootstrap-showcase.ts",
+    "showcase:audit": "tsx scripts/showcase-audit.ts",
     "production:load-smoke": "node scripts/load-smoke.mjs",
     "production:ui-audit": "tsx scripts/production-ui-audit.ts",
     "security:encrypt-plugin-secrets": "tsx scripts/encrypt-plugin-secrets.ts",

@@ -1,0 +1,110 @@
+name: karixmc-showcase
+
+x-paper-common: &paper-common
+  image: itzg/minecraft-server:java21
+  restart: unless-stopped
+  init: true
+  environment: &paper-environment
+    EULA: "TRUE"
+    TYPE: "PAPER"
+    VERSION: "1.21.4"
+    ONLINE_MODE: "TRUE"
+    ENFORCE_SECURE_PROFILE: "TRUE"
+    MODE: "survival"
+    FORCE_GAMEMODE: "TRUE"
+    PVP: "TRUE"
+    ENABLE_COMMAND_BLOCK: "FALSE"
+    ENABLE_QUERY: "FALSE"
+    ENABLE_RCON: "TRUE"
+    RCON_PASSWORD: ${SHOWCASE_RCON_PASSWORD:?SHOWCASE_RCON_PASSWORD is required}
+    MEMORY: "3G"
+    USE_AIKAR_FLAGS: "TRUE"
+    JVM_OPTS: "-Djava.net.preferIPv4Stack=true"
+    VIEW_DISTANCE: "8"
+    SIMULATION_DISTANCE: "6"
+    NETWORK_COMPRESSION_THRESHOLD: "256"
+    SPAWN_PROTECTION: "16"
+    ENABLE_ROLLING_LOGS: "TRUE"
+    TZ: ${SHOWCASE_TIMEZONE:-UTC}
+    UID: "1000"
+    GID: "1000"
+    MINEPULSE_API_BASE_URL: ${SHOWCASE_API_BASE_URL:-https://karixmc.pl}
+    MINEPULSE_ALLOW_INSECURE_HTTP: "false"
+  healthcheck:
+    test: ["CMD", "mc-health"]
+    interval: 20s
+    timeout: 8s
+    retries: 18
+    start_period: 120s
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "20m"
+      max-file: "5"
+  networks: [showcase]
+
+services:
+  skyforge:
+    <<: *paper-common
+    ports:
+      - "25565:25565/tcp"
+    environment:
+      <<: *paper-environment
+      SERVER_NAME: "Skyforge Economy"
+      MOTD: "§bKarixMC Official Demo §8| §fSkyforge Economy"
+      DIFFICULTY: "normal"
+      MAX_PLAYERS: "32"
+      LEVEL: "skyforge"
+      SEED: "karixmc-skyforge-2026"
+      MINEPULSE_SERVER_ID: "demo-server-skyforge"
+      MINEPULSE_PLUGIN_SECRET: ${SHOWCASE_SKYFORGE_SECRET:?SHOWCASE_SKYFORGE_SECRET is required}
+    volumes:
+      - ${SHOWCASE_DATA_ROOT:-/var/lib/karixmc/showcase}/skyforge:/data
+      - ./public/downloads/KarixMCBridge-0.6.4.jar:/plugins/KarixMCBridge.jar:ro
+    mem_limit: 4g
+    cpus: 2.5
+
+  ember:
+    <<: *paper-common
+    ports:
+      - "25566:25565/tcp"
+    environment:
+      <<: *paper-environment
+      SERVER_NAME: "Ember SMP"
+      MOTD: "§6KarixMC Official Demo §8| §fEmber SMP"
+      DIFFICULTY: "normal"
+      MAX_PLAYERS: "24"
+      LEVEL: "ember"
+      SEED: "karixmc-ember-2026"
+      MINEPULSE_SERVER_ID: "demo-server-ember"
+      MINEPULSE_PLUGIN_SECRET: ${SHOWCASE_EMBER_SECRET:?SHOWCASE_EMBER_SECRET is required}
+    volumes:
+      - ${SHOWCASE_DATA_ROOT:-/var/lib/karixmc/showcase}/ember:/data
+      - ./public/downloads/KarixMCBridge-0.6.4.jar:/plugins/KarixMCBridge.jar:ro
+    mem_limit: 4g
+    cpus: 2.5
+
+  voidcraft:
+    <<: *paper-common
+    ports:
+      - "25567:25565/tcp"
+    environment:
+      <<: *paper-environment
+      SERVER_NAME: "Voidcraft Hardcore"
+      MOTD: "§5KarixMC Official Demo §8| §fVoidcraft Hardcore"
+      DIFFICULTY: "hard"
+      MAX_PLAYERS: "18"
+      LEVEL: "voidcraft"
+      SEED: "karixmc-voidcraft-2026"
+      MINEPULSE_SERVER_ID: "demo-server-voidcraft"
+      MINEPULSE_PLUGIN_SECRET: ${SHOWCASE_VOIDCRAFT_SECRET:?SHOWCASE_VOIDCRAFT_SECRET is required}
+    volumes:
+      - ${SHOWCASE_DATA_ROOT:-/var/lib/karixmc/showcase}/voidcraft:/data
+      - ./public/downloads/KarixMCBridge-0.6.4.jar:/plugins/KarixMCBridge.jar:ro
+    mem_limit: 4g
+    cpus: 2.5
+
+networks:
+  showcase:

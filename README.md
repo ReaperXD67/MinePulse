@@ -13,6 +13,7 @@
 
 > [!IMPORTANT]
 > Production deployment, PostgreSQL migration, backup, monitoring, and rollback instructions are in [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md).
+> The three real first-party creator demo worlds, their honest-labeling rules, operations, backup coverage, and launch gate are documented in [SHOWCASE_RUNBOOK.md](./SHOWCASE_RUNBOOK.md).
 
 KarixMC is a production-style MVP for a Minecraft server marketplace where verified playtime earns platform points. The visible Paper plugin and command namespace are `KarixMCBridge` and `/karixmc`; internal Java package names remain unchanged for binary stability.
 

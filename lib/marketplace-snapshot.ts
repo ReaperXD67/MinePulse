@@ -29,6 +29,7 @@ async function createMarketplaceSnapshot() {
         tags: true,
         description: true,
         bannerImage: true,
+        isOfficialShowcase: true,
         pointPool: true,
         rewardRatePerSecond: true,
         maxPaidPlayers: true,
@@ -82,6 +83,7 @@ async function createMarketplaceSnapshot() {
           tags: server.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
           description: server.description,
           bannerImage: safeMediaPath(server.bannerImage) || "/voxel-network.png",
+          isOfficialShowcase: server.isOfficialShowcase,
           pointPool: server.pointPool,
           rewardRatePerSecond: server.rewardRatePerSecond,
           maxPaidPlayers: server.maxPaidPlayers,
@@ -114,7 +116,7 @@ export async function getMarketplaceSnapshot() {
   const now = Date.now();
   if (localSnapshot && localSnapshot.expiresAt > now) return localSnapshot.value;
 
-  const shared = await readSharedJson<MarketplaceSnapshot>("marketplace:snapshot:v1");
+  const shared = await readSharedJson<MarketplaceSnapshot>("marketplace:snapshot:v2");
   if (shared) {
     localSnapshot = { expiresAt: now + 2_000, value: shared };
     return shared;
@@ -122,6 +124,6 @@ export async function getMarketplaceSnapshot() {
 
   const value = await createMarketplaceSnapshot();
   localSnapshot = { expiresAt: now + 5_000, value };
-  await writeSharedJson("marketplace:snapshot:v1", value, 5);
+  await writeSharedJson("marketplace:snapshot:v2", value, 5);
   return value;
 }

@@ -1,0 +1,17 @@
+[Unit]
+Description=KarixMC official Paper showcase servers
+Requires=docker.service
+After=docker.service network-online.target karixmc-app@3000.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/karixmc
+ExecStart=/usr/bin/docker compose --env-file /opt/karixmc/.env.showcase -p karixmc-showcase -f /opt/karixmc/docker-compose.showcase.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose --env-file /opt/karixmc/.env.showcase -p karixmc-showcase -f /opt/karixmc/docker-compose.showcase.yml stop
+TimeoutStartSec=600
+TimeoutStopSec=180
+
+[Install]
+WantedBy=multi-user.target

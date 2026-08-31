@@ -93,6 +93,7 @@ export default async function MarketplacePage({
   const standardFirstPercent = FIRST_POSITION_CHANCES.STANDARD * 100;
   const canManageServers = Boolean(user);
   const favoriteCount = visibleServers.filter((server) => server.favorited).length;
+  const officialShowcaseCount = visibleServers.filter((server) => server.isOfficialShowcase).length;
   const discordUrl = process.env.NEXT_PUBLIC_DISCORD_URL || "/plugin#support";
 
   function directoryHref(next: { tag?: string; query?: string; favorites?: boolean }) {
@@ -167,6 +168,16 @@ export default async function MarketplacePage({
           </div>
           <DirectoryShuffleButton />
         </div>
+
+        {officialShowcaseCount ? (
+          <aside className="official-showcase-notice" aria-label="Official showcase disclosure">
+            <ShieldCheck size={20} />
+            <div>
+              <strong>{officialShowcaseCount} live official {officialShowcaseCount === 1 ? "demo" : "demos"}</strong>
+              <p>These worlds are operated by KarixMC so creators can independently test joining, account linking, verified rewards, and in-game store delivery. They are not third-party endorsements, reviews, or fabricated activity.</p>
+            </div>
+          </aside>
+        ) : null}
 
         <div className="directory-toolbar">
           <form className={`server-search-form ${query ? "has-query" : ""}`} action="/#servers" method="get" role="search">

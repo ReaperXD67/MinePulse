@@ -1,0 +1,10 @@
+[Unit]
+Description=KarixMC official showcase health check
+After=network-online.target karixmc-showcase.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/karixmc
+ExecStart=/opt/karixmc/deploy/scripts/monitor-showcase.sh

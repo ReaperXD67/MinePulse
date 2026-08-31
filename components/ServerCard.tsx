@@ -19,6 +19,7 @@ export type MarketplaceServer = {
   tags: string[];
   description: string;
   bannerImage: string;
+  isOfficialShowcase: boolean;
   pointPool: number;
   rewardRatePerSecond: number;
   maxPaidPlayers: number;
@@ -67,6 +68,7 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
         <div className="card-signal-row">
           <span className={`status-pill trust-${server.trustStatus.toLowerCase()}`}><ShieldCheck size={12} /> {server.trustStatus}</span>
           <span className={`status-pill bridge-${server.bridgeState}`}><RadioTower size={12} /> {server.bridgeState}</span>
+          {server.isOfficialShowcase ? <span className="status-pill official-showcase-pill"><ShieldCheck size={12} /> Official demo</span> : null}
         </div>
         {premiumClass ? (
           <span className={`premium-image-sigil ${premiumClass}`} aria-hidden="true">
@@ -77,7 +79,11 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
       </Link>
       <div className="server-card-body">
         <div className="server-title-row">
-          <div><Link href={`/servers/${server.slug}`}><h3>{server.name}</h3></Link><div className="server-host">{serverJoinAddress(server.host, server.port)}</div></div>
+          <div>
+            <Link href={`/servers/${server.slug}`}><h3>{server.name}</h3></Link>
+            <div className="server-host">{serverJoinAddress(server.host, server.port)}</div>
+            {server.isOfficialShowcase ? <small className="official-showcase-caption">Operated by KarixMC for live product testing</small> : null}
+          </div>
           {server.premiumPlan !== "NONE" ? (
             <span className={`badge premium-badge ${premiumClass}`}>
               {premiumClass === "diamond" ? <Gem size={14} /> : <Crown size={14} />}

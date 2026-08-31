@@ -13,6 +13,7 @@ prisma/*.db-journal
 .env.*
 !.env.example
 !.env.production.example
+!.env.showcase.example
 
 /lib/generated/prisma
 

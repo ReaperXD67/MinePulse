@@ -123,53 +123,53 @@ enum CryptoPurchaseKind {
 }
 
 model User {
-  id                   String    @id @default(cuid())
-  email                String    @unique
-  username             String
-  minecraftUuid        String?   @unique
-  minecraftName        String?
-  minecraftLinkedAt    DateTime?
+  id                      String    @id @default(cuid())
+  email                   String    @unique
+  username                String
+  minecraftUuid           String?   @unique
+  minecraftName           String?
+  minecraftLinkedAt       DateTime?
   minecraftConsentVersion String?
-  passwordHash         String?
-  emailVerifiedAt      DateTime?
-  adminTotpSecret      String?
-  adminTotpEnabledAt   DateTime?
-  role                 UserRole  @default(PLAYER)
-  walletPoints         Int       @default(0)
-  level                Int       @default(0)
-  lifetimeEarnedPoints Int       @default(0)
-  lastDailyClaimAt     DateTime?
-  friendsPrivate       Boolean   @default(false)
-  bio                  String    @default("")
-  avatarUrl            String?
-  lastLoginAt          DateTime?
-  passwordChangedAt    DateTime?
-  bannedAt             DateTime?
-  bannedUntil          DateTime?
-  banReason            String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  passwordHash            String?
+  emailVerifiedAt         DateTime?
+  adminTotpSecret         String?
+  adminTotpEnabledAt      DateTime?
+  role                    UserRole  @default(PLAYER)
+  walletPoints            Int       @default(0)
+  level                   Int       @default(0)
+  lifetimeEarnedPoints    Int       @default(0)
+  lastDailyClaimAt        DateTime?
+  friendsPrivate          Boolean   @default(false)
+  bio                     String    @default("")
+  avatarUrl               String?
+  lastLoginAt             DateTime?
+  passwordChangedAt       DateTime?
+  bannedAt                DateTime?
+  bannedUntil             DateTime?
+  banReason               String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-  ownedServers       Server[]            @relation("OwnerServers")
-  sessions           ServerSession[]
-  purchases          Purchase[]          @relation("BuyerPurchases")
-  friends            Friendship[]        @relation("FriendshipOwner")
-  friendedBy         Friendship[]        @relation("FriendshipTarget")
-  likes              ServerLike[]
-  favorites          Favorite[]
-  comments           Comment[]
-  ledgers            PointLedger[]
-  billings           BillingLedger[]     @relation("OwnerBillings")
-  reports            ServerReport[]
-  supportTickets     SupportTicket[]
-  promoRedemptions   PromoRedemption[]
-  cryptoPayments     CryptoPayment[]
-  enforcementActions EnforcementAction[] @relation("AdminEnforcement")
-  minecraftLinkCodes MinecraftLinkCode[]
-  authSessions       AuthSession[]
+  ownedServers              Server[]               @relation("OwnerServers")
+  sessions                  ServerSession[]
+  purchases                 Purchase[]             @relation("BuyerPurchases")
+  friends                   Friendship[]           @relation("FriendshipOwner")
+  friendedBy                Friendship[]           @relation("FriendshipTarget")
+  likes                     ServerLike[]
+  favorites                 Favorite[]
+  comments                  Comment[]
+  ledgers                   PointLedger[]
+  billings                  BillingLedger[]        @relation("OwnerBillings")
+  reports                   ServerReport[]
+  supportTickets            SupportTicket[]
+  promoRedemptions          PromoRedemption[]
+  cryptoPayments            CryptoPayment[]
+  enforcementActions        EnforcementAction[]    @relation("AdminEnforcement")
+  minecraftLinkCodes        MinecraftLinkCode[]
+  authSessions              AuthSession[]
   moderationActionsReceived UserModerationAction[] @relation("AccountModerationTarget")
   moderationActionsIssued   UserModerationAction[] @relation("AccountModerationAdmin")
-  accountTokens              AccountToken[]
+  accountTokens             AccountToken[]
 }
 
 model AccountToken {
@@ -263,6 +263,7 @@ model Server {
   websiteUrl                   String?
   discordUrl                   String?
   supportUrl                   String?
+  isOfficialShowcase           Boolean         @default(false)
   status                       ServerStatus    @default(ACTIVE)
   trustStatus                  TrustStatus     @default(VERIFIED)
   riskScore                    Int             @default(0)
@@ -291,7 +292,7 @@ model Server {
   createdAt                    DateTime        @default(now())
   updatedAt                    DateTime        @updatedAt
 
-  owner              User                @relation("OwnerServers", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner              User                 @relation("OwnerServers", fields: [ownerId], references: [id], onDelete: Cascade)
   items              StoreItem[]
   purchases          Purchase[]
   likes              ServerLike[]
@@ -311,6 +312,7 @@ model Server {
   @@index([host, port])
   @@index([status, premiumUntil])
   @@index([trustStatus, status])
+  @@index([isOfficialShowcase, status])
   @@index([ownerId])
 }
 

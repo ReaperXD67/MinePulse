@@ -78,6 +78,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
               <div className="inline-actions">
                 <span className={`status-pill trust-${server.trustStatus.toLowerCase()}`}><ShieldCheck size={13} /> {server.trustStatus}</span>
                 <span className={`status-pill bridge-${bridgeState}`}><RadioTower size={13} /> Bridge {bridgeState}</span>
+                {server.isOfficialShowcase ? <span className="status-pill official-showcase-pill"><ShieldCheck size={13} /> Official live demo</span> : null}
                 {premiumPlan !== "NONE" ? <span className={`status-pill trust-${premiumPlan.toLowerCase()}`}><Zap size={13} /> {premiumPlan} / {daysLeft(server.premiumUntil)}</span> : null}
               </div>
               <h1>{server.name}</h1>
@@ -101,6 +102,16 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
 
       <div className="container profile-content-grid">
         <div className="profile-main-column">
+          {server.isOfficialShowcase ? (
+            <aside className="official-showcase-disclosure" aria-label="Official showcase disclosure">
+              <ShieldCheck size={22} />
+              <div>
+                <p className="eyebrow">KarixMC operated test world</p>
+                <h2>Use this server to verify the complete product</h2>
+                <p>This is a real, joinable Paper server operated by KarixMC. It exists so players and creators can test the bridge, rewards, and store delivery before independent communities join the marketplace. Its activity is real; it is not a third-party endorsement or testimonial.</p>
+              </div>
+            </aside>
+          ) : null}
           <section className="panel profile-about-section">
             <div className="panel-header compact-heading"><div><p className="eyebrow"><Globe2 size={14} /> About</p><h2>The server story</h2></div></div>
             <p className="profile-long-copy">{server.longDescription || server.description}</p>
@@ -152,9 +163,9 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
         <aside className="profile-side-column">
           <section className="panel owner-profile-card">
             <div className="profile-avatar small" style={safeMediaPath(server.owner.avatarUrl) ? { backgroundImage: `url(${safeMediaPath(server.owner.avatarUrl)})` } : undefined}>{!safeMediaPath(server.owner.avatarUrl) ? ownerInitials : null}</div>
-            <p className="eyebrow">Server creator</p>
+            <p className="eyebrow">{server.isOfficialShowcase ? "Platform operator" : "Server creator"}</p>
             <h3>{server.owner.username}</h3>
-            <p>{server.owner.bio || "KarixMC community creator."}</p>
+            <p>{server.isOfficialShowcase ? "KarixMC team account responsible for this official test world." : server.owner.bio || "KarixMC community creator."}</p>
             <span>Member since {shortDate(server.owner.createdAt)}</span>
             <Link className="ghost-button" href={`/members/${server.owner.id}`}><ExternalLink size={15} /> View member profile</Link>
           </section>
