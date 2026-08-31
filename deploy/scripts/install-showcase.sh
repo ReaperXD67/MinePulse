@@ -86,7 +86,7 @@ systemctl daemon-reload
 systemctl enable --now karixmc-showcase.service
 
 for attempt in {1..72}; do
-  if "${SHOWCASE_COMPOSE[@]}" ps --format json | jq -e '
+  if "${SHOWCASE_COMPOSE[@]}" ps --format json | jq -s -e '
       length == 3 and all(.[]; .State == "running" and .Health == "healthy")
     ' >/dev/null 2>&1; then
     systemctl enable --now karixmc-showcase-health.timer
