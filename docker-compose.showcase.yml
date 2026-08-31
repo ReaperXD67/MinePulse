@@ -1,7 +1,7 @@
 name: karixmc-showcase
 
 x-paper-common: &paper-common
-  image: itzg/minecraft-server:java21
+  image: itzg/minecraft-server:java21@sha256:444ea80e6006ef6da93ae63c0e353d7838c8097bcb037f96d3600736314313d7
   restart: unless-stopped
   init: true
   environment: &paper-environment
@@ -24,7 +24,7 @@ x-paper-common: &paper-common
     SIMULATION_DISTANCE: "6"
     NETWORK_COMPRESSION_THRESHOLD: "256"
     SPAWN_PROTECTION: "16"
-    ENABLE_ROLLING_LOGS: "TRUE"
+    ENABLE_ROLLING_LOGS: "true"
     TZ: ${SHOWCASE_TIMEZONE:-UTC}
     UID: "1000"
     GID: "1000"
