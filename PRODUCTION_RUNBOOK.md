@@ -188,7 +188,7 @@ LOAD_BASE_URL=https://your-domain.example LOAD_CONCURRENCY=50 LOAD_DURATION_SECO
 LOAD_BASE_URL=https://your-domain.example LOAD_PATH=/ LOAD_CONCURRENCY=200 LOAD_DURATION_SECONDS=60 LOAD_MAX_P95_MS=3000 npm run production:load-smoke
 ```
 
-The 200-client test intentionally simulates continuous refreshes and is much harsher than 200 ordinary online users. Watch VPS CPU, memory, PostgreSQL connections, Nginx 429/5xx responses, p95 latency, and the error rate while it runs.
+The 200-client test intentionally simulates continuous refreshes and is much harsher than 200 ordinary online users. Nginx deliberately returns HTTP 429 after a single source exceeds the configured request or connection budget; treat 429 as successful overload protection, while 5xx responses indicate a backend or proxy fault. Watch VPS CPU, memory, PostgreSQL connections, p95 latency, and both response classes while it runs.
 
 ## 7. Backups and recovery
 
