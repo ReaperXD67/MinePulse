@@ -90,9 +90,8 @@ for attempt in {1..72}; do
       length == 3 and all(.[]; .State == "running" and .Health == "healthy")
     ' >/dev/null 2>&1; then
     systemctl enable --now karixmc-showcase-health.timer
-    SHOWCASE_REQUIRE_PUBLIC_LIVE=true "${PRODUCTION_COMPOSE[@]}" run --rm \
-      -e SHOWCASE_REQUIRE_PUBLIC_LIVE=true \
-      migrate npm run showcase:audit
+    "${PRODUCTION_COMPOSE[@]}" run --rm migrate npm run showcase:audit
+    ./deploy/scripts/monitor-showcase.sh
     "${SHOWCASE_COMPOSE[@]}" ps
     echo "KarixMC official showcase is healthy on ports 25565-25567."
     exit 0
