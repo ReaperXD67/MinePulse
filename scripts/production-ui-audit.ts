@@ -4,7 +4,10 @@ import { chromium, type Page } from "playwright";
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:3000";
 const pages = [
-  { name: "home", path: "/" },
+  { name: "home", path: "/", selector: ".official-showcase-notice", expectedText: "3 live official demos", officialPills: 3 },
+  { name: "skyforge", path: "/servers/skyforge-economy", selector: ".official-showcase-disclosure", expectedText: "karixmc.pl" },
+  { name: "ember", path: "/servers/ember-smp", selector: ".official-showcase-disclosure", expectedText: "karixmc.pl:25566" },
+  { name: "voidcraft", path: "/servers/voidcraft-hardcore", selector: ".official-showcase-disclosure", expectedText: "karixmc.pl:25567" },
   { name: "login", path: "/login" },
   { name: "signup", path: "/signup" },
   { name: "forgot-password", path: "/forgot-password" },
@@ -30,6 +33,15 @@ async function inspect(page: Page, route: typeof pages[number], viewport: typeof
   assert(metrics.visibleMain, `${route.path} has no main landmark`);
   assert(metrics.textLength > 20, `${route.path} rendered no meaningful content`);
   assert(metrics.scrollWidth <= metrics.width + 1, `${route.path} overflows horizontally at ${viewport.width}px`);
+  if ("selector" in route && route.selector) {
+    assert(await page.locator(route.selector).first().isVisible(), `${route.path} is missing visible ${route.selector}`);
+  }
+  if ("expectedText" in route && route.expectedText) {
+    assert((await page.locator("body").innerText()).includes(route.expectedText), `${route.path} is missing ${route.expectedText}`);
+  }
+  if ("officialPills" in route && route.officialPills) {
+    assert.equal(await page.locator(".official-showcase-pill").count(), route.officialPills, `${route.path} has the wrong official-demo count`);
+  }
   await page.screenshot({
     path: path.join("tmp", `production-${route.name}-${viewport.name}.png`),
     fullPage: true

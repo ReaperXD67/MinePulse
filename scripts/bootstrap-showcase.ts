@@ -33,6 +33,7 @@ if (new Set(Object.values(secrets)).size !== Object.values(secrets).length) {
 
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
+const showcaseLaunchAt = new Date("2026-08-31T16:00:00.000Z");
 
 const definitions = [
   {
@@ -111,6 +112,27 @@ async function main() {
   }
 
   await prisma.$transaction(async (tx) => {
+    const showcaseServerIds = definitions.map((server) => server.id);
+
+    // These stable records originated in the local demo seed. Remove only data
+    // created before the public showcase launch so old fixtures cannot appear as
+    // real creator proof. Anything generated after launch is preserved.
+    await tx.purchase.deleteMany({ where: { serverId: { in: showcaseServerIds }, createdAt: { lt: showcaseLaunchAt } } });
+    await tx.serverSession.deleteMany({ where: { serverId: { in: showcaseServerIds }, startedAt: { lt: showcaseLaunchAt } } });
+    await tx.serverHourlyStat.deleteMany({ where: { serverId: { in: showcaseServerIds }, hourStart: { lt: showcaseLaunchAt } } });
+    await tx.pointLedger.deleteMany({ where: { serverId: { in: showcaseServerIds }, createdAt: { lt: showcaseLaunchAt } } });
+    await tx.billingLedger.deleteMany({ where: { serverId: { in: showcaseServerIds }, createdAt: { lt: showcaseLaunchAt } } });
+    await tx.promoRedemption.deleteMany({ where: { serverId: { in: showcaseServerIds }, createdAt: { lt: showcaseLaunchAt } } });
+    await tx.serverReport.deleteMany({ where: { serverId: { in: showcaseServerIds }, createdAt: { lt: showcaseLaunchAt } } });
+    await tx.supportTicket.deleteMany({ where: { serverId: { in: showcaseServerIds }, createdAt: { lt: showcaseLaunchAt } } });
+    await tx.comment.deleteMany({ where: { serverId: { in: showcaseServerIds }, createdAt: { lt: showcaseLaunchAt } } });
+    await tx.serverLike.deleteMany({ where: { serverId: { in: showcaseServerIds }, createdAt: { lt: showcaseLaunchAt } } });
+    await tx.favorite.deleteMany({ where: { serverId: { in: showcaseServerIds }, createdAt: { lt: showcaseLaunchAt } } });
+    await tx.server.updateMany({
+      where: { id: { in: showcaseServerIds }, lastHeartbeatAt: { lt: showcaseLaunchAt } },
+      data: { lastHeartbeatAt: null }
+    });
+
     for (const definition of definitions) {
       const shared = {
         ownerId: owner.id,
@@ -207,10 +229,9 @@ async function main() {
     });
     const seededUserIds = seededUsers.map((user) => user.id);
     if (seededUserIds.length) {
-      const serverIds = definitions.map((server) => server.id);
-      await tx.comment.deleteMany({ where: { serverId: { in: serverIds }, userId: { in: seededUserIds } } });
-      await tx.serverLike.deleteMany({ where: { serverId: { in: serverIds }, userId: { in: seededUserIds } } });
-      await tx.favorite.deleteMany({ where: { serverId: { in: serverIds }, userId: { in: seededUserIds } } });
+      await tx.comment.deleteMany({ where: { serverId: { in: showcaseServerIds }, userId: { in: seededUserIds } } });
+      await tx.serverLike.deleteMany({ where: { serverId: { in: showcaseServerIds }, userId: { in: seededUserIds } } });
+      await tx.favorite.deleteMany({ where: { serverId: { in: showcaseServerIds }, userId: { in: seededUserIds } } });
     }
   });
 

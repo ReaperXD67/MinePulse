@@ -14,6 +14,7 @@ if (!connectionString?.startsWith("postgresql://") && !connectionString?.startsW
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 const failures: string[] = [];
+const showcaseLaunchAt = new Date("2026-08-31T16:00:00.000Z");
 
 function check(condition: unknown, message: string) {
   if (!condition) failures.push(message);
@@ -26,8 +27,16 @@ async function main() {
     orderBy: { port: "asc" }
   });
   const officialCount = await prisma.server.count({ where: { isOfficialShowcase: true } });
+  const [legacySessions, legacyStats, legacyReviews] = await Promise.all([
+    prisma.serverSession.count({ where: { serverId: { in: expected.map((server) => server.id) }, startedAt: { lt: showcaseLaunchAt } } }),
+    prisma.serverHourlyStat.count({ where: { serverId: { in: expected.map((server) => server.id) }, hourStart: { lt: showcaseLaunchAt } } }),
+    prisma.comment.count({ where: { serverId: { in: expected.map((server) => server.id) }, createdAt: { lt: showcaseLaunchAt } } })
+  ]);
   check(servers.length === expected.length, `Expected ${expected.length} showcase servers; found ${servers.length}`);
   check(officialCount === expected.length, `Expected exactly ${expected.length} official showcase records; found ${officialCount}`);
+  check(legacySessions === 0, `${legacySessions} pre-launch demo sessions remain visible`);
+  check(legacyStats === 0, `${legacyStats} pre-launch hourly demo stats remain visible`);
+  check(legacyReviews === 0, `${legacyReviews} pre-launch demo reviews remain visible`);
 
   const ports = new Set<number>();
   const banners = new Set<string>();

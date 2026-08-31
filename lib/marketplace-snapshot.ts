@@ -52,10 +52,16 @@ async function createMarketplaceSnapshot() {
         _count: { select: { likes: true, favorites: true, comments: true } }
       }
     }),
-    prisma.user.count(),
-    prisma.server.aggregate({ _sum: { pointPool: true } }),
+    prisma.user.count({ where: { bannedAt: null } }),
+    prisma.server.aggregate({
+      where: { status: "ACTIVE", trustStatus: { in: ["VERIFIED", "WATCHLIST"] } },
+      _sum: { pointPool: true }
+    }),
     prisma.purchase.count({ where: { status: "PENDING" } }),
-    prisma.serverSession.aggregate({ _sum: { activeSeconds: true } }),
+    prisma.serverSession.aggregate({
+      where: { user: { bannedAt: null }, server: { status: "ACTIVE" } },
+      _sum: { activeSeconds: true }
+    }),
     prisma.pointPackage.findMany({
       where: { active: true },
       orderBy: { sortOrder: "asc" },

@@ -86,7 +86,13 @@ export const safeHttpsUrlSchema = z
 
 const LEGACY_MEDIA_PATH = /^\/uploads\/([a-z0-9_-]{3,80})\/[a-f0-9-]{36}\.(?:png|jpg)$/i;
 const MANAGED_MEDIA_PATH = /^\/media\/([a-z0-9_-]{3,80})\/[a-z0-9-]{3,80}\/(?:avatar|banner|gallery)\/[a-f0-9-]{36}\.webp$/i;
-const BUNDLED_MEDIA = new Set(["/voxel-network.png"]);
+const BUNDLED_MEDIA = new Set([
+  "/voxel-network.png",
+  "/showcase/skyforge-economy.png",
+  "/showcase/ember-smp.png",
+  "/showcase/voidcraft-hardcore.png"
+]);
+const OWNER_SELECTABLE_BUNDLED_MEDIA = new Set(["/voxel-network.png"]);
 
 export function safeMediaPath(value: string | null | undefined) {
   const path = value?.trim() || "";
@@ -94,7 +100,7 @@ export function safeMediaPath(value: string | null | undefined) {
 }
 
 export function mediaPathBelongsToUser(value: string, userId: string) {
-  if (BUNDLED_MEDIA.has(value)) return true;
+  if (OWNER_SELECTABLE_BUNDLED_MEDIA.has(value)) return true;
   const match = value.match(LEGACY_MEDIA_PATH) || value.match(MANAGED_MEDIA_PATH);
   return match?.[1] === userId;
 }
