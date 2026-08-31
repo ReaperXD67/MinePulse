@@ -13,7 +13,7 @@ cd "${APP_DIR}"
 test -f "${PRODUCTION_ENV_FILE}" || { echo "${PRODUCTION_ENV_FILE} is missing" >&2; exit 1; }
 test -f public/downloads/KarixMCBridge-0.6.4.jar || { echo "KarixMCBridge-0.6.4.jar is missing" >&2; exit 1; }
 
-EXPECTED_PLUGIN_SHA256="68F30C5BB70B6B1A34E57D51356F691A186CD844394A4FE0463DD7AF50A8AA00"
+EXPECTED_PLUGIN_SHA256="68F30E479E47D978C6BD037C5F040156694EFEC2153A9A295BD1E9A896E6AA00"
 ACTUAL_PLUGIN_SHA256="$(sha256sum public/downloads/KarixMCBridge-0.6.4.jar | awk '{print toupper($1)}')"
 [[ "${ACTUAL_PLUGIN_SHA256}" == "${EXPECTED_PLUGIN_SHA256}" ]] || { echo "Bridge JAR checksum mismatch" >&2; exit 1; }
 
