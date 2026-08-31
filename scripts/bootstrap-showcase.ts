@@ -147,7 +147,7 @@ async function main() {
         region: "EU",
         tags: definition.tags,
         bannerImage: definition.bannerImage,
-        galleryImages: definition.bannerImage,
+        galleryImages: "",
         websiteUrl: `${appBaseUrl}/servers/${definition.slug}`,
         discordUrl,
         supportUrl: `${appBaseUrl}/plugin#support`,

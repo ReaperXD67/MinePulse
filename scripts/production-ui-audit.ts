@@ -4,10 +4,10 @@ import { chromium, type Page } from "playwright";
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:3000";
 const pages = [
-  { name: "home", path: "/", selector: ".official-showcase-notice", expectedText: "3 live official demos", officialPills: 3 },
-  { name: "skyforge", path: "/servers/skyforge-economy", selector: ".official-showcase-disclosure", expectedText: "karixmc.pl" },
-  { name: "ember", path: "/servers/ember-smp", selector: ".official-showcase-disclosure", expectedText: "karixmc.pl:25566" },
-  { name: "voidcraft", path: "/servers/voidcraft-hardcore", selector: ".official-showcase-disclosure", expectedText: "karixmc.pl:25567" },
+  { name: "home", path: "/", selector: ".official-showcase-notice", expectedText: "3 live official demos", officialPills: 3, assets: ["/showcase/skyforge-economy.png", "/showcase/ember-smp.png", "/showcase/voidcraft-hardcore.png"] },
+  { name: "skyforge", path: "/servers/skyforge-economy", selector: ".official-showcase-disclosure", expectedText: "karixmc.pl", assets: ["/showcase/skyforge-economy.png"] },
+  { name: "ember", path: "/servers/ember-smp", selector: ".official-showcase-disclosure", expectedText: "karixmc.pl:25566", assets: ["/showcase/ember-smp.png"] },
+  { name: "voidcraft", path: "/servers/voidcraft-hardcore", selector: ".official-showcase-disclosure", expectedText: "karixmc.pl:25567", assets: ["/showcase/voidcraft-hardcore.png"] },
   { name: "login", path: "/login" },
   { name: "signup", path: "/signup" },
   { name: "forgot-password", path: "/forgot-password" },
@@ -23,7 +23,7 @@ async function inspect(page: Page, route: typeof pages[number], viewport: typeof
   await page.setViewportSize(viewport);
   const response = await page.goto(new URL(route.path, baseUrl).toString(), { waitUntil: "domcontentloaded" });
   assert(response && response.status() < 500, `${route.path} returned ${response?.status()}`);
-  await page.waitForTimeout(400);
+  await page.waitForLoadState("networkidle");
   const metrics = await page.evaluate(() => ({
     width: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
@@ -41,6 +41,13 @@ async function inspect(page: Page, route: typeof pages[number], viewport: typeof
   }
   if ("officialPills" in route && route.officialPills) {
     assert.equal(await page.locator(".official-showcase-pill").count(), route.officialPills, `${route.path} has the wrong official-demo count`);
+  }
+  if ("assets" in route && route.assets) {
+    for (const asset of route.assets) {
+      const assetResponse = await page.request.get(new URL(asset, baseUrl).toString());
+      assert(assetResponse.ok(), `${asset} returned ${assetResponse.status()}`);
+      assert(assetResponse.headers()["content-type"]?.startsWith("image/"), `${asset} did not return an image content type`);
+    }
   }
   await page.screenshot({
     path: path.join("tmp", `production-${route.name}-${viewport.name}.png`),
