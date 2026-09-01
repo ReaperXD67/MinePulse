@@ -16,6 +16,14 @@ EXPECTED_IDS=(demo-server-skyforge demo-server-ember demo-server-voidcraft)
 EXPECTED_PORTS=(25565 25566 25567)
 FAILURES=()
 
+auth_container_id="$("${COMPOSE[@]}" ps -q auth-db)"
+if [[ -z "${auth_container_id}" ]]; then
+  FAILURES+=("auth-db container is missing")
+else
+  auth_state="$(docker inspect --format '{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "${auth_container_id}")"
+  [[ "${auth_state}" == "running/healthy" ]] || FAILURES+=("auth-db is ${auth_state}")
+fi
+
 for index in "${!EXPECTED_SERVICES[@]}"; do
   service="${EXPECTED_SERVICES[$index]}"
   port="${EXPECTED_PORTS[$index]}"

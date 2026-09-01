@@ -37,8 +37,8 @@ test -n "${RESTORE_DIR}" || { echo "Archive does not contain a restore directory
 (cd "${RESTORE_DIR}" && sha256sum -c SHA256SUMS)
 
 SHOWCASE_RESTART=false
-if [[ -f "${RESTORE_DIR}/showcase-worlds.tar.gz" ]]; then
-  test -f "${SHOWCASE_ENV_FILE}" || { echo "Backup contains showcase worlds but ${SHOWCASE_ENV_FILE} is missing" >&2; exit 1; }
+if [[ -f "${RESTORE_DIR}/showcase-worlds.tar.gz" || -f "${RESTORE_DIR}/showcase-auth.dump" ]]; then
+  test -f "${SHOWCASE_ENV_FILE}" || { echo "Backup contains showcase data but ${SHOWCASE_ENV_FILE} is missing" >&2; exit 1; }
   set -a
   source "${SHOWCASE_ENV_FILE}"
   set +a
@@ -76,6 +76,24 @@ if [[ -f "${RESTORE_DIR}/showcase-worlds.tar.gz" ]]; then
   find "${SHOWCASE_ROOT}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
   tar -C "${SHOWCASE_ROOT}" -xzf "${RESTORE_DIR}/showcase-worlds.tar.gz"
   chown -R 1000:1000 "${SHOWCASE_ROOT}"
+fi
+
+if [[ -f "${RESTORE_DIR}/showcase-auth.dump" ]]; then
+  "${SHOWCASE_COMPOSE[@]}" up -d auth-db
+  for attempt in {1..24}; do
+    auth_container_id="$("${SHOWCASE_COMPOSE[@]}" ps -q auth-db)"
+    if [[ -n "${auth_container_id}" ]] \
+      && [[ "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "${auth_container_id}")" == "healthy" ]]; then
+      break
+    fi
+    if [[ "${attempt}" -eq 24 ]]; then
+      echo "Showcase authentication database did not become healthy" >&2
+      exit 1
+    fi
+    sleep 5
+  done
+  cat "${RESTORE_DIR}/showcase-auth.dump" | "${SHOWCASE_COMPOSE[@]}" exec -T auth-db pg_restore \
+    -U authme -d authme --clean --if-exists --no-owner
 fi
 
 if [[ "${DEPLOYMENT_MODE:-docker}" == "native" ]]; then

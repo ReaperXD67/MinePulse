@@ -44,6 +44,11 @@ if [[ -f "${SHOWCASE_ENV_FILE}" ]]; then
   SHOWCASE_ROOT="${SHOWCASE_DATA_ROOT:-/var/lib/karixmc/showcase}"
   if [[ "${SHOWCASE_ROOT}" == /* && "${SHOWCASE_ROOT}" != "/" && -d "${SHOWCASE_ROOT}" ]]; then
     SHOWCASE_COMPOSE=(docker compose --env-file "${SHOWCASE_ENV_FILE}" -p karixmc-showcase -f docker-compose.showcase.yml)
+    auth_container_id="$("${SHOWCASE_COMPOSE[@]}" ps -q auth-db)"
+    if [[ -n "${auth_container_id}" ]] && [[ "$(docker inspect --format '{{.State.Status}}' "${auth_container_id}")" == "running" ]]; then
+      "${SHOWCASE_COMPOSE[@]}" exec -T auth-db pg_dump -U authme -d authme -Fc > "${WORK_DIR}/showcase-auth.dump"
+      BACKUP_FILES+=(showcase-auth.dump)
+    fi
     for service in skyforge ember voidcraft; do
       container_id="$("${SHOWCASE_COMPOSE[@]}" ps -q "${service}")"
       if [[ -n "${container_id}" ]] && [[ "$(docker inspect --format '{{.State.Status}}' "${container_id}")" == "running" ]]; then

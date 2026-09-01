@@ -16,22 +16,27 @@ These are first-party demonstration worlds. Every marketplace card and profile l
 
 1. Open `https://karixmc.pl`, create an account, and open Account.
 2. Generate a Minecraft link code.
-3. Join `karixmc.pl` with a paid Java Edition account on Minecraft 1.21.4.
-4. Run `/karixmc link CODE` in chat. The code is short-lived and single-use.
-5. Move and play normally. Run `/points` and `/pool` to see the wallet and active campaign.
-6. If an activity challenge appears, answer it with `/answer VALUE` before its timer expires.
-7. After earning at least 60 points, open the server profile, purchase the cheapest item, and remain online.
-8. The bridge polls the server-specific purchase queue and executes a vanilla `give` command. If needed, run `/receive` to retry a queued delivery.
-9. Repeat on Ember or Voidcraft to show that each world has its own identity, pool, session history, and delivery queue.
+3. Join `karixmc.pl` with Java Edition. Minecraft 1.21.4 is recommended; ViaVersion and ViaBackwards also accept a broad range of modern Java clients.
+4. On the first connection, run `/register LONG_PASSWORD LONG_PASSWORD`. AuthMe stores a BCrypt hash in the private shared authentication database. Do not reuse the website password.
+5. On later connections, run `/login LONG_PASSWORD`. Registration is shared by all three worlds, although each new connection requires login.
+6. Run `/karixmc link CODE` in chat only after AuthMe reports a successful login. The website code is short-lived and single-use.
+7. Move and play normally. Run `/points` and `/pool` to see the wallet and active campaign.
+8. If an activity challenge appears, answer it with `/answer VALUE` before its timer expires.
+9. After earning at least 60 points, open the server profile, purchase the cheapest item, and remain online.
+10. The bridge polls the server-specific purchase queue and executes a vanilla `give` command. If needed, run `/receive` to retry a queued delivery.
+11. Repeat on Ember or Voidcraft to show that each world has its own identity, pool, session history, and delivery queue.
 
 Nothing is granted merely for connecting. Rewards require a linked account, consent, signed bridge traffic, real activity, non-AFK play, campaign capacity, and any configured challenge response.
 
 ## Architecture and limits
 
 - The website remains on two loopback-only Next.js replicas behind Nginx HTTPS.
-- PostgreSQL and Redis remain private Docker services; no database or cache port is exposed.
+- The website PostgreSQL and Redis services remain private; no database or cache port is exposed.
 - The showcase is a separate Compose project. Only TCP ports 25565–25567 are published.
-- Every Paper instance uses online mode and secure-profile enforcement. Cracked/offline clients are rejected.
+- During the controlled beta, every Paper instance uses offline mode so paid and non-premium Java clients can join. AuthMe blocks movement, chat, inventory access, and KarixMC commands until the player registers or logs in.
+- A dedicated PostgreSQL container stores AuthMe registrations for all three worlds. It is attached only to an internal Docker network and publishes no host port. Passwords use BCrypt with 12 cost rounds and must be 10–64 characters.
+- Offline-mode names are password-protected pseudonyms, not proof of Mojang/Microsoft account ownership. This beta setting must not be marketed as Mojang identity verification.
+- ViaVersion 5.11.0 and ViaBackwards 5.11.0 translate protocol versions. They do not guarantee perfect behavior for every historical release; 1.21.4 remains the reference client.
 - Each world has a distinct 96-character bridge secret. Secrets live only in root-owned `/opt/karixmc/.env.showcase` with mode `0600`; the database stores encrypted values.
 - RCON is enabled only inside the Docker network for consistent save operations. Port 25575 is not published.
 - Each server is capped at 3 GiB of Java heap, 4 GiB container memory, and 2.5 CPUs. The three-server ceiling is 12 GiB and 7.5 vCPU, leaving capacity for the website, PostgreSQL, Redis, the OS, traffic spikes, and backups.
@@ -49,14 +54,16 @@ sudo ./deploy/scripts/install-showcase.sh
 The installer is idempotent. It:
 
 1. verifies the pinned bridge JAR checksum;
-2. creates root-only secrets when `.env.showcase` does not exist;
-3. creates world directories under `/var/lib/karixmc/showcase`;
-4. applies Prisma migrations and reconciles the three stable server records;
-5. hides obsolete store commands and publishes six vanilla-safe demonstration items;
-6. removes seeded demo interactions from the known locked demo accounts;
-7. opens only TCP 25565–25567 in UFW;
-8. starts the three Paper servers through systemd and Docker Compose;
-9. waits for container health and runs the database plus public-directory audit.
+2. downloads pinned AuthMe, ViaVersion, and ViaBackwards releases from their official GitHub projects and verifies exact SHA-256 checksums;
+3. creates or upgrades the root-only `.env.showcase`, including a separate authentication-database password and explicit beta offline-mode switches;
+4. creates world and plugin directories under `/var/lib/karixmc`;
+5. applies Prisma migrations and reconciles the three stable server records;
+6. hides obsolete store commands and publishes six vanilla-safe demonstration items;
+7. removes seeded demo interactions from the known locked demo accounts;
+8. starts AuthMe once to generate version-matched configuration, then points all three worlds at the private shared database and applies the password policy;
+9. opens only TCP 25565–25567 in UFW;
+10. starts the authentication database and three Paper servers through systemd and Docker Compose;
+11. waits for container health and runs the database plus public-directory audit.
 
 Reconciliation preserves real player history, legitimate interactions, purchases, and remaining campaign balances. It does not refill a depleted pool on every run.
 
@@ -70,7 +77,7 @@ sudo docker compose --env-file .env.showcase -p karixmc-showcase -f docker-compo
 sudo ./deploy/scripts/monitor-showcase.sh
 ```
 
-The health timer checks container health, local TCP listeners, and presence of all three stable IDs in the public live-directory endpoint every two minutes. It uses the existing alert webhook when configured.
+The health timer checks the private authentication database, all three Paper containers, local TCP listeners, and presence of all three stable IDs in the public live-directory endpoint every two minutes. It uses the existing alert webhook when configured.
 
 Do not print `.env.showcase`, paste its values into chat, or place it in Git. To rotate bridge secrets, stop the showcase, replace all three values with new independent random strings, run `install-showcase.sh`, then restart. Rotation is all-or-nothing to avoid leaving a database and server with different credentials.
 
@@ -80,6 +87,7 @@ The production backup now includes:
 
 - PostgreSQL in custom `pg_dump` format;
 - uploaded media;
+- the private AuthMe PostgreSQL database in custom `pg_dump` format;
 - the complete showcase data root, including all three worlds and Paper configuration.
 
 Before the world archive is taken, each running server receives `save-off` and `save-all flush`; writes are re-enabled even when the archive command fails. `SHA256SUMS` covers every included artifact. The normal retention, age encryption, and remote-copy settings still apply.
@@ -90,7 +98,18 @@ Restore remains confirmation-gated:
 RESTORE_CONFIRM=RESTORE sudo ./deploy/scripts/restore.sh /absolute/path/to/karixmc-TIMESTAMP.tar.gz
 ```
 
-When a backup contains showcase worlds, restore validates that `SHOWCASE_DATA_ROOT` is a non-root absolute path, stops the showcase, restores exactly that directory, restores ownership, and starts the stack again if it was previously running.
+When a backup contains showcase data, restore validates that `SHOWCASE_DATA_ROOT` is a non-root absolute path, stops the showcase, restores exactly that directory and the AuthMe database, restores ownership, and starts the stack again if it was previously running.
+
+## Ending the non-premium beta
+
+Offline mode is an explicit, reversible beta policy in `/opt/karixmc/.env.showcase`. Before switching back, stop new registrations and tell testers that offline UUIDs are different from Mojang UUIDs. Then set:
+
+```dotenv
+SHOWCASE_ONLINE_MODE=TRUE
+SHOWCASE_ENFORCE_SECURE_PROFILE=TRUE
+```
+
+Run `install-showcase.sh` again and complete a fresh link test with a paid account. Existing website links created from offline UUIDs may need to be unlinked and linked again. AuthMe can remain as an extra login layer, or be removed in a separately tested migration.
 
 ## DDoS and network position
 
@@ -118,9 +137,11 @@ Do not advertise until all of these are true:
 - All three containers are `healthy` and survive a VPS reboot.
 - All three IDs appear in `https://karixmc.pl/api/marketplace/live`.
 - All three cards show unique artwork, the correct join address, `VERIFIED`, `online`, and `Official demo`.
-- A real Java Edition account completes link → active reward → wallet update → store purchase → in-game delivery.
-- Backups contain `showcase-worlds.tar.gz`, checksums verify, and an off-host encrypted copy exists.
+- One paid client and one non-premium client both authenticate; neither can move, chat, run `/karixmc link`, or use inventory before AuthMe login.
+- A real player completes AuthMe login → website link → active reward → wallet update → store purchase → in-game delivery.
+- Registration on Skyforge is recognized on Ember and Voidcraft, while each connection still asks for `/login`.
+- Backups contain `showcase-worlds.tar.gz` and `showcase-auth.dump`, checksums verify, and an off-host encrypted copy exists.
 - UFW exposes no unintended port and RCON is unreachable publicly.
 - Admin MFA and production email are enabled before broad public promotion; these remain separate account-security launch blockers if not yet configured.
 
-The automated audit verifies infrastructure and data integrity. The real-account walkthrough is intentionally manual because generating fake player activity would invalidate the proof the showcase is meant to provide.
+The automated audit verifies infrastructure and data integrity. The real-player walkthrough is intentionally manual because generating fake player activity would invalidate the proof the showcase is meant to provide.

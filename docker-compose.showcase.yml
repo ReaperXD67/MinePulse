@@ -4,12 +4,15 @@ x-paper-common: &paper-common
   image: itzg/minecraft-server:java21@sha256:444ea80e6006ef6da93ae63c0e353d7838c8097bcb037f96d3600736314313d7
   restart: unless-stopped
   init: true
+  depends_on:
+    auth-db:
+      condition: service_healthy
   environment: &paper-environment
     EULA: "TRUE"
     TYPE: "PAPER"
     VERSION: "1.21.4"
-    ONLINE_MODE: "TRUE"
-    ENFORCE_SECURE_PROFILE: "TRUE"
+    ONLINE_MODE: ${SHOWCASE_ONLINE_MODE:-TRUE}
+    ENFORCE_SECURE_PROFILE: ${SHOWCASE_ENFORCE_SECURE_PROFILE:-TRUE}
     MODE: "survival"
     FORCE_GAMEMODE: "TRUE"
     PVP: "TRUE"
@@ -43,9 +46,35 @@ x-paper-common: &paper-common
     options:
       max-size: "20m"
       max-file: "5"
-  networks: [showcase]
+  networks: [showcase, auth-db]
 
 services:
+  auth-db:
+    image: postgres:17-alpine@sha256:7456ef82e5f5bc43d997f4781bbd7c0d6389bff397564649a356e206ba473aee
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: authme
+      POSTGRES_USER: authme
+      POSTGRES_PASSWORD: ${SHOWCASE_AUTH_DB_PASSWORD:?SHOWCASE_AUTH_DB_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authme -d authme"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    mem_limit: 512m
+    cpus: 0.75
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    networks: [auth-db]
+
   skyforge:
     <<: *paper-common
     ports:
@@ -63,6 +92,9 @@ services:
     volumes:
       - ${SHOWCASE_DATA_ROOT:-/var/lib/karixmc/showcase}/skyforge:/data
       - ./public/downloads/KarixMCBridge-0.6.4.jar:/plugins/KarixMCBridge.jar:ro
+      - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/AuthMe-6.0.0-Paper.jar:/plugins/AuthMe.jar:ro
+      - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ViaVersion-5.11.0.jar:/plugins/ViaVersion.jar:ro
+      - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ViaBackwards-5.11.0.jar:/plugins/ViaBackwards.jar:ro
     mem_limit: 4g
     cpus: 2.5
 
@@ -83,6 +115,9 @@ services:
     volumes:
       - ${SHOWCASE_DATA_ROOT:-/var/lib/karixmc/showcase}/ember:/data
       - ./public/downloads/KarixMCBridge-0.6.4.jar:/plugins/KarixMCBridge.jar:ro
+      - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/AuthMe-6.0.0-Paper.jar:/plugins/AuthMe.jar:ro
+      - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ViaVersion-5.11.0.jar:/plugins/ViaVersion.jar:ro
+      - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ViaBackwards-5.11.0.jar:/plugins/ViaBackwards.jar:ro
     mem_limit: 4g
     cpus: 2.5
 
@@ -103,8 +138,16 @@ services:
     volumes:
       - ${SHOWCASE_DATA_ROOT:-/var/lib/karixmc/showcase}/voidcraft:/data
       - ./public/downloads/KarixMCBridge-0.6.4.jar:/plugins/KarixMCBridge.jar:ro
+      - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/AuthMe-6.0.0-Paper.jar:/plugins/AuthMe.jar:ro
+      - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ViaVersion-5.11.0.jar:/plugins/ViaVersion.jar:ro
+      - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ViaBackwards-5.11.0.jar:/plugins/ViaBackwards.jar:ro
     mem_limit: 4g
     cpus: 2.5
 
 networks:
   showcase:
+  auth-db:
+    internal: true
+
+volumes:
+  auth_postgres_data:
