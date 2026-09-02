@@ -62,7 +62,7 @@ The website prevents the same host and port from being registered twice. Contact
 
 ## Part 3 - Install and configure KarixMCBridge
 
-1. Download `KarixMCBridge-0.6.4.jar` from `https://karixmc.pl/plugin`.
+1. Download `KarixMCBridge-0.6.5.jar` from `https://karixmc.pl/plugin`.
 2. Put the jar in the Minecraft server's `plugins/` directory.
 3. Start Paper once.
 4. Stop Paper after `plugins/KarixMCBridge/config.yml` is created.

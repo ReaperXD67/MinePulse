@@ -39,6 +39,8 @@ for index in "${!EXPECTED_SERVICES[@]}"; do
   for expected_plugin in ProtocolLib AuthMe ViaVersion ViaBackwards KarixMCBridge; do
     grep -Fq "${expected_plugin}" <<<"${plugin_list}" || FAILURES+=("${service} is missing ${expected_plugin}")
   done
+  bridge_version="$("${COMPOSE[@]}" exec -T "${service}" rcon-cli version KarixMCBridge 2>/dev/null || true)"
+  grep -Fq "0.6.5" <<<"${bridge_version}" || FAILURES+=("${service} is not running KarixMCBridge 0.6.5")
 done
 
 LIVE_RESPONSE="$(mktemp)"

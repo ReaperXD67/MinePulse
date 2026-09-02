@@ -4,9 +4,10 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.File;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -43,8 +44,9 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MinePulseBridgePlugin extends JavaPlugin implements Listener, CommandExecutor {
   private static final int MAX_RESPONSE_BYTES = 1024 * 1024;
@@ -79,6 +81,10 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   private long lastHeartbeatBatchAt;
   private long lastPurchasePollAt;
   private long lastConnectionWarningAt;
+  private Plugin authMePlugin;
+  private Method authMeGetInstance;
+  private Method authMeIsAuthenticated;
+  private long lastAuthMeWarningAt;
 
   @Override
   public void onEnable() {
@@ -92,6 +98,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     pluginSecret = connectionValue("MINEPULSE_PLUGIN_SECRET", "plugin-secret", "");
     allowInsecureHttp = connectionBoolean("MINEPULSE_ALLOW_INSECURE_HTTP", "allow-insecure-http", false);
     loadConsent();
+    initializeAuthMeGate();
 
     String configurationProblem = configurationProblem();
     if (configurationProblem != null) {
@@ -159,6 +166,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   @EventHandler
   public void onJoin(PlayerJoinEvent event) {
     Player player = event.getPlayer();
+    if (!isPlayerAuthenticated(player)) return;
     lastLocation.put(player.getUniqueId(), player.getLocation());
     lastActiveAt.put(player.getUniqueId(), now());
     movementScoreSinceHeartbeat.put(player.getUniqueId(), 0);
@@ -190,6 +198,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   @EventHandler
   public void onMove(PlayerMoveEvent event) {
     Player player = event.getPlayer();
+    if (!isPlayerAuthenticated(player)) return;
     Location from = lastLocation.get(player.getUniqueId());
     Location to = event.getTo();
     if (to == null) return;
@@ -210,17 +219,20 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
   @EventHandler
   public void onChat(AsyncPlayerChatEvent event) {
+    if (!isPlayerAuthenticated(event.getPlayer())) return;
     markActive(event.getPlayer());
   }
 
   @EventHandler
   public void onCommandEvent(PlayerCommandPreprocessEvent event) {
+    if (!isPlayerAuthenticated(event.getPlayer())) return;
     markActive(event.getPlayer());
   }
 
   @EventHandler
   public void onInventory(InventoryClickEvent event) {
     if (event.getWhoClicked() instanceof Player player) {
+      if (!isPlayerAuthenticated(player)) return;
       markActive(player);
     }
   }
@@ -235,6 +247,10 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
     if (!(sender instanceof Player player)) {
       sender.sendMessage("Only players can view KarixMC statistics.");
+      return true;
+    }
+    if (!isPlayerAuthenticated(player)) {
+      player.sendMessage(prefix() + ChatColor.YELLOW + "Authenticate with /register or /login before using KarixMC commands.");
       return true;
     }
 
@@ -281,6 +297,10 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   private boolean answerChallenge(CommandSender sender, String[] args) {
     if (!(sender instanceof Player player)) {
       sender.sendMessage("Only players can answer a KarixMC activity check.");
+      return true;
+    }
+    if (!isPlayerAuthenticated(player)) {
+      player.sendMessage(prefix() + ChatColor.YELLOW + "Authenticate with /register or /login before answering activity checks.");
       return true;
     }
 
@@ -331,13 +351,17 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
         saveConsentAsync();
         Bukkit.getScheduler().runTask(this, () -> {
           Player online = Bukkit.getPlayer(playerId);
-          if (online != null) online.sendMessage(prefix() + ChatColor.GREEN + message + " Activity sharing is now enabled; no IP address is sent.");
+          if (online != null && isPlayerAuthenticated(online)) {
+            online.sendMessage(prefix() + ChatColor.GREEN + message + " Activity sharing is now enabled; no IP address is sent.");
+          }
         });
       } catch (Exception error) {
         String detail = safeError(error);
         Bukkit.getScheduler().runTask(this, () -> {
           Player online = Bukkit.getPlayer(playerId);
-          if (online != null) online.sendMessage(prefix() + ChatColor.RED + "Link failed: " + detail);
+          if (online != null && isPlayerAuthenticated(online)) {
+            online.sendMessage(prefix() + ChatColor.RED + "Link failed: " + detail);
+          }
         });
       } finally {
         playerRequestsInFlight.remove(playerId);
@@ -353,6 +377,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     List<JsonObject> heartbeats = new ArrayList<>();
     List<UUID> playerIds = new ArrayList<>();
     for (Player player : Bukkit.getOnlinePlayers()) {
+      if (!isPlayerAuthenticated(player)) continue;
       if (!consentedPlayers.contains(player.getUniqueId())) continue;
       heartbeats.add(buildHeartbeatPayload(player));
       playerIds.add(player.getUniqueId());
@@ -423,7 +448,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
   private void applyHeartbeatResponse(UUID playerId, JsonObject response) {
     Player player = Bukkit.getPlayer(playerId);
-    if (player == null) {
+    if (player == null || !isPlayerAuthenticated(player)) {
       return;
     }
 
@@ -538,7 +563,9 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       } catch (Exception error) {
         Bukkit.getScheduler().runTask(this, () -> {
           Player online = Bukkit.getPlayer(playerId);
-          if (online != null) online.sendMessage(prefix() + ChatColor.RED + "Stats are temporarily unavailable.");
+          if (online != null && isPlayerAuthenticated(online)) {
+            online.sendMessage(prefix() + ChatColor.RED + "Stats are temporarily unavailable.");
+          }
         });
       } finally {
         playerRequestsInFlight.remove(playerId);
@@ -548,7 +575,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
   private void displayStats(UUID playerId, JsonObject response, boolean poolOnly) {
     Player player = Bukkit.getPlayer(playerId);
-    if (player == null) {
+    if (player == null || !isPlayerAuthenticated(player)) {
       return;
     }
     if (response.has("linked") && !response.get("linked").getAsBoolean()) {
@@ -598,7 +625,9 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       } catch (Exception error) {
         Bukkit.getScheduler().runTask(this, () -> {
           Player online = Bukkit.getPlayer(playerId);
-          if (online != null) online.sendMessage(prefix() + ChatColor.RED + "Could not check queued deliveries right now.");
+          if (online != null && isPlayerAuthenticated(online)) {
+            online.sendMessage(prefix() + ChatColor.RED + "Could not check queued deliveries right now.");
+          }
         });
       } finally {
         playerRequestsInFlight.remove(playerId);
@@ -612,7 +641,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       if (requestedBy != null) {
         Bukkit.getScheduler().runTask(this, () -> {
           Player player = Bukkit.getPlayer(requestedBy);
-          if (player != null) {
+          if (player != null && isPlayerAuthenticated(player)) {
             player.sendMessage(prefix() + ChatColor.GRAY + "No queued KarixMC deliveries for you on this server.");
           }
         });
@@ -644,6 +673,9 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
         target = Bukkit.getPlayerExact(playerName);
       }
 
+      if (target != null && !isPlayerAuthenticated(target)) {
+        return;
+      }
       if (requiresOnline && target == null) {
         return;
       }
@@ -802,6 +834,10 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   }
 
   private boolean beginPlayerRequest(Player player, Map<UUID, Long> cooldowns, int cooldownSeconds) {
+    if (!isPlayerAuthenticated(player)) {
+      player.sendMessage(prefix() + ChatColor.YELLOW + "Authenticate with /register or /login first.");
+      return false;
+    }
     UUID playerId = player.getUniqueId();
     long current = now();
     long lastRequest = cooldowns.getOrDefault(playerId, 0L);
@@ -814,6 +850,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   }
 
   private void markActive(Player player) {
+    if (!isPlayerAuthenticated(player)) return;
     lastActiveAt.put(player.getUniqueId(), now());
     activityEventsSinceHeartbeat.compute(player.getUniqueId(), (id, previous) ->
       Math.min(10_000, (previous == null ? 0 : previous) + 1)
@@ -823,6 +860,47 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   private boolean isAfk(Player player, long current) {
     long lastActive = lastActiveAt.getOrDefault(player.getUniqueId(), current);
     return current - lastActive >= policy.afkTimeoutSeconds;
+  }
+
+  private void initializeAuthMeGate() {
+    authMePlugin = Bukkit.getPluginManager().getPlugin("AuthMe");
+    if (authMePlugin == null) {
+      return;
+    }
+    try {
+      Class<?> apiClass = Class.forName(
+        "fr.xephi.authme.api.v3.AuthMeApi",
+        true,
+        authMePlugin.getClass().getClassLoader()
+      );
+      authMeGetInstance = apiClass.getMethod("getInstance");
+      authMeIsAuthenticated = apiClass.getMethod("isAuthenticated", Player.class);
+      getLogger().info("AuthMe detected. KarixMC activity, linking, stats, and deliveries require an authenticated player.");
+    } catch (ReflectiveOperationException | RuntimeException error) {
+      authMeGetInstance = null;
+      authMeIsAuthenticated = null;
+      getLogger().severe("AuthMe was detected but its authentication API is unavailable. KarixMC player operations will fail closed: " + error.getClass().getSimpleName());
+    }
+  }
+
+  private boolean isPlayerAuthenticated(Player player) {
+    if (authMePlugin == null) {
+      return true;
+    }
+    if (!authMePlugin.isEnabled() || authMeGetInstance == null || authMeIsAuthenticated == null) {
+      return false;
+    }
+    try {
+      Object api = authMeGetInstance.invoke(null);
+      return api != null && Boolean.TRUE.equals(authMeIsAuthenticated.invoke(api, player));
+    } catch (ReflectiveOperationException | RuntimeException error) {
+      long current = now();
+      if (current - lastAuthMeWarningAt >= 60) {
+        lastAuthMeWarningAt = current;
+        getLogger().warning("AuthMe authentication check failed; KarixMC blocked the player operation: " + error.getClass().getSimpleName());
+      }
+      return false;
+    }
   }
 
   private void verifyResponse(HttpResponse<?> response, String requestNonce, String body) throws IOException {

@@ -1,9 +1,10 @@
 name: KarixMCBridge
 main: com.minepulse.bridge.MinePulseBridgePlugin
-version: 0.6.4
+version: 0.6.5
 api-version: "1.20"
 author: KarixMC
 description: Verified playtime rewards and purchase delivery bridge for KarixMC.
+softdepend: [AuthMe]
 commands:
   answer:
     description: Answer a website-verified KarixMC activity check.

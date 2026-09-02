@@ -1,13 +1,13 @@
 # KarixMC Complete MVP Testing Guide
 
-Use this document to test the website and KarixMCBridge 0.6.2 before connecting a production domain. Record the tester, date, account, Minecraft name, expected result, actual result, screenshot, and Paper log excerpt for every failed case.
+Use this document to test the website and KarixMCBridge 0.6.5 before connecting a production domain. Record the tester, date, account, Minecraft name, expected result, actual result, screenshot, and Paper log excerpt for every failed case.
 
 ## Test Environment
 
 | Component | Test value |
 | --- | --- |
 | Website | `https://karixmc.pl` |
-| Plugin download | `https://karixmc.pl/downloads/KarixMCBridge-0.6.4.jar` |
+| Plugin download | `https://karixmc.pl/downloads/KarixMCBridge-0.6.5.jar` |
 | Minecraft software | Paper or Purpur 1.20.x/1.21.x |
 | Java | Java 17 or newer; Java 21 recommended |
 | Website accounts | One separate account per tester |
@@ -111,7 +111,7 @@ Pass:
 ## 7. Plugin Installation And Connection
 
 1. Stop Paper and ensure only one KarixMC bridge JAR is in `plugins/`.
-2. Install `KarixMCBridge-0.6.4.jar`.
+2. Install `KarixMCBridge-0.6.5.jar`.
 3. In Creator Studio, rotate the plugin secret if the current secret is unknown.
 4. Download the complete `config.yml` and put it at `plugins/KarixMCBridge/config.yml`.
 5. For the current HTTP beta, the file must contain:
