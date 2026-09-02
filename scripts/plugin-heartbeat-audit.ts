@@ -240,6 +240,20 @@ async function main() {
   );
 
   await agePlayerSession();
+  const concurrentHeartbeats = await Promise.all([
+    signedPost("/api/plugin/heartbeat", heartbeatPayload()),
+    signedPost("/api/plugin/heartbeat", heartbeatPayload())
+  ]);
+  const heartbeatStatuses = concurrentHeartbeats
+    .map((heartbeat) => heartbeat.response.status)
+    .sort((left, right) => left - right);
+  const concurrentlyEarned = concurrentHeartbeats.reduce((sum, heartbeat) => sum + Number(heartbeat.body.earned || 0), 0);
+  assert(
+    heartbeatStatuses[0] === 200 && heartbeatStatuses[1] === 409 && concurrentlyEarned === 30,
+    `Concurrent heartbeats were not serialized: ${JSON.stringify(concurrentHeartbeats.map((heartbeat) => ({ status: heartbeat.response.status, body: heartbeat.body })))}`
+  );
+
+  await agePlayerSession();
   const batch = await signedPost("/api/plugin/heartbeat/batch", {
     serverId,
     pluginVersion: "0.6.0-audit",
@@ -257,7 +271,7 @@ async function main() {
   const storedSession = await prisma.serverSession.findFirstOrThrow({ where: { serverId, userId: player.id, status: "ACTIVE" } });
   const storedPlayer = await prisma.user.findUniqueOrThrow({ where: { id: player.id } });
   assert(!("ipHash" in storedSession), "Server sessions must not expose an IP field");
-  assert(storedPlayer.walletPoints === 180, `Expected wallet 180, received ${storedPlayer.walletPoints}`);
+  assert(storedPlayer.walletPoints === 210, `Expected wallet 210, received ${storedPlayer.walletPoints}`);
 
   console.log(JSON.stringify({
     ok: true,
@@ -273,6 +287,7 @@ async function main() {
       afkBlocking: true,
       oneRewardServerAtATime: true,
       expiredRewardLeaseSwitches: true,
+      concurrentHeartbeatCreditOnce: true,
       batchedHeartbeat: true,
       playerIpNotCollected: true,
       walletPoints: storedPlayer.walletPoints

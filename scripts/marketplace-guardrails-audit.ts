@@ -120,6 +120,43 @@ async function main() {
     assert(storedReviews.length === 1, `Expected one stored review, received ${storedReviews.length}`);
     assert(storedReviews[0].body === "The updated and only verified review.", "The stored review was not updated");
 
+    await prisma.user.update({
+      where: { id: reviewerId },
+      data: { minecraftUuid: crypto.randomUUID(), minecraftName: "GuardrailReviewer", walletPoints: 100 }
+    });
+    const concurrentItem = await prisma.storeItem.create({
+      data: {
+        serverId: replacement.payload.serverId,
+        name: "Concurrent purchase audit item",
+        description: "One-wallet-balance concurrency check.",
+        pricePoints: 100,
+        command: "give {player} minecraft:apple 1"
+      }
+    });
+    const purchaseAttempts = await Promise.all([
+      reviewer.post("/api/player/purchase", { data: { itemId: concurrentItem.id } }),
+      reviewer.post("/api/player/purchase", { data: { itemId: concurrentItem.id } })
+    ]);
+    const purchaseStatuses = purchaseAttempts.map((response) => response.status()).sort((left, right) => left - right);
+    assert(
+      purchaseStatuses[0] === 200 && purchaseStatuses[1] === 400,
+      `Concurrent purchases returned ${purchaseStatuses.join(", ")} instead of one success and one rejection`
+    );
+    const successfulPurchase = purchaseAttempts.find((response) => response.ok());
+    const successfulPurchaseBody = successfulPurchase ? await body(successfulPurchase) : {};
+    assert(
+      String(successfulPurchaseBody.message || "").includes("/receive"),
+      `Purchase success did not explain delivery: ${JSON.stringify(successfulPurchaseBody)}`
+    );
+    const [purchaseCount, purchaseLedgerCount, purchaseBuyer] = await Promise.all([
+      prisma.purchase.count({ where: { buyerId: reviewerId, itemId: concurrentItem.id } }),
+      prisma.pointLedger.count({ where: { userId: reviewerId, type: "PLAYER_SPEND" } }),
+      prisma.user.findUniqueOrThrow({ where: { id: reviewerId }, select: { walletPoints: true } })
+    ]);
+    assert(purchaseCount === 1, `Concurrent requests created ${purchaseCount} purchases`);
+    assert(purchaseLedgerCount === 1, `Concurrent requests created ${purchaseLedgerCount} spend ledgers`);
+    assert(purchaseBuyer.walletPoints === 0, `Concurrent requests left wallet at ${purchaseBuyer.walletPoints}`);
+
     console.log(JSON.stringify({
       ok: true,
       checks: {
@@ -128,7 +165,9 @@ async function main() {
         capVisibleInCreatorStudio: true,
         removedServerFreesSlot: true,
         oneReviewPerPlayerServer: true,
-        existingReviewUpdated: true
+        existingReviewUpdated: true,
+        atomicPurchaseBalance: true,
+        purchaseDeliveryGuidance: true
       }
     }, null, 2));
   } finally {
