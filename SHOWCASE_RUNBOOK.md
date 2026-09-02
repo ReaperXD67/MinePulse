@@ -36,6 +36,7 @@ Nothing is granted merely for connecting. Rewards require a linked account, cons
 - During the controlled beta, every Paper instance uses offline mode so paid and non-premium Java clients can join. AuthMe blocks movement, chat, inventory access, and KarixMC commands until the player registers or logs in.
 - A dedicated PostgreSQL container stores AuthMe registrations for all three worlds. It is attached only to an internal Docker network and publishes no host port. Passwords use BCrypt with 12 cost rounds and must be 10–64 characters.
 - Offline-mode names are password-protected pseudonyms, not proof of Mojang/Microsoft account ownership. This beta setting must not be marketed as Mojang identity verification.
+- AuthMe 5.7.0 is pinned because its Bukkit API declaration is compatible with the Paper 1.21.4 showcase. AuthMe 6.0's Paper-specific build targets a newer Paper API and must not be substituted without upgrading and retesting the game server.
 - ViaVersion 5.11.0 and ViaBackwards 5.11.0 translate protocol versions. They do not guarantee perfect behavior for every historical release; 1.21.4 remains the reference client.
 - Each world has a distinct 96-character bridge secret. Secrets live only in root-owned `/opt/karixmc/.env.showcase` with mode `0600`; the database stores encrypted values.
 - RCON is enabled only inside the Docker network for consistent save operations. Port 25575 is not published.

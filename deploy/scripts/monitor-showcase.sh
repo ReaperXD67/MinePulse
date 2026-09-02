@@ -35,6 +35,10 @@ for index in "${!EXPECTED_SERVICES[@]}"; do
   state="$(docker inspect --format '{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "${container_id}")"
   [[ "${state}" == "running/healthy" ]] || FAILURES+=("${service} is ${state}")
   timeout 3 bash -c "</dev/tcp/127.0.0.1/${port}" 2>/dev/null || FAILURES+=("${service} port ${port} is not accepting TCP connections")
+  plugin_list="$("${COMPOSE[@]}" exec -T "${service}" rcon-cli plugins 2>/dev/null || true)"
+  for expected_plugin in AuthMe ViaVersion ViaBackwards KarixMCBridge; do
+    grep -Fq "${expected_plugin}" <<<"${plugin_list}" || FAILURES+=("${service} is missing ${expected_plugin}")
+  done
 done
 
 LIVE_RESPONSE="$(mktemp)"

@@ -17,10 +17,10 @@ EXPECTED_PLUGIN_SHA256="68F30E479E47D978C6BD037C5F040156694EFEC2153A9A295BD1E9A8
 ACTUAL_PLUGIN_SHA256="$(sha256sum public/downloads/KarixMCBridge-0.6.4.jar | awk '{print toupper($1)}')"
 [[ "${ACTUAL_PLUGIN_SHA256}" == "${EXPECTED_PLUGIN_SHA256}" ]] || { echo "Bridge JAR checksum mismatch" >&2; exit 1; }
 
-AUTHME_VERSION="6.0.0"
+AUTHME_VERSION="5.7.0"
 VIAVERSION_VERSION="5.11.0"
 VIABACKWARDS_VERSION="5.11.0"
-AUTHME_SHA256="58948FCBC697497506257D09D8A7909BF48DE6AEFE7BEC6BA5AB4C41BE41B7B8"
+AUTHME_SHA256="67CC5C1923315CEDC152616ABCE81CF79D004D44CB8FE9AB4D0B262728F23E08"
 VIAVERSION_SHA256="18D19E90FC9467D68128C076630AE8700449C901402A3EF421837CE006BC8CAE"
 VIABACKWARDS_SHA256="B21983D561E3F92DF257683F0133AB6C68EC68175E8ACFD82C6231723BF83587"
 
@@ -119,8 +119,8 @@ download_plugin() {
 }
 
 download_plugin \
-  "AuthMe-${AUTHME_VERSION}-Paper.jar" \
-  "https://github.com/AuthMe/AuthMeReloaded/releases/download/${AUTHME_VERSION}/AuthMe-${AUTHME_VERSION}-Paper.jar" \
+  "AuthMe-${AUTHME_VERSION}.jar" \
+  "https://github.com/AuthMe/AuthMeReloaded/releases/download/${AUTHME_VERSION}/AuthMe-${AUTHME_VERSION}.jar" \
   "${AUTHME_SHA256}"
 download_plugin \
   "ViaVersion-${VIAVERSION_VERSION}.jar" \
@@ -173,6 +173,13 @@ for attempt in {1..72}; do
     && [[ -f "${SHOWCASE_DATA_ROOT}/voidcraft/plugins/AuthMe/config.yml" ]]; then
     break
   fi
+  if "${SHOWCASE_COMPOSE[@]}" logs --no-color --tail=200 skyforge ember voidcraft 2>&1 \
+    | grep -Eq "Could not load plugin 'AuthMe\.jar'|Unsupported API version"; then
+    "${SHOWCASE_COMPOSE[@]}" logs --no-color --tail=200 skyforge ember voidcraft
+    echo "AuthMe failed to load; refusing to leave the offline-mode showcase running." >&2
+    "${SHOWCASE_COMPOSE[@]}" stop skyforge ember voidcraft
+    exit 1
+  fi
   if [[ "${attempt}" -eq 72 ]]; then
     "${SHOWCASE_COMPOSE[@]}" logs --tail=200
     echo "AuthMe did not create its configuration within six minutes." >&2
@@ -213,6 +220,25 @@ configure_authme() {
 configure_authme "${SHOWCASE_DATA_ROOT}/skyforge/plugins/AuthMe/config.yml" "Skyforge Economy"
 configure_authme "${SHOWCASE_DATA_ROOT}/ember/plugins/AuthMe/config.yml" "Ember SMP"
 configure_authme "${SHOWCASE_DATA_ROOT}/voidcraft/plugins/AuthMe/config.yml" "Voidcraft Hardcore"
+
+# Initialize the shared schema with one server before the other two connect.
+"${SHOWCASE_COMPOSE[@]}" up -d skyforge
+for attempt in {1..36}; do
+  skyforge_container_id="$("${SHOWCASE_COMPOSE[@]}" ps -q skyforge)"
+  if [[ -n "${skyforge_container_id}" ]] \
+    && [[ "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "${skyforge_container_id}")" == "healthy" ]] \
+    && "${SHOWCASE_COMPOSE[@]}" exec -T skyforge rcon-cli plugins 2>/dev/null | grep -Fq AuthMe \
+    && "${SHOWCASE_COMPOSE[@]}" exec -T auth-db psql -U authme -d authme -Atc "SELECT to_regclass('public.authme') IS NOT NULL" 2>/dev/null | grep -qx t; then
+    break
+  fi
+  if [[ "${attempt}" -eq 36 ]]; then
+    "${SHOWCASE_COMPOSE[@]}" logs --no-color --tail=250 auth-db skyforge
+    echo "AuthMe did not initialize its shared database within three minutes." >&2
+    "${SHOWCASE_COMPOSE[@]}" stop skyforge
+    exit 1
+  fi
+  sleep 5
+done
 
 systemctl enable --now karixmc-showcase.service
 
