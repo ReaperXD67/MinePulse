@@ -91,7 +91,7 @@ The production backup now includes:
 - the private AuthMe PostgreSQL database in custom `pg_dump` format;
 - the complete showcase data root, including all three worlds and Paper configuration.
 
-Before the world archive is taken, each running server receives `save-off` and `save-all flush`; writes are re-enabled even when the archive command fails. `SHA256SUMS` covers every included artifact. The normal retention, age encryption, and remote-copy settings still apply.
+Before the world archive is taken, each running server receives `save-off` and `save-all flush`, then the three game processes stop briefly so `tar` sees a consistent filesystem. They restart automatically even when the archive command fails; the website and private databases remain online. `SHA256SUMS` covers every included artifact. The normal retention, age encryption, and remote-copy settings still apply.
 
 Restore remains confirmation-gated:
 

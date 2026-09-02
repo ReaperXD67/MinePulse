@@ -15,13 +15,19 @@ WORK_DIR="${BACKUP_DIRECTORY}/${STAMP}"
 COMPOSE=(docker compose --env-file "${ENV_FILE}" -f docker-compose.production.yml)
 SHOWCASE_ENV_FILE="${SHOWCASE_ENV_FILE:-.env.showcase}"
 SHOWCASE_SAVES_PAUSED=()
+SHOWCASE_SERVERS_STOPPED=false
 
 resume_showcase_saves() {
   if [[ "${#SHOWCASE_SAVES_PAUSED[@]}" -eq 0 ]]; then return; fi
-  for service in "${SHOWCASE_SAVES_PAUSED[@]}"; do
-    "${SHOWCASE_COMPOSE[@]}" exec -T "${service}" rcon-cli save-on >/dev/null 2>&1 || true
-  done
+  if [[ "${SHOWCASE_SERVERS_STOPPED}" == "true" ]]; then
+    "${SHOWCASE_COMPOSE[@]}" up -d "${SHOWCASE_SAVES_PAUSED[@]}" >/dev/null 2>&1 || true
+  else
+    for service in "${SHOWCASE_SAVES_PAUSED[@]}"; do
+      "${SHOWCASE_COMPOSE[@]}" exec -T "${service}" rcon-cli save-on >/dev/null 2>&1 || true
+    done
+  fi
   SHOWCASE_SAVES_PAUSED=()
+  SHOWCASE_SERVERS_STOPPED=false
 }
 trap resume_showcase_saves EXIT
 
@@ -57,6 +63,10 @@ if [[ -f "${SHOWCASE_ENV_FILE}" ]]; then
         "${SHOWCASE_COMPOSE[@]}" exec -T "${service}" rcon-cli save-all flush >/dev/null
       fi
     done
+    if [[ "${#SHOWCASE_SAVES_PAUSED[@]}" -gt 0 ]]; then
+      "${SHOWCASE_COMPOSE[@]}" stop "${SHOWCASE_SAVES_PAUSED[@]}" >/dev/null
+      SHOWCASE_SERVERS_STOPPED=true
+    fi
     tar -C "${SHOWCASE_ROOT}" -czf "${WORK_DIR}/showcase-worlds.tar.gz" .
     BACKUP_FILES+=(showcase-worlds.tar.gz)
     resume_showcase_saves
