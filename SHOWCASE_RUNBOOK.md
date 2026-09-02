@@ -33,10 +33,10 @@ Nothing is granted merely for connecting. Rewards require a linked account, cons
 - The website remains on two loopback-only Next.js replicas behind Nginx HTTPS.
 - The website PostgreSQL and Redis services remain private; no database or cache port is exposed.
 - The showcase is a separate Compose project. Only TCP ports 25565–25567 are published.
-- During the controlled beta, every Paper instance uses offline mode so paid and non-premium Java clients can join. AuthMe blocks movement, chat, inventory access, and KarixMC commands until the player registers or logs in.
+- During the controlled beta, every Paper instance uses offline mode so paid and non-premium Java clients can join. AuthMe blocks movement, chat, inventory access, and KarixMC commands until the player registers or logs in; ProtocolLib supplies AuthMe's inventory protection on Paper 1.21.4.
 - A dedicated PostgreSQL container stores AuthMe registrations for all three worlds. It is attached only to an internal Docker network and publishes no host port. Passwords use BCrypt with 12 cost rounds and must be 10–64 characters.
 - Offline-mode names are password-protected pseudonyms, not proof of Mojang/Microsoft account ownership. This beta setting must not be marketed as Mojang identity verification.
-- AuthMe 5.7.0 is pinned because its Bukkit API declaration is compatible with the Paper 1.21.4 showcase. AuthMe 6.0's Paper-specific build targets a newer Paper API and must not be substituted without upgrading and retesting the game server.
+- AuthMe 5.7.0 and ProtocolLib 5.4.0 are pinned because their Bukkit API declarations are compatible with the Paper 1.21.4 showcase. AuthMe 6.0's Paper-specific build targets a newer Paper API and must not be substituted without upgrading and retesting the game server.
 - ViaVersion 5.11.0 and ViaBackwards 5.11.0 translate protocol versions. They do not guarantee perfect behavior for every historical release; 1.21.4 remains the reference client.
 - Each world has a distinct 96-character bridge secret. Secrets live only in root-owned `/opt/karixmc/.env.showcase` with mode `0600`; the database stores encrypted values.
 - RCON is enabled only inside the Docker network for consistent save operations. Port 25575 is not published.
@@ -55,7 +55,7 @@ sudo ./deploy/scripts/install-showcase.sh
 The installer is idempotent. It:
 
 1. verifies the pinned bridge JAR checksum;
-2. downloads pinned AuthMe, ViaVersion, and ViaBackwards releases from their official GitHub projects and verifies exact SHA-256 checksums;
+2. downloads pinned AuthMe, ProtocolLib, ViaVersion, and ViaBackwards releases from their official GitHub projects and verifies exact SHA-256 checksums;
 3. creates or upgrades the root-only `.env.showcase`, including a separate authentication-database password and explicit beta offline-mode switches;
 4. creates world and plugin directories under `/var/lib/karixmc`;
 5. applies Prisma migrations and reconciles the three stable server records;

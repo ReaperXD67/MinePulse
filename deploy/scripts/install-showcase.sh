@@ -18,9 +18,11 @@ ACTUAL_PLUGIN_SHA256="$(sha256sum public/downloads/KarixMCBridge-0.6.4.jar | awk
 [[ "${ACTUAL_PLUGIN_SHA256}" == "${EXPECTED_PLUGIN_SHA256}" ]] || { echo "Bridge JAR checksum mismatch" >&2; exit 1; }
 
 AUTHME_VERSION="5.7.0"
+PROTOCOLLIB_VERSION="5.4.0"
 VIAVERSION_VERSION="5.11.0"
 VIABACKWARDS_VERSION="5.11.0"
 AUTHME_SHA256="67CC5C1923315CEDC152616ABCE81CF79D004D44CB8FE9AB4D0B262728F23E08"
+PROTOCOLLIB_SHA256="EE2E7AB9B5386F2D103081C4D108E61B1035DF2CA692B53D6E2409FB1F5CACCF"
 VIAVERSION_SHA256="18D19E90FC9467D68128C076630AE8700449C901402A3EF421837CE006BC8CAE"
 VIABACKWARDS_SHA256="B21983D561E3F92DF257683F0133AB6C68EC68175E8ACFD82C6231723BF83587"
 
@@ -122,6 +124,10 @@ download_plugin \
   "AuthMe-${AUTHME_VERSION}.jar" \
   "https://github.com/AuthMe/AuthMeReloaded/releases/download/${AUTHME_VERSION}/AuthMe-${AUTHME_VERSION}.jar" \
   "${AUTHME_SHA256}"
+download_plugin \
+  "ProtocolLib-${PROTOCOLLIB_VERSION}.jar" \
+  "https://github.com/dmulloy2/ProtocolLib/releases/download/${PROTOCOLLIB_VERSION}/ProtocolLib.jar" \
+  "${PROTOCOLLIB_SHA256}"
 download_plugin \
   "ViaVersion-${VIAVERSION_VERSION}.jar" \
   "https://github.com/ViaVersion/ViaVersion/releases/download/${VIAVERSION_VERSION}/ViaVersion-${VIAVERSION_VERSION}.jar" \
@@ -227,6 +233,7 @@ for attempt in {1..36}; do
   skyforge_container_id="$("${SHOWCASE_COMPOSE[@]}" ps -q skyforge)"
   if [[ -n "${skyforge_container_id}" ]] \
     && [[ "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "${skyforge_container_id}")" == "healthy" ]] \
+    && "${SHOWCASE_COMPOSE[@]}" exec -T skyforge rcon-cli plugins 2>/dev/null | grep -Fq ProtocolLib \
     && "${SHOWCASE_COMPOSE[@]}" exec -T skyforge rcon-cli plugins 2>/dev/null | grep -Fq AuthMe \
     && "${SHOWCASE_COMPOSE[@]}" exec -T auth-db psql -U authme -d authme -Atc "SELECT to_regclass('public.authme') IS NOT NULL" 2>/dev/null | grep -qx t; then
     break
