@@ -156,6 +156,15 @@ async function main() {
     assert(purchaseCount === 1, `Concurrent requests created ${purchaseCount} purchases`);
     assert(purchaseLedgerCount === 1, `Concurrent requests created ${purchaseLedgerCount} spend ledgers`);
     assert(purchaseBuyer.walletPoints === 0, `Concurrent requests left wallet at ${purchaseBuyer.walletPoints}`);
+    const purchaseAccount = await reviewer.get("/account");
+    const purchaseAccountHtml = (await purchaseAccount.text()).replace(/<!--.*?-->/g, "");
+    assert(purchaseAccount.ok(), `Purchase account view returned ${purchaseAccount.status()}`);
+    assert(purchaseAccountHtml.includes("1 delivery is waiting"), "Account did not summarize the pending delivery");
+    assert(purchaseAccountHtml.includes("/receive"), "Account did not show the manual delivery command");
+    assert(
+      purchaseAccountHtml.includes(serverPayload(3).host),
+      "Account did not identify the server address that owns the pending item"
+    );
 
     console.log(JSON.stringify({
       ok: true,
@@ -167,7 +176,8 @@ async function main() {
         oneReviewPerPlayerServer: true,
         existingReviewUpdated: true,
         atomicPurchaseBalance: true,
-        purchaseDeliveryGuidance: true
+        purchaseDeliveryGuidance: true,
+        pendingPurchaseRecoveryUi: true
       }
     }, null, 2));
   } finally {
