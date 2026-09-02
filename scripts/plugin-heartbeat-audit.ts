@@ -9,6 +9,7 @@ const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:3001";
 const prisma = createScriptPrisma();
 const stamp = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
 const serverId = `heartbeat-audit-${stamp}`;
+const otherServerId = `heartbeat-audit-other-${stamp}`;
 const ownerEmail = `heartbeat-owner-${stamp}@example.test`;
 const playerEmail = `heartbeat-player-${stamp}@example.test`;
 const blockerEmail = `heartbeat-blocker-${stamp}@example.test`;
@@ -120,6 +121,24 @@ async function main() {
       challengeEnabled: false
     }
   });
+  await prisma.server.create({
+    data: {
+      id: otherServerId,
+      ownerId: blocker.id,
+      slug: otherServerId,
+      name: "Other Heartbeat Audit",
+      host: `other.${stamp}.example.test`,
+      port: 25565,
+      version: "1.21.11",
+      description: "Temporary second server for the global reward lease audit.",
+      region: "GLOBAL",
+      tags: "Test",
+      pluginSecret: protectPluginSecret(crypto.randomBytes(32).toString("hex")),
+      pointPool: 1000,
+      rewardRatePerSecond: 1.5,
+      challengeEnabled: false
+    }
+  });
   await prisma.serverSession.createMany({
     data: [
       {
@@ -196,6 +215,31 @@ async function main() {
   assert(wrongSecret.response.status === 401, `Wrong secret returned ${wrongSecret.response.status}`);
 
   await agePlayerSession();
+  await prisma.user.update({
+    where: { id: player.id },
+    data: {
+      activeRewardServerId: otherServerId,
+      activeRewardLeaseUntil: new Date(Date.now() + 60_000)
+    }
+  });
+  const crossServerBlocked = await signedPost("/api/plugin/heartbeat", heartbeatPayload());
+  assert(
+    crossServerBlocked.response.ok && crossServerBlocked.body.rewardState === "OTHER_SERVER_ACTIVE" && crossServerBlocked.body.earned === 0,
+    `A second server reward stream was not blocked: ${JSON.stringify(crossServerBlocked.body)}`
+  );
+
+  await agePlayerSession();
+  await prisma.user.update({
+    where: { id: player.id },
+    data: { activeRewardLeaseUntil: new Date(Date.now() - 1_000) }
+  });
+  const crossServerRecovered = await signedPost("/api/plugin/heartbeat", heartbeatPayload());
+  assert(
+    crossServerRecovered.response.ok && crossServerRecovered.body.rewardState === "EARNING" && crossServerRecovered.body.earned === 30,
+    `An expired reward lease did not switch servers: ${JSON.stringify(crossServerRecovered.body)}`
+  );
+
+  await agePlayerSession();
   const batch = await signedPost("/api/plugin/heartbeat/batch", {
     serverId,
     pluginVersion: "0.6.0-audit",
@@ -213,7 +257,7 @@ async function main() {
   const storedSession = await prisma.serverSession.findFirstOrThrow({ where: { serverId, userId: player.id, status: "ACTIVE" } });
   const storedPlayer = await prisma.user.findUniqueOrThrow({ where: { id: player.id } });
   assert(!("ipHash" in storedSession), "Server sessions must not expose an IP field");
-  assert(storedPlayer.walletPoints === 150, `Expected wallet 150, received ${storedPlayer.walletPoints}`);
+  assert(storedPlayer.walletPoints === 180, `Expected wallet 180, received ${storedPlayer.walletPoints}`);
 
   console.log(JSON.stringify({
     ok: true,
@@ -227,6 +271,8 @@ async function main() {
       quietHeartbeatGrace: true,
       serverSideAfkTimeout: true,
       afkBlocking: true,
+      oneRewardServerAtATime: true,
+      expiredRewardLeaseSwitches: true,
       batchedHeartbeat: true,
       playerIpNotCollected: true,
       walletPoints: storedPlayer.walletPoints
@@ -238,7 +284,7 @@ async function run() {
   try {
     await main();
   } finally {
-    await prisma.server.deleteMany({ where: { id: serverId } });
+    await prisma.server.deleteMany({ where: { id: { in: [serverId, otherServerId] } } });
     await prisma.user.deleteMany({ where: { email: { in: [ownerEmail, playerEmail, blockerEmail] } } });
     await prisma.$disconnect();
   }

@@ -132,6 +132,8 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
             <div className="panel-header compact-heading"><div><p className="eyebrow"><Coins size={14} /> Store</p><h2>Spend earned points</h2><p>Campaign credits cannot be used here. Only points earned by playing can buy these items.</p></div></div>
             <ServerProfileActions
               serverId={server.id}
+              serverName={server.name}
+              joinAddress={serverJoinAddress(server.host, server.port)}
               authenticated={Boolean(user)}
               liked={Boolean(server.likes.length)}
               favorited={Boolean(server.favorites.length)}

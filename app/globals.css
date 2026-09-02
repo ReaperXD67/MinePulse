@@ -5414,6 +5414,55 @@ summary:focus-visible {
   color: var(--cyan);
 }
 
+.purchase-help {
+  display: flex;
+  gap: 11px;
+  margin: 4px 0 8px;
+  border: 1px solid color-mix(in srgb, var(--gold) 32%, transparent);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--gold) 8%, transparent);
+  color: var(--gold);
+}
+
+.purchase-help svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.purchase-help p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.purchase-activity-main small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.purchase-activity-main a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+
+.purchase-activity-main a:hover {
+  color: var(--cyan);
+  text-decoration-color: currentColor;
+}
+
+.purchase-activity-main code,
+.purchase-help code {
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
 .compact-empty {
   min-height: 88px;
   padding: 20px;
@@ -6525,6 +6574,11 @@ button.icon-stat-button:hover {
 
   .activity-row {
     align-items: flex-start;
+  }
+
+  .purchase-activity-row {
+    flex-direction: column;
+    gap: 9px;
   }
 
   .management-card-header {

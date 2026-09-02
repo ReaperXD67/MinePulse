@@ -1,6 +1,6 @@
 # KarixMC Security Model
 
-This document describes the security boundary of the KarixMC website and `KarixMCBridge` 0.6.1. It is a technical operating guide, not a promise that any internet service can be made bug-free.
+This document describes the security boundary of the KarixMC website and `KarixMCBridge` 0.6.5. It is a technical operating guide, not a promise that any internet service can be made bug-free.
 
 ## Trust boundaries
 
@@ -9,6 +9,8 @@ This document describes the security boundary of the KarixMC website and `KarixM
 - A plugin secret is a private signing key. It is shown once, encrypted at rest with AES-256-GCM, and can be rotated. The old key stops working immediately after rotation.
 - Every protocol-v2 plugin request and response uses HMAC-SHA256 over the HTTP method or response status, path, Server ID, timestamp, one-time nonce, and exact body hash.
 - The website rejects stale timestamps, duplicate nonces, altered bodies, invalid signatures, inactive servers, suspended servers, blacklisted servers, oversized messages, and excessive request rates.
+- Each community account can publish one current server address. A partial unique database index enforces the limit during concurrent requests; official platform-operated showcases are exempt.
+- A short, atomic per-player lease permits rewards from only one server at a time. Optimistic heartbeat writes and a unique active-session index stop concurrent requests from crediting the same elapsed interval twice.
 
 ## Player privacy and consent
 
@@ -50,6 +52,7 @@ KarixMC contains this risk by calculating money and challenge state on the websi
 - Uploaded PNG/JPEG files are decoded and re-encoded with metadata removed, pixel and byte limits, and generated local filenames.
 - Media uploads have a persistent per-account request throttle and a hard per-account file and storage quota.
 - Store commands reject control characters and leading slashes, must include `{player}` or `{uuid}`, and permit only those placeholders.
+- Point purchases use an atomic sufficient-balance update, so simultaneous purchases cannot spend the same wallet balance twice.
 - Public output is rendered through React escaping and protected by a restrictive Content Security Policy, frame denial, MIME sniffing protection, and a referrer policy.
 
 ## If a plugin secret leaks

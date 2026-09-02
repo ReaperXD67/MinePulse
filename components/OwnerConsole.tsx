@@ -104,7 +104,8 @@ export function OwnerConsole({
   const [removalConfirmationId, setRemovalConfirmationId] = useState<string | null>(null);
   const refreshSequence = useRef(0);
   const visibleServers = serverState;
-  const canCreateServer = visibleServers.length < MAX_SERVERS_PER_MEMBER;
+  const memberListingCount = visibleServers.filter((server) => !server.isOfficialShowcase).length;
+  const canCreateServer = memberListingCount < MAX_SERVERS_PER_MEMBER;
   const insecureHttpOptIn = requiresInsecureHttpOptIn(appBaseUrl);
 
   const refreshServers = useCallback(async (showError = false) => {
@@ -229,7 +230,7 @@ export function OwnerConsole({
     event.preventDefault();
     if (!canCreateServer) {
       setMessageTone("error");
-      setMessage(`Each account can list at most ${MAX_SERVERS_PER_MEMBER} servers. Remove one before adding another.`);
+      setMessage("Each account can publish one server listing. Remove it before adding another; networks should list their proxy address.");
       return;
     }
     const formElement = event.currentTarget;
@@ -471,9 +472,9 @@ export function OwnerConsole({
       <details className="panel disclosure-panel" open={!visibleServers.length}>
         <summary>
           <span><Server size={18} /><strong>List a new server</strong></span>
-          <small>{visibleServers.length}/{MAX_SERVERS_PER_MEMBER} listings used</small>
+          <small>{memberListingCount}/{MAX_SERVERS_PER_MEMBER} member listing used</small>
         </summary>
-        {!canCreateServer ? <p className="limit-notice">You have reached the two-server limit. Remove an existing listing before publishing another.</p> : null}
+        {!canCreateServer ? <p className="limit-notice">Your account already has a current listing. Remove it before publishing another. If you run a network, list its one public proxy address.</p> : null}
         <form className="form-grid form-section" onInvalid={reportInvalid} onSubmit={createServer}>
           <div className="form-grid two">
             <div className="form-row"><label htmlFor="new-server-name">Name</label><input className="field" id="new-server-name" name="name" placeholder="Crystal SMP" required /></div>
@@ -505,7 +506,7 @@ export function OwnerConsole({
           </div>
           <div className="form-footer">
             <p className={`form-feedback message-${messageTone}`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">{message}</p>
-            <button className="solid-button" disabled={busy || !canCreateServer} type="submit"><Server size={16} /> {busy ? "Publishing..." : canCreateServer ? "Publish draft" : "Two-server limit reached"}</button>
+            <button className="solid-button" disabled={busy || !canCreateServer} type="submit"><Server size={16} /> {busy ? "Publishing..." : canCreateServer ? "Publish draft" : "One-listing limit reached"}</button>
           </div>
         </form>
       </details>

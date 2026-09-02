@@ -246,10 +246,35 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
       const withinPaidCap = paidSlots.some((activeSession) => activeSession.id === session.id);
       const verifiedActive = elapsed > 0 && !afk && challengeOk;
       const effectiveRewardRate = cappedRewardRate(freshServer.rewardRatePerSecond);
-      const rewardable =
+      const rewardCandidate =
         verifiedActive && withinPaidCap && freshServer.pointPool > 0 && effectiveRewardRate > 0;
 
-      const rewardState = freshServer.pointPool <= 0
+      let rewardLeaseGranted = false;
+      if (rewardCandidate) {
+        const rewardLeaseSeconds = Math.max(60, Math.min(180, freshServer.heartbeatIntervalSeconds * 3));
+        const rewardLeaseUntil = new Date(now.getTime() + rewardLeaseSeconds * 1000);
+        const rewardLease = await tx.user.updateMany({
+          where: {
+            id: player.id,
+            OR: [
+              { activeRewardServerId: freshServer.id },
+              { activeRewardLeaseUntil: null },
+              { activeRewardLeaseUntil: { lte: now } }
+            ]
+          },
+          data: {
+            activeRewardServerId: freshServer.id,
+            activeRewardLeaseUntil: rewardLeaseUntil
+          }
+        });
+        rewardLeaseGranted = rewardLease.count === 1;
+      }
+
+      const rewardable = rewardCandidate && rewardLeaseGranted;
+
+      const rewardState = rewardCandidate && !rewardLeaseGranted
+        ? "OTHER_SERVER_ACTIVE"
+        : freshServer.pointPool <= 0
         ? "EMPTY_POOL"
         : effectiveRewardRate <= 0
           ? "REWARDS_DISABLED"
@@ -260,7 +285,9 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
               : !challengeOk
                 ? "ACTIVITY_CHECK"
                 : "EARNING";
-      const rewardMessage = rewardState === "EMPTY_POOL"
+      const rewardMessage = rewardState === "OTHER_SERVER_ACTIVE"
+        ? "Rewards are already active on another server. Leave it and wait for its short activity lease to expire before earning here."
+        : rewardState === "EMPTY_POOL"
         ? "Rewards are paused because this server's campaign pool is empty."
         : rewardState === "REWARDS_DISABLED"
           ? "Rewards are currently disabled by the server owner."
@@ -283,8 +310,12 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
           ? Math.max(1, freshServer.botProtectionLevel)
           : 0;
 
-      const updatedSession = await tx.serverSession.update({
-        where: { id: session.id },
+      const sessionWrite = await tx.serverSession.updateMany({
+        where: {
+          id: session.id,
+          status: SessionStatus.ACTIVE,
+          lastHeartbeatAt: session.lastHeartbeatAt
+        },
         data: {
           minecraftName: input.minecraftName,
           lastHeartbeatAt: now,
@@ -305,6 +336,10 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
           challengePassedAt
         }
       });
+      if (sessionWrite.count !== 1) {
+        throw new Response("Heartbeat already processed; retry with the next interval", { status: 409 });
+      }
+      const updatedSession = await tx.serverSession.findUniqueOrThrow({ where: { id: session.id } });
 
       await tx.server.update({
         where: { id: freshServer.id },

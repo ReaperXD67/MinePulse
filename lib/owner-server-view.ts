@@ -29,6 +29,7 @@ export type OwnerServerView = {
   websiteUrl: string | null;
   discordUrl: string | null;
   supportUrl: string | null;
+  isOfficialShowcase: boolean;
   status: string;
   trustStatus: string;
   riskScore: number;
@@ -92,6 +93,7 @@ export function serializeOwnerServer(server: OwnerServerRecord): OwnerServerView
     websiteUrl: server.websiteUrl,
     discordUrl: server.discordUrl,
     supportUrl: server.supportUrl,
+    isOfficialShowcase: server.isOfficialShowcase,
     status: server.status,
     trustStatus: server.trustStatus,
     riskScore: server.riskScore,

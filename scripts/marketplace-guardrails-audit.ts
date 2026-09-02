@@ -71,27 +71,26 @@ async function main() {
     const reviewerId = await register(reviewer, "reviewer");
 
     const first = await createServer(owner, 1);
-    const second = await createServer(owner, 2);
-    assert(first.response.ok() && second.response.ok(), "The first two server listings were not accepted");
+    assert(first.response.ok(), "The first server listing was not accepted");
 
-    const blocked = await createServer(owner, 3);
-    assert(blocked.response.status() === 409, `Third server returned ${blocked.response.status()} instead of 409`);
-    assert(String(blocked.payload.error || "").includes("at most 2"), `Third-server error was unclear: ${JSON.stringify(blocked.payload)}`);
+    const blocked = await createServer(owner, 2);
+    assert(blocked.response.status() === 409, `Second server returned ${blocked.response.status()} instead of 409`);
+    assert(String(blocked.payload.error || "").includes("one current server listing"), `Second-server error was unclear: ${JSON.stringify(blocked.payload)}`);
     const cappedAccount = await owner.get("/account");
     const cappedAccountHtml = await cappedAccount.text();
     const normalizedAccountHtml = cappedAccountHtml.replace(/<!--.*?-->/g, "");
     assert(cappedAccount.ok(), `Capped Creator Studio returned ${cappedAccount.status()}`);
-    assert(normalizedAccountHtml.includes("2/2 listings used"), "Creator Studio did not show the listing usage counter");
-    assert(normalizedAccountHtml.includes("Two-server limit reached"), "Creator Studio did not disable publishing at the cap");
+    assert(normalizedAccountHtml.includes("1/1 member listing used"), "Creator Studio did not show the listing usage counter");
+    assert(normalizedAccountHtml.includes("One-listing limit reached"), "Creator Studio did not disable publishing at the cap");
 
-    const removed = await owner.delete(`/api/owner/servers/${second.payload.serverId}`, { data: {} });
-    assert(removed.ok(), `Could not remove the second listing (${removed.status()})`);
-    const replacement = await createServer(owner, 4);
+    const removed = await owner.delete(`/api/owner/servers/${first.payload.serverId}`, { data: {} });
+    assert(removed.ok(), `Could not remove the first listing (${removed.status()})`);
+    const replacement = await createServer(owner, 3);
     assert(replacement.response.ok(), `A removed listing did not free a slot: ${JSON.stringify(replacement.payload)}`);
 
     await prisma.serverSession.create({
       data: {
-        serverId: first.payload.serverId,
+        serverId: replacement.payload.serverId,
         userId: reviewerId,
         minecraftName: "GuardrailReviewer",
         activeSeconds: 60,
@@ -101,22 +100,22 @@ async function main() {
       }
     });
     await prisma.server.update({
-      where: { id: first.payload.serverId },
+      where: { id: replacement.payload.serverId },
       data: { lastConfigSyncAt: new Date() }
     });
 
     const firstReview = await reviewer.post("/api/marketplace/interact", {
-      data: { serverId: first.payload.serverId, type: "comment", body: "The first version of this verified review." }
+      data: { serverId: replacement.payload.serverId, type: "comment", body: "The first version of this verified review." }
     });
     const secondReview = await reviewer.post("/api/marketplace/interact", {
-      data: { serverId: first.payload.serverId, type: "comment", body: "The updated and only verified review." }
+      data: { serverId: replacement.payload.serverId, type: "comment", body: "The updated and only verified review." }
     });
     assert(firstReview.ok() && secondReview.ok(), "Creating or updating a verified review failed");
     const secondReviewBody = await body(secondReview);
     assert(secondReviewBody.message === "Review updated", `Review update was not identified: ${JSON.stringify(secondReviewBody)}`);
 
     const storedReviews = await prisma.comment.findMany({
-      where: { serverId: first.payload.serverId, userId: reviewerId }
+      where: { serverId: replacement.payload.serverId, userId: reviewerId }
     });
     assert(storedReviews.length === 1, `Expected one stored review, received ${storedReviews.length}`);
     assert(storedReviews[0].body === "The updated and only verified review.", "The stored review was not updated");
@@ -124,8 +123,8 @@ async function main() {
     console.log(JSON.stringify({
       ok: true,
       checks: {
-        firstTwoServersAllowed: true,
-        thirdServerBlocked: true,
+        firstServerAllowed: true,
+        secondServerBlocked: true,
         capVisibleInCreatorStudio: true,
         removedServerFreesSlot: true,
         oneReviewPerPlayerServer: true,

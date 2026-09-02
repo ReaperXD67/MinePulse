@@ -142,6 +142,8 @@ model User {
   friendsPrivate          Boolean   @default(false)
   bio                     String    @default("")
   avatarUrl               String?
+  activeRewardServerId    String?
+  activeRewardLeaseUntil  DateTime?
   lastLoginAt             DateTime?
   passwordChangedAt       DateTime?
   bannedAt                DateTime?
@@ -170,6 +172,8 @@ model User {
   moderationActionsReceived UserModerationAction[] @relation("AccountModerationTarget")
   moderationActionsIssued   UserModerationAction[] @relation("AccountModerationAdmin")
   accountTokens             AccountToken[]
+
+  @@index([activeRewardLeaseUntil])
 }
 
 model AccountToken {

@@ -4,6 +4,7 @@ import { LedgerType, UserRole } from "@/lib/generated/prisma/client";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { routeError } from "@/lib/api";
+import { serverJoinAddress } from "@/lib/server-address";
 
 export const runtime = "nodejs";
 
@@ -28,20 +29,24 @@ export async function POST(request: Request) {
     const result = await prisma.$transaction(async (tx) => {
       const buyer = await tx.user.findUnique({
         where: { id: user.id },
-        select: { id: true, walletPoints: true, minecraftUuid: true, minecraftName: true, username: true }
+        select: { id: true, minecraftUuid: true }
       });
 
-      if (!buyer || buyer.walletPoints < item.pricePoints) {
-        throw new Response("Not enough points", { status: 400 });
-      }
-
-      if (!buyer.minecraftUuid) {
+      if (!buyer?.minecraftUuid) {
         throw new Response("Link your Minecraft account before buying server items", { status: 400 });
       }
 
-      const updatedBuyer = await tx.user.update({
-        where: { id: buyer.id },
+      const charged = await tx.user.updateMany({
+        where: { id: buyer.id, walletPoints: { gte: item.pricePoints } },
         data: { walletPoints: { decrement: item.pricePoints } }
+      });
+      if (charged.count !== 1) {
+        throw new Response("Not enough points", { status: 400 });
+      }
+
+      const updatedBuyer = await tx.user.findUniqueOrThrow({
+        where: { id: buyer.id },
+        select: { walletPoints: true }
       });
 
       await tx.pointLedger.create({
@@ -66,7 +71,11 @@ export async function POST(request: Request) {
       });
     });
 
-    return NextResponse.json({ purchaseId: result.id, message: "Purchase queued" });
+    const address = serverJoinAddress(item.server.host, item.server.port);
+    return NextResponse.json({
+      purchaseId: result.id,
+      message: `Purchase queued for ${item.server.name}. Join ${address}, log in, then use /receive.`
+    });
   } catch (error) {
     return routeError(error);
   }

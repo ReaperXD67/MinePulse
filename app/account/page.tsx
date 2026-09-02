@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Coins, ExternalLink, Heart, RadioTower, ReceiptText, Server, ShieldCheck, Timer } from "lucide-react";
+import { Coins, ExternalLink, Heart, PackageCheck, RadioTower, ReceiptText, Server, ShieldCheck, Timer } from "lucide-react";
 import { OwnerConsole } from "@/components/OwnerConsole";
 import { ProfileForm } from "@/components/ProfileForm";
 import { MinecraftLinkPanel } from "@/components/MinecraftLinkPanel";
@@ -89,6 +89,7 @@ export default async function AccountPage() {
 
   const totalPlay = sessions.reduce((sum, session) => sum + session.activeSeconds, 0);
   const campaignCredits = servers.reduce((sum, server) => sum + server.pointPool, 0);
+  const pendingPurchaseCount = purchases.filter((purchase) => purchase.status === "PENDING").length;
   const friendRows = friendships.map((link) => {
     const latest = link.friend.sessions[0];
     const online = Boolean(
@@ -175,13 +176,35 @@ export default async function AccountPage() {
           <div className="panel-header compact-heading">
             <div><p className="eyebrow"><ReceiptText size={14} /> Activity</p><h2>Recent purchases</h2></div>
           </div>
-          <div className="activity-list">
-            {purchases.map((purchase) => (
-              <div className="activity-row" key={purchase.id}>
-                <div><strong>{purchase.item.name}</strong><span>{purchase.server.name} / {shortDate(purchase.createdAt)}</span></div>
-                <span className={`status-pill status-${purchase.status.toLowerCase()}`}>{purchase.status}</span>
+          {pendingPurchaseCount ? (
+            <div className="purchase-help">
+              <PackageCheck size={19} aria-hidden="true" />
+              <div>
+                <strong>{pendingPurchaseCount} {pendingPurchaseCount === 1 ? "delivery is" : "deliveries are"} waiting</strong>
+                <p>Items stay with the server where you bought them. Join that address, log in, then run <code>/receive</code>.</p>
               </div>
-            ))}
+            </div>
+          ) : null}
+          <div className="activity-list">
+            {purchases.map((purchase) => {
+              const joinAddress = serverJoinAddress(purchase.server.host, purchase.server.port);
+              return (
+                <div className="activity-row purchase-activity-row" key={purchase.id}>
+                  <div className="purchase-activity-main">
+                    <strong>{purchase.item.name}</strong>
+                    <span><Link href={`/servers/${purchase.server.slug}`}>{purchase.server.name}</Link> / {shortDate(purchase.createdAt)}</span>
+                    {purchase.status === "PENDING" ? (
+                      <small>Join <code>{joinAddress}</code>, log in, then use <code>/receive</code>.</small>
+                    ) : purchase.status === "FAILED" || purchase.status === "REFUNDED" ? (
+                      <small>Delivery did not complete; your points were refunded.</small>
+                    ) : (
+                      <small>Delivered in game.</small>
+                    )}
+                  </div>
+                  <span className={`status-pill status-${purchase.status.toLowerCase()}`}>{purchase.status}</span>
+                </div>
+              );
+            })}
             {!purchases.length ? <div className="empty-state compact-empty">Your item purchases will appear here.</div> : null}
           </div>
         </div>

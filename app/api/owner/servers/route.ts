@@ -88,12 +88,12 @@ export async function POST(request: Request) {
     const input = schema.parse(await request.json());
     const { minVersion, maxVersion, ...serverInput } = input;
     const activeListingCount = await prisma.server.count({
-      where: { ownerId: user.id, status: { not: "REMOVED" } }
+      where: { ownerId: user.id, status: { not: "REMOVED" }, isOfficialShowcase: false }
     });
 
     if (activeListingCount >= MAX_SERVERS_PER_MEMBER) {
       throw new Response(
-        `Each account can have at most ${MAX_SERVERS_PER_MEMBER} active or paused server listings. Remove a listing before adding another.`,
+        "Each account can publish one current server listing. Remove it before adding another. Networks should publish their single proxy address.",
         { status: 409 }
       );
     }

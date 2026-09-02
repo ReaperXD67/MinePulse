@@ -10,6 +10,8 @@ type ProfileItem = { id: string; name: string; description: string; pricePoints:
 
 export function ServerProfileActions({
   serverId,
+  serverName,
+  joinAddress,
   authenticated,
   liked,
   favorited,
@@ -18,6 +20,8 @@ export function ServerProfileActions({
   items
 }: {
   serverId: string;
+  serverName: string;
+  joinAddress: string;
   authenticated: boolean;
   liked: boolean;
   favorited: boolean;
@@ -54,13 +58,22 @@ export function ServerProfileActions({
     return request("/api/marketplace/interact", { serverId, type, body });
   }
 
+  async function buy(item: ProfileItem) {
+    const confirmed = window.confirm(
+      `Buy ${item.name} for ${points(item.pricePoints)} points? It will be delivered only on ${serverName} (${joinAddress}).`
+    );
+    if (confirmed) {
+      await request("/api/player/purchase", { itemId: item.id });
+    }
+  }
+
   if (!authenticated) {
     return (
       <div className="profile-action-stack">
         <div className="store-grid">
           {visibleItems.map((item) => (
             <div className="store-profile-card" key={item.id}>
-              <div><strong>{item.name}</strong><p>{item.description}</p><small>{item.requiresOnline ? "Join the server, then use /receive if it does not arrive instantly." : "Can be delivered while offline."}</small></div>
+              <div><strong>{item.name}</strong><p>{item.description}</p><small>{item.requiresOnline ? `Delivery on ${serverName} (${joinAddress}); use /receive after login.` : `Delivered by ${serverName} (${joinAddress}).`}</small></div>
               <span>{points(item.pricePoints)} pts</span>
             </div>
           ))}
@@ -131,8 +144,8 @@ export function ServerProfileActions({
       <div className="store-grid">
         {visibleItems.map((item) => (
           <article className="store-profile-card" key={item.id}>
-            <div><strong>{item.name}</strong><p>{item.description}</p><small>{item.requiresOnline ? "Online delivery" : "Offline-safe delivery"}</small></div>
-            <div><span>{points(item.pricePoints)} earned pts</span><button className="icon-button" type="button" title={`Buy ${item.name}`} aria-label={`Buy ${item.name}`} disabled={busy} onClick={() => request("/api/player/purchase", { itemId: item.id })}><ShoppingBag size={16} /></button></div>
+            <div><strong>{item.name}</strong><p>{item.description}</p><small>{item.requiresOnline ? `Join ${joinAddress}, log in, then use /receive.` : `Delivered by ${serverName}.`}</small></div>
+            <div><span>{points(item.pricePoints)} earned pts</span><button className="icon-button" type="button" title={`Buy ${item.name}`} aria-label={`Buy ${item.name}`} disabled={busy} onClick={() => buy(item)}><ShoppingBag size={16} /></button></div>
           </article>
         ))}
         {!items.length ? <div className="empty-state compact-empty">This server has not published store items yet.</div> : null}
