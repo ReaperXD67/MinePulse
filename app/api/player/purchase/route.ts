@@ -91,16 +91,6 @@ export async function POST(request: Request) {
         throw new Response("Link your Minecraft account before buying server items", { status: 400 });
       }
 
-      const recentPurchases = await tx.purchase.count({
-        where: { buyerId: buyer.id, createdAt: { gte: new Date(Date.now() - 60_000) } }
-      });
-      if (recentPurchases >= MAX_PURCHASE_ATTEMPTS_PER_MINUTE) {
-        throw new Response("Too many purchases. Wait a minute and try again.", {
-          status: 429,
-          headers: { "Retry-After": "60" }
-        });
-      }
-
       const activeCount = await tx.purchase.count({
         where: {
           buyerId: buyer.id,
@@ -113,6 +103,16 @@ export async function POST(request: Request) {
           `You already have ${MAX_ACTIVE_PURCHASES_PER_PLAYER_SERVER} deliveries waiting on this server. Join and use /receive before buying more.`,
           { status: 409 }
         );
+      }
+
+      const recentPurchases = await tx.purchase.count({
+        where: { buyerId: buyer.id, createdAt: { gte: new Date(Date.now() - 60_000) } }
+      });
+      if (recentPurchases >= MAX_PURCHASE_ATTEMPTS_PER_MINUTE) {
+        throw new Response("Too many purchases. Wait a minute and try again.", {
+          status: 429,
+          headers: { "Retry-After": "60" }
+        });
       }
 
       const charged = await tx.user.updateMany({
