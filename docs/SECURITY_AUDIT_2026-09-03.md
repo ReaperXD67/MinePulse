@@ -2,9 +2,9 @@
 
 ## Executive summary
 
-The public-beta application and the three official Minecraft showcase servers were reviewed in the local repository and on the production VPS at `169.58.213.35`. The review found and resolved one critical authorization exposure, several high-impact web and secret-management weaknesses, vulnerable dependencies, ambiguous Minecraft registration guidance, and a concurrent reward-processing edge case.
+The public-beta application and the three official Minecraft showcase servers were reviewed in the local repository and on the production VPS at `169.58.213.35`. The review found and resolved one critical authorization exposure, several high-impact web and secret-management weaknesses, vulnerable dependencies, an unbounded purchase-delivery workflow, ambiguous Minecraft registration guidance, and a concurrent reward-processing edge case.
 
-The website and all three Minecraft servers are healthy after deployment. The automated auth, security-boundary, marketplace, purchase, server-removal, fleet-policy, reward-heartbeat, and showcase audits pass. `npm audit` reports zero known vulnerabilities in both the production and full dependency trees.
+The website and all three Minecraft servers are healthy after deployment. The automated auth, security-boundary, marketplace, bounded purchase-delivery, server-removal, fleet-policy, reward-heartbeat, and showcase audits pass. `npm audit` reports zero known vulnerabilities in both the production and full dependency trees.
 
 Broad public promotion should still wait for three external controls: verified transactional email, mandatory administrator MFA, and off-site backup/alert destinations. Minecraft TCP DDoS coverage must also be confirmed with the VPS provider or added through a Minecraft-aware proxy. These open controls are described below and remain enforced by the production validation gate where applicable.
 
@@ -116,6 +116,17 @@ Broad public promotion should still wait for three external controls: verified t
 - **Mitigation:** Persistent nonce replay rejection, server-authoritative elapsed time, atomic point-pool decrement, one-server reward leases, and plugin rate limits remain active.
 - **False-positive notes:** The original credit remained atomic; the defect was confirmed in response and processing semantics rather than as a demonstrated double-credit.
 
+### KARIX-SEC-010 — Purchase deliveries could grow without a bound or exclusive claim
+
+- **Severity:** High
+- **Status:** Resolved in production
+- **Location:** `app/api/player/purchase/route.ts`; `app/api/plugin/purchases/pull/route.ts`; `app/api/plugin/purchases/ack/route.ts`; `lib/purchase-lifecycle.ts`; plugin 0.6.6
+- **Evidence:** A linked player could repeatedly create durable pending purchases, while the earlier pull/ack workflow had no expiring exclusive claim. Undelivered rows remained in PostgreSQL indefinitely and a retry after a lost acknowledgement could execute a successful Minecraft command again.
+- **Impact:** A user could consume database and polling capacity with an arbitrary backlog, one offline player's rows could delay other players, and a narrow cross-system failure window could duplicate an item command.
+- **Fix:** Purchases now use idempotency keys, a five-successes-per-minute account limit, a maximum of ten active deliveries per player per server, serialized server-side checks, fair per-player polling restricted to authenticated online UUIDs, five-minute exclusive claim tokens, purchase-time price snapshots, and automatic exact refunds after 30 days. Plugin 0.6.6 fsyncs successful command receipts to disk before acknowledgement, retains a bounded 35-day/20,000-entry journal, and fails closed if that journal is unavailable.
+- **Mitigation:** A systemd timer refunds expired work every five minutes, lazy cleanup runs during purchase/pull activity, claims recover after a crashed poller, and failed/delivered acknowledgements are idempotent and bound to the current claim token.
+- **False-positive notes:** The report that items waited “in RAM” was inaccurate—the queue was already durable PostgreSQL data. The durability was useful, but the missing bounds, lifecycle, fairness, and cross-system retry controls were real. Exactly-once execution cannot be made fully transactional across PostgreSQL and a Minecraft console command; the durable receipt journal reduces the residual risk to the small crash interval between command completion and receipt persistence.
+
 ### KARIX-OPS-001 — Minecraft registration error did not explain the policy
 
 - **Severity:** Informational / product reliability
@@ -200,10 +211,12 @@ Broad public promotion should still wait for three external controls: verified t
 - Local: ESLint passed; Next.js 16.3.4 production build and TypeScript checks passed; `git diff --check` passed.
 - Dependencies: full and production-only `npm audit` both returned zero known vulnerabilities from the current lockfile.
 - Production HTTP: HTTPS returned 200; both application replicas returned ready status 200; cross-site mutation returned 403; same-origin mutation returned 200; oversized ordinary API body returned 413; CSP contained a per-request nonce and no inline/eval script allowance.
-- Production application audits: auth, security boundaries, marketplace guardrails, premium order, server removal, admin fleet policy, and plugin heartbeat all passed.
+- Production application audits: auth, security boundaries, marketplace guardrails, bounded purchase delivery, premium order, server removal, admin fleet policy, and plugin heartbeat all passed.
+- Purchase lifecycle: the audit verified idempotent charging, rate and queue caps, fair online-only polling, exclusive expiring claims, stale-token rejection, acknowledgement idempotency, exact snapshot refunds, automatic one-time expiry refunds, claim recovery, and single ownership under concurrent polling.
 - Showcase: three distinct funded official servers and six safe store items passed the application audit; the server monitor passed.
+- Plugin: Skyforge, Ember, and Voidcraft are healthy on KarixMCBridge 0.6.6 with writable durable receipt journals. The public JAR is available over HTTPS.
 - AuthMe: Skyforge, Ember, and Voidcraft each report minimum length 10, maximum length 64, BCRYPT, the exact corrected password message, and zero operator entries.
-- Deployment: a fresh encrypted backup was created before rollout at `/var/backups/karixmc/karixmc-20260903T084834Z.tar.gz.age`; both application replicas and all showcase services were healthy after rollout.
+- Deployment: a fresh encrypted backup was created before rollout at `/var/backups/karixmc/karixmc-20260903T155458Z.tar.gz.age`; both application replicas and all showcase services were healthy after rollout, and the five-minute purchase-expiry timer completed successfully.
 
 ## Retest requirements
 
