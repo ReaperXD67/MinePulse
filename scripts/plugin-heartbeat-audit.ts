@@ -199,6 +199,7 @@ async function main() {
   const afk = await signedPost("/api/plugin/heartbeat", heartbeatPayload({ afk: true, movementScore: 0, activityEvents: 0 }));
   assert(afk.body.rewardState === "AFK" && afk.body.earned === 0, "AFK heartbeat earned points");
 
+  await agePlayerSession();
   const replayNonce = crypto.randomUUID();
   const replayPayload = heartbeatPayload({ afk: true, movementScore: 0, activityEvents: 0 });
   const firstReplayUse = await signedPost("/api/plugin/heartbeat", replayPayload, { nonce: replayNonce });
