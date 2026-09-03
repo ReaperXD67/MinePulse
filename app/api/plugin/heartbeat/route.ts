@@ -159,6 +159,7 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
         session = null;
       }
 
+      const sessionCreated = !session;
       if (!session) {
         session = await tx.serverSession.create({
           data: {
@@ -226,6 +227,9 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
       }
 
       const serverElapsed = Math.max(0, (now.getTime() - session.lastHeartbeatAt.getTime()) / 1000);
+      if (!sessionCreated && serverElapsed < 1) {
+        throw new Response("Heartbeat arrived too soon; retry with the next interval", { status: 409 });
+      }
       const rawElapsed = Math.min(input.reportedSeconds, serverElapsed);
       const elapsed = clampHeartbeatSeconds(rawElapsed);
       const activeWhere: Prisma.ServerSessionWhereInput = {

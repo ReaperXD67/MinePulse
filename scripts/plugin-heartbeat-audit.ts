@@ -163,7 +163,10 @@ async function main() {
   assert(earning.body.rewardState === "EARNING" && earning.body.earned === 30, `Expected 30 EARNING points: ${JSON.stringify(earning.body)}`);
 
   const rapidClaim = await signedPost("/api/plugin/heartbeat", heartbeatPayload({ reportedSeconds: 60 }));
-  assert(rapidClaim.response.ok && rapidClaim.body.earned === 0, "A rapid modified-plugin request claimed unelapsed time");
+  assert(
+    (rapidClaim.response.ok && rapidClaim.body.earned === 0) || rapidClaim.response.status === 409,
+    "A rapid modified-plugin request claimed unelapsed time"
+  );
 
   await agePlayerSession();
   await prisma.server.update({ where: { id: serverId }, data: { rewardRatePerSecond: 9 } });
