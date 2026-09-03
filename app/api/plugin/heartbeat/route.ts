@@ -101,6 +101,22 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
     hourStart.setMinutes(0, 0, 0);
     const cutoff = new Date(now.getTime() - 60 * 1000);
     const result = await prisma.$transaction(async (tx) => {
+      const [heartbeatLock] = await tx.$queryRaw<Array<{ acquired: boolean }>>`
+        SELECT pg_try_advisory_xact_lock(hashtextextended(${`reward-heartbeat:${player.id}`}, 0)) AS acquired
+      `;
+      if (!heartbeatLock?.acquired) {
+        throw new Response("Another heartbeat is already being processed; retry with the next interval", { status: 409 });
+      }
+
+      const freshPlayer = await tx.user.findUniqueOrThrow({
+        where: { id: player.id },
+        select: {
+          walletPoints: true,
+          level: true,
+          lifetimeEarnedPoints: true
+        }
+      });
+
       const freshServer = await tx.server.findUnique({
         where: { id: server.id },
         select: {
@@ -379,7 +395,7 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
         });
       }
 
-      let balanceAfter = player.walletPoints;
+      let balanceAfter = freshPlayer.walletPoints;
       if (earned > 0) {
         const funded = await tx.server.updateMany({
           where: { id: freshServer.id, pointPool: { gte: earned } },
