@@ -12,7 +12,14 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
@@ -51,6 +58,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class MinePulseBridgePlugin extends JavaPlugin implements Listener, CommandExecutor {
   private static final int MAX_RESPONSE_BYTES = 1024 * 1024;
   private static final int MAX_HEARTBEATS_PER_BATCH = 200;
+  private static final int MAX_DELIVERY_RECEIPTS = 20_000;
+  private static final long DELIVERY_RECEIPT_RETENTION_SECONDS = 35L * 24 * 60 * 60;
   private static final String CONSENT_VERSION = "2026-07-28";
   private final Gson gson = new Gson();
   private final Map<UUID, Location> lastLocation = new ConcurrentHashMap<>();
@@ -67,16 +76,19 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
   private final Map<UUID, Long> lastLinkRequestAt = new ConcurrentHashMap<>();
   private final Set<UUID> playerRequestsInFlight = ConcurrentHashMap.newKeySet();
   private final Set<UUID> consentedPlayers = ConcurrentHashMap.newKeySet();
+  private final Map<String, Long> deliveredPurchaseReceipts = new ConcurrentHashMap<>();
   private final AtomicBoolean heartbeatInFlight = new AtomicBoolean();
   private final AtomicBoolean purchasePollInFlight = new AtomicBoolean();
   private final AtomicBoolean policySyncInFlight = new AtomicBoolean();
   private final AtomicLong consentRevision = new AtomicLong();
   private final Object consentFileLock = new Object();
+  private final Object deliveryReceiptFileLock = new Object();
   private HttpClient http;
   private String apiBaseUrl;
   private String serverId;
   private String pluginSecret;
   private boolean allowInsecureHttp;
+  private volatile boolean deliveryReceiptsReady;
   private volatile PluginPolicy policy = PluginPolicy.defaults();
   private long lastHeartbeatBatchAt;
   private long lastPurchasePollAt;
@@ -98,6 +110,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     pluginSecret = connectionValue("MINEPULSE_PLUGIN_SECRET", "plugin-secret", "");
     allowInsecureHttp = connectionBoolean("MINEPULSE_ALLOW_INSECURE_HTTP", "allow-insecure-http", false);
     loadConsent();
+    loadDeliveryReceipts();
     initializeAuthMeGate();
 
     String configurationProblem = configurationProblem();
@@ -137,6 +150,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     lastLinkRequestAt.clear();
     playerRequestsInFlight.clear();
     consentedPlayers.clear();
+    deliveredPurchaseReceipts.clear();
   }
 
   private void registerCommand(String name) {
@@ -158,7 +172,11 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     if (current - lastPurchasePollAt >= policy.purchasePollSeconds) {
       lastPurchasePollAt = current;
       if (purchasePollInFlight.compareAndSet(false, true)) {
-        Bukkit.getScheduler().runTaskAsynchronously(this, this::pollPurchases);
+        List<UUID> onlinePlayerIds = Bukkit.getOnlinePlayers().stream()
+          .filter(this::isPlayerAuthenticated)
+          .map(Player::getUniqueId)
+          .toList();
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> pollPurchases(onlinePlayerIds));
       }
     }
   }
@@ -595,13 +613,16 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     }
   }
 
-  private void pollPurchases() {
+  private void pollPurchases(List<UUID> onlinePlayerIds) {
     if (!configured()) {
       purchasePollInFlight.set(false);
       return;
     }
     JsonObject payload = credentials();
     payload.addProperty("limit", 25);
+    JsonArray onlineMinecraftUuids = new JsonArray();
+    onlinePlayerIds.forEach(playerId -> onlineMinecraftUuids.add(playerId.toString()));
+    payload.add("onlineMinecraftUuids", onlineMinecraftUuids);
 
     try {
       deliverPulledPurchases(post("/api/plugin/purchases/pull", payload), null);
@@ -655,12 +676,26 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
   private void deliverPurchase(JsonObject purchase) {
     String purchaseId = purchase.get("id").getAsString();
+    String claimToken = purchase.has("claimToken") && !purchase.get("claimToken").isJsonNull()
+      ? purchase.get("claimToken").getAsString()
+      : "";
     String command = purchase.get("command").getAsString();
     String item = purchase.has("item") ? purchase.get("item").getAsString() : "KarixMC item";
     String playerName = purchase.has("player") ? purchase.get("player").getAsString() : "";
     String uuid = purchase.has("uuid") && !purchase.get("uuid").isJsonNull() ? purchase.get("uuid").getAsString() : "";
     boolean requiresOnline = !purchase.has("requiresOnline") || purchase.get("requiresOnline").getAsBoolean();
     Bukkit.getScheduler().runTask(this, () -> {
+      if (!deliveryReceiptsReady) {
+        warnConnection("Purchase delivery is paused because durable receipt storage is unavailable.");
+        return;
+      }
+      if (deliveredPurchaseReceipts.containsKey(purchaseId)) {
+        Bukkit.getScheduler().runTaskAsynchronously(this, () ->
+          acknowledge(purchaseId, claimToken, true, "Previously executed; durable receipt confirmed")
+        );
+        return;
+      }
+
       Player target = null;
       if (!uuid.isBlank()) {
         try {
@@ -690,6 +725,10 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
         message = safeError(error);
       }
 
+      if (delivered && !rememberDeliveredPurchase(purchaseId)) {
+        getLogger().severe("Delivered purchase " + purchaseId + " but could not persist its duplicate-delivery receipt. Keep this server running and restore disk access before restarting.");
+      }
+
       if (target != null) {
         target.sendMessage(prefix() + (delivered ? ChatColor.GREEN : ChatColor.RED)
           + (delivered ? "Delivered " : "Could not deliver ") + item + ".");
@@ -697,13 +736,16 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
       boolean finalDelivered = delivered;
       String finalMessage = message;
-      Bukkit.getScheduler().runTaskAsynchronously(this, () -> acknowledge(purchaseId, finalDelivered, finalMessage));
+      Bukkit.getScheduler().runTaskAsynchronously(this, () -> acknowledge(purchaseId, claimToken, finalDelivered, finalMessage));
     });
   }
 
-  private void acknowledge(String purchaseId, boolean delivered, String message) {
+  private void acknowledge(String purchaseId, String claimToken, boolean delivered, String message) {
     JsonObject payload = credentials();
     payload.addProperty("purchaseId", purchaseId);
+    if (claimToken != null && !claimToken.isBlank()) {
+      payload.addProperty("claimToken", claimToken);
+    }
     payload.addProperty("status", delivered ? "DELIVERED" : "FAILED");
     payload.addProperty("message", message);
     try {
@@ -960,6 +1002,114 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     } catch (IllegalArgumentException error) {
       return null;
     }
+  }
+
+  private void loadDeliveryReceipts() {
+    Path path = new File(getDataFolder(), "delivery-receipts.log").toPath();
+    if (!Files.isRegularFile(path)) {
+      try {
+        if (!getDataFolder().exists() && !getDataFolder().mkdirs()) {
+          throw new IOException("Could not create plugin data directory");
+        }
+        try (FileChannel channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)) {
+          channel.force(true);
+        }
+        deliveryReceiptsReady = true;
+      } catch (IOException error) {
+        deliveryReceiptsReady = false;
+        getLogger().severe("Could not initialize purchase delivery receipts; deliveries are blocked until the plugin data directory is writable: " + safeError(error));
+      }
+      return;
+    }
+    synchronized (deliveryReceiptFileLock) {
+      try {
+        for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
+          String[] parts = line.trim().split(" ", 2);
+          if (parts.length != 2 || !validPurchaseId(parts[1])) continue;
+          try {
+            long deliveredAt = Long.parseLong(parts[0]);
+            deliveredPurchaseReceipts.merge(parts[1], deliveredAt, Math::max);
+          } catch (NumberFormatException ignored) {
+            // Ignore a partial final line or malformed legacy record.
+          }
+        }
+        if (pruneDeliveryReceipts()) {
+          rewriteDeliveryReceipts(path);
+        }
+        deliveryReceiptsReady = true;
+        getLogger().info("Loaded " + deliveredPurchaseReceipts.size() + " durable purchase delivery receipts.");
+      } catch (IOException error) {
+        deliveryReceiptsReady = false;
+        getLogger().severe("Could not load purchase delivery receipts; deliveries are blocked until the file is readable: " + safeError(error));
+      }
+    }
+  }
+
+  private boolean rememberDeliveredPurchase(String purchaseId) {
+    if (!validPurchaseId(purchaseId)) return false;
+    synchronized (deliveryReceiptFileLock) {
+      if (deliveredPurchaseReceipts.containsKey(purchaseId)) return true;
+      long deliveredAt = now();
+      deliveredPurchaseReceipts.put(purchaseId, deliveredAt);
+      try {
+        if (!getDataFolder().exists() && !getDataFolder().mkdirs()) {
+          throw new IOException("Could not create plugin data directory");
+        }
+        Path path = new File(getDataFolder(), "delivery-receipts.log").toPath();
+        if (pruneDeliveryReceipts()) {
+          rewriteDeliveryReceipts(path);
+        } else {
+          byte[] record = (deliveredAt + " " + purchaseId + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
+          try (FileChannel channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)) {
+            ByteBuffer buffer = ByteBuffer.wrap(record);
+            while (buffer.hasRemaining()) channel.write(buffer);
+            channel.force(true);
+          }
+        }
+        return true;
+      } catch (IOException error) {
+        deliveryReceiptsReady = false;
+        warnConnection("Could not persist purchase delivery receipt: " + safeError(error));
+        return false;
+      }
+    }
+  }
+
+  private boolean pruneDeliveryReceipts() {
+    long cutoff = now() - DELIVERY_RECEIPT_RETENTION_SECONDS;
+    boolean changed = deliveredPurchaseReceipts.entrySet().removeIf(entry -> entry.getValue() < cutoff);
+    if (deliveredPurchaseReceipts.size() > MAX_DELIVERY_RECEIPTS) {
+      List<Map.Entry<String, Long>> oldestFirst = deliveredPurchaseReceipts.entrySet().stream()
+        .sorted(Map.Entry.comparingByValue())
+        .toList();
+      int removeCount = oldestFirst.size() - MAX_DELIVERY_RECEIPTS;
+      for (int index = 0; index < removeCount; index++) {
+        deliveredPurchaseReceipts.remove(oldestFirst.get(index).getKey(), oldestFirst.get(index).getValue());
+      }
+      changed = true;
+    }
+    return changed;
+  }
+
+  private void rewriteDeliveryReceipts(Path path) throws IOException {
+    StringBuilder content = new StringBuilder();
+    deliveredPurchaseReceipts.entrySet().stream()
+      .sorted(Map.Entry.comparingByValue())
+      .forEach(entry -> content.append(entry.getValue()).append(' ').append(entry.getKey()).append(System.lineSeparator()));
+    Path temporary = path.resolveSibling(path.getFileName() + ".tmp");
+    Files.writeString(temporary, content, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+    try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.WRITE)) {
+      channel.force(true);
+    }
+    try {
+      Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+    } catch (AtomicMoveNotSupportedException ignored) {
+      Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING);
+    }
+  }
+
+  private boolean validPurchaseId(String value) {
+    return value != null && value.matches("[A-Za-z0-9_-]{10,100}");
   }
 
   private void loadConsent() {

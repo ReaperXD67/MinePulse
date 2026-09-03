@@ -123,10 +123,10 @@ Creator Studio shows a public `server-id` and generates a private `plugin-secret
 Important endpoints:
 
 - `POST /api/plugin/heartbeat` rewards verified player activity and returns wallet/pool status.
-- `POST /api/plugin/purchases/pull` returns pending commands for a server.
-- `POST /api/plugin/purchases/ack` confirms delivery or refunds failed purchases.
+- `POST /api/plugin/purchases/pull` fairly leases eligible pending commands for a server.
+- `POST /api/plugin/purchases/ack` claim-safely confirms delivery or refunds the purchase-time price.
 
-Version 0.6.5 batches linked-player activity, syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, tracks the last verified activity across heartbeats, and uses website-generated arithmetic `/answer` challenges. When AuthMe is installed, the bridge fails closed until the player has completed `/register` or `/login`, including for rewards, account linking, statistics, and purchase delivery. The retired `/minepulse` alias is no longer registered. Quiet heartbeats continue earning until the configured AFK timeout actually expires. Every plugin request and response is authenticated with HMAC-SHA256, a timestamp, and a persisted one-time nonce. The plugin never sends player IP addresses. KarixMC calculates elapsed time, reward rates, campaign deductions, challenges, and wallet changes on the website; the plugin never directly edits balances.
+Version 0.6.6 batches linked-player activity, syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, tracks the last verified activity across heartbeats, and uses website-generated arithmetic `/answer` challenges. Purchase commands use fair expiring claims and a durable plugin-side receipt journal so failed acknowledgements do not re-run an already recorded delivery. When AuthMe is installed, the bridge fails closed until the player has completed `/register` or `/login`, including for rewards, account linking, statistics, and purchase delivery. The retired `/minepulse` alias is no longer registered. Quiet heartbeats continue earning until the configured AFK timeout actually expires. Every plugin request and response is authenticated with HMAC-SHA256, a timestamp, and a persisted one-time nonce. The plugin never sends player IP addresses. KarixMC calculates elapsed time, reward rates, campaign deductions, challenges, and wallet changes on the website; the plugin never directly edits balances.
 
 ## Plugin Build
 

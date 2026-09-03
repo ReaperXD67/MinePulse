@@ -1,0 +1,13 @@
+[Unit]
+Description=Refund expired KarixMC purchase deliveries
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=karixmc
+WorkingDirectory=/opt/karixmc
+ExecStart=/usr/bin/docker compose --env-file /opt/karixmc/.env.production -f /opt/karixmc/docker-compose.production.yml run --rm --no-deps migrate npm run purchases:expire
+TimeoutStartSec=300
+Nice=10

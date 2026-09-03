@@ -11,10 +11,10 @@ PRODUCTION_ENV_FILE="${APP_ENV_FILE:-${APP_DIR}/.env.production}"
 SHOWCASE_ENV_FILE="${SHOWCASE_ENV_FILE:-${APP_DIR}/.env.showcase}"
 cd "${APP_DIR}"
 test -f "${PRODUCTION_ENV_FILE}" || { echo "${PRODUCTION_ENV_FILE} is missing" >&2; exit 1; }
-test -f public/downloads/KarixMCBridge-0.6.5.jar || { echo "KarixMCBridge-0.6.5.jar is missing" >&2; exit 1; }
+test -f public/downloads/KarixMCBridge-0.6.6.jar || { echo "KarixMCBridge-0.6.6.jar is missing" >&2; exit 1; }
 
-EXPECTED_PLUGIN_SHA256="22E93F468A8AE5889B7A5C3C75AEBFB772E63B053BAEC62DEFFA1E395BFA86A0"
-ACTUAL_PLUGIN_SHA256="$(sha256sum public/downloads/KarixMCBridge-0.6.5.jar | awk '{print toupper($1)}')"
+EXPECTED_PLUGIN_SHA256="C5839C1F74D6ACF4A53F3724BA7231877E9A52CF81571CB3C047FDBD35A7AC9F"
+ACTUAL_PLUGIN_SHA256="$(sha256sum public/downloads/KarixMCBridge-0.6.6.jar | awk '{print toupper($1)}')"
 [[ "${ACTUAL_PLUGIN_SHA256}" == "${EXPECTED_PLUGIN_SHA256}" ]] || { echo "Bridge JAR checksum mismatch" >&2; exit 1; }
 
 AUTHME_VERSION="5.7.0"

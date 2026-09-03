@@ -14,9 +14,11 @@ install -m 0644 "${APP_DIR}/deploy/systemd/karixmc-health.service" /etc/systemd/
 install -m 0644 "${APP_DIR}/deploy/systemd/karixmc-health.timer" /etc/systemd/system/karixmc-health.timer
 install -m 0644 "${APP_DIR}/deploy/systemd/karixmc-showcase-health.service" /etc/systemd/system/karixmc-showcase-health.service
 install -m 0644 "${APP_DIR}/deploy/systemd/karixmc-showcase-health.timer" /etc/systemd/system/karixmc-showcase-health.timer
+install -m 0644 "${APP_DIR}/deploy/systemd/karixmc-purchase-expiry.service" /etc/systemd/system/karixmc-purchase-expiry.service
+install -m 0644 "${APP_DIR}/deploy/systemd/karixmc-purchase-expiry.timer" /etc/systemd/system/karixmc-purchase-expiry.timer
 
 systemctl daemon-reload
-systemctl enable --now karixmc-backup.timer karixmc-health.timer
+systemctl enable --now karixmc-backup.timer karixmc-health.timer karixmc-purchase-expiry.timer
 if [[ -f "${APP_DIR}/.env.showcase" ]]; then
   systemctl enable --now karixmc-showcase-health.timer
 else

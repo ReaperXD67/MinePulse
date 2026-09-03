@@ -1,6 +1,6 @@
 # KarixMC Security Model
 
-This document describes the security boundary of the KarixMC website and `KarixMCBridge` 0.6.5. It is a technical operating guide, not a promise that any internet service can be made bug-free.
+This document describes the security boundary of the KarixMC website and `KarixMCBridge` 0.6.6. It is a technical operating guide, not a promise that any internet service can be made bug-free.
 
 ## Trust boundaries
 

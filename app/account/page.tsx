@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { serverJoinAddress } from "@/lib/server-address";
 import { safeMediaPath } from "@/lib/server-profile";
 import { serverNowMs } from "@/lib/server-time";
+import { PurchaseStatus } from "@/lib/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -26,14 +27,20 @@ export default async function AccountPage() {
   const renderedAt = serverNowMs();
   const activeAuthSessions = await listActiveSessions(user.id, auth.sessionId);
 
-  const [profile, purchases, sessions, favorites, ledger, servers, billing, tickets, friendships] =
+  const [profile, purchases, pendingPurchaseCount, sessions, favorites, ledger, servers, billing, tickets, friendships] =
     await Promise.all([
       prisma.user.findUnique({ where: { id: user.id } }),
       prisma.purchase.findMany({
         where: { buyerId: user.id },
         include: { server: true, item: true },
         orderBy: { createdAt: "desc" },
-        take: 8
+        take: 20
+      }),
+      prisma.purchase.count({
+        where: {
+          buyerId: user.id,
+          status: { in: [PurchaseStatus.PENDING, PurchaseStatus.PROCESSING] }
+        }
       }),
       prisma.serverSession.findMany({
         where: { userId: user.id },
@@ -89,7 +96,6 @@ export default async function AccountPage() {
 
   const totalPlay = sessions.reduce((sum, session) => sum + session.activeSeconds, 0);
   const campaignCredits = servers.reduce((sum, server) => sum + server.pointPool, 0);
-  const pendingPurchaseCount = purchases.filter((purchase) => purchase.status === "PENDING").length;
   const friendRows = friendships.map((link) => {
     const latest = link.friend.sessions[0];
     const online = Boolean(
@@ -181,7 +187,7 @@ export default async function AccountPage() {
               <PackageCheck size={19} aria-hidden="true" />
               <div>
                 <strong>{pendingPurchaseCount} {pendingPurchaseCount === 1 ? "delivery is" : "deliveries are"} waiting</strong>
-                <p>Items stay with the server where you bought them. Join that address, log in, then run <code>/receive</code>.</p>
+                <p>Items stay with the server where you bought them. Join that address, log in, then run <code>/receive</code>. You can keep 10 waiting per server; anything unclaimed for 30 days is refunded.</p>
               </div>
             </div>
           ) : null}
@@ -195,13 +201,15 @@ export default async function AccountPage() {
                     <span><Link href={`/servers/${purchase.server.slug}`}>{purchase.server.name}</Link> / {shortDate(purchase.createdAt)}</span>
                     {purchase.status === "PENDING" ? (
                       <small>Join <code>{joinAddress}</code>, log in, then use <code>/receive</code>.</small>
+                    ) : purchase.status === "PROCESSING" ? (
+                      <small>The server reserved this delivery. If it remains here, join <code>{joinAddress}</code> and use <code>/receive</code>.</small>
                     ) : purchase.status === "FAILED" || purchase.status === "REFUNDED" ? (
                       <small>Delivery did not complete; your points were refunded.</small>
                     ) : (
                       <small>Delivered in game.</small>
                     )}
                   </div>
-                  <span className={`status-pill status-${purchase.status.toLowerCase()}`}>{purchase.status}</span>
+                  <span className={`status-pill status-${purchase.status.toLowerCase()}`}>{purchase.status === "PROCESSING" ? "DELIVERING" : purchase.status}</span>
                 </div>
               );
             })}

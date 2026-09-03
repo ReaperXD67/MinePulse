@@ -5222,7 +5222,8 @@ summary:focus-visible {
 .bridge-stale,
 .status-reviewing,
 .status-in_progress,
-.status-pending {
+.status-pending,
+.status-processing {
   border-color: rgba(242, 189, 93, 0.38);
   color: var(--warning);
 }
@@ -5412,6 +5413,11 @@ summary:focus-visible {
 
 .activity-row[href]:hover strong {
   color: var(--cyan);
+}
+
+.status-refunded {
+  border-color: rgba(104, 230, 160, 0.35);
+  color: var(--ok);
 }
 
 .purchase-help {

@@ -1,4 +1,4 @@
-# KarixMC Bridge 0.6.5
+# KarixMC Bridge 0.6.6
 
 The Paper/Spigot plugin connects real Minecraft activity to KarixMC. The visible plugin ID and configuration folder are `KarixMCBridge`; the supported command namespace is `/karixmc`.
 
@@ -11,7 +11,7 @@ The Paper/Spigot plugin connects real Minecraft activity to KarixMC. The visible
 
 ## Install
 
-1. Download `KarixMCBridge-0.6.5.jar` from `/plugin` on the website.
+1. Download `KarixMCBridge-0.6.6.jar` from `/plugin` on the website.
 2. Copy it into the Paper server's `plugins/` directory.
 3. Start Paper once, then stop it after `plugins/KarixMCBridge/config.yml` is created.
 4. In KarixMC, open **Account -> Your servers -> Plugin connection**.
@@ -71,15 +71,15 @@ Only connection credentials remain local because the plugin needs them before it
 
 Players must run the link command before reward activity sharing starts. Unlinked Minecraft players can still play normally and are excluded from heartbeat batches. The plugin sends the linked UUID and name, AFK state, bounded movement and interaction counters, elapsed-time claim, and challenge submission. It does not read or send player IP addresses.
 
-Version 0.6.5 sends bounded batches of at most 200 linked players per heartbeat cycle instead of one HTTP request per player. Large servers are split into multiple sequential chunks. The website remembers the last heartbeat containing qualifying movement or activity and applies the configured AFK timeout across later quiet heartbeats. If AuthMe is installed, KarixMC activity, linking, statistics, challenges, and purchase delivery remain blocked until AuthMe reports that the player is authenticated. The retired `/minepulse` command is no longer registered. Requests and responses use HMAC-SHA256 over the exact body, timestamps, and persisted unique nonces. The website rejects stale, altered, replayed, or wrongly signed messages. Response bodies are size-limited before allocation, repeated log failures are throttled, player command requests use cooldowns, and startup diagnostics identify the exact invalid or missing connection setting without exposing secrets.
+Version 0.6.6 sends bounded batches of at most 200 linked players per heartbeat cycle instead of one HTTP request per player. Large servers are split into multiple sequential chunks. The website remembers the last heartbeat containing qualifying movement or activity and applies the configured AFK timeout across later quiet heartbeats. If AuthMe is installed, KarixMC activity, linking, statistics, challenges, and purchase delivery remain blocked until AuthMe reports that the player is authenticated. The retired `/minepulse` command is no longer registered. Requests and responses use HMAC-SHA256 over the exact body, timestamps, and persisted unique nonces. The website rejects stale, altered, replayed, or wrongly signed messages. Response bodies are size-limited before allocation, repeated log failures are throttled, player command requests use cooldowns, and startup diagnostics identify the exact invalid or missing connection setting without exposing secrets.
 
 No plugin can make a server owner unable to modify software on a machine they control. A dishonest owner can fabricate activity inputs or automate a visible arithmetic question. KarixMC limits the damage by making server time, rates, balances, player caps, challenge state, pool deductions, nonce history, reports, trust states, and enforcement website-authoritative. High-value launch phases should add behavioral fraud analytics and manual review; this is detection and containment, not impossible-to-bypass attestation.
 
 ## Purchase Delivery
 
-Store commands support `{player}` and `{uuid}` placeholders. The bridge polls pending purchases, dispatches commands as console, and acknowledges delivery. Failed delivery refunds the player's earned points.
+Store commands support `{player}` and `{uuid}` placeholders. The bridge polls only deliveries whose players are online, leases each purchase to one poller, dispatches commands as console, persists a local receipt before acknowledging success, and skips commands already present in that receipt journal. Failed delivery refunds the exact price paid.
 
-By default, store items require the player to be online. If the player buys on the website while offline, the purchase remains pending until they join the server. They can run `/receive` to retry delivery immediately.
+By default, store items require the player to be online. If the player buys on the website while offline, the purchase remains pending without blocking other players until they join. They can run `/receive` to retry delivery immediately. Each account can keep at most 10 waiting deliveries per server, new purchase attempts are rate-limited, and unclaimed deliveries are automatically refunded after 30 days.
 
 Example:
 

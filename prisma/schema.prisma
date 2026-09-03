@@ -42,6 +42,7 @@ enum StoreItemStatus {
 
 enum PurchaseStatus {
   PENDING
+  PROCESSING
   DELIVERED
   FAILED
   REFUNDED
@@ -352,21 +353,30 @@ model StoreItem {
 }
 
 model Purchase {
-  id              String         @id @default(cuid())
-  buyerId         String
-  serverId        String
-  itemId          String
-  status          PurchaseStatus @default(PENDING)
-  commandSnapshot String
-  requiresOnline  Boolean        @default(true)
-  createdAt       DateTime       @default(now())
-  deliveredAt     DateTime?
+  id                    String         @id @default(cuid())
+  buyerId               String
+  serverId              String
+  itemId                String
+  status                PurchaseStatus @default(PENDING)
+  requestKey            String?        @unique
+  commandSnapshot       String
+  pricePointsSnapshot   Int
+  requiresOnline        Boolean        @default(true)
+  claimToken            String?        @unique
+  claimExpiresAt        DateTime?
+  lastDeliveryAttemptAt DateTime?
+  deliveryAttempts      Int            @default(0)
+  expiresAt             DateTime       @default(dbgenerated("(CURRENT_TIMESTAMP + '30 days'::interval)"))
+  createdAt             DateTime       @default(now())
+  deliveredAt           DateTime?
 
   buyer  User      @relation("BuyerPurchases", fields: [buyerId], references: [id], onDelete: Cascade)
   server Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
   item   StoreItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
-  @@index([serverId, status])
+  @@index([serverId, status, createdAt])
+  @@index([buyerId, serverId, status])
+  @@index([status, expiresAt])
   @@index([buyerId, createdAt])
 }
 

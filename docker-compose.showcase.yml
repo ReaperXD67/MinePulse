@@ -91,7 +91,7 @@ services:
       MINEPULSE_PLUGIN_SECRET: ${SHOWCASE_SKYFORGE_SECRET:?SHOWCASE_SKYFORGE_SECRET is required}
     volumes:
       - ${SHOWCASE_DATA_ROOT:-/var/lib/karixmc/showcase}/skyforge:/data
-      - ./public/downloads/KarixMCBridge-0.6.5.jar:/plugins/KarixMCBridge.jar:ro
+      - ./public/downloads/KarixMCBridge-0.6.6.jar:/plugins/KarixMCBridge.jar:ro
       - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ProtocolLib-5.4.0.jar:/plugins/ProtocolLib.jar:ro
       - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/AuthMe-5.7.0.jar:/plugins/AuthMe.jar:ro
       - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ViaVersion-5.11.0.jar:/plugins/ViaVersion.jar:ro
@@ -115,7 +115,7 @@ services:
       MINEPULSE_PLUGIN_SECRET: ${SHOWCASE_EMBER_SECRET:?SHOWCASE_EMBER_SECRET is required}
     volumes:
       - ${SHOWCASE_DATA_ROOT:-/var/lib/karixmc/showcase}/ember:/data
-      - ./public/downloads/KarixMCBridge-0.6.5.jar:/plugins/KarixMCBridge.jar:ro
+      - ./public/downloads/KarixMCBridge-0.6.6.jar:/plugins/KarixMCBridge.jar:ro
       - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ProtocolLib-5.4.0.jar:/plugins/ProtocolLib.jar:ro
       - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/AuthMe-5.7.0.jar:/plugins/AuthMe.jar:ro
       - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ViaVersion-5.11.0.jar:/plugins/ViaVersion.jar:ro
@@ -139,7 +139,7 @@ services:
       MINEPULSE_PLUGIN_SECRET: ${SHOWCASE_VOIDCRAFT_SECRET:?SHOWCASE_VOIDCRAFT_SECRET is required}
     volumes:
       - ${SHOWCASE_DATA_ROOT:-/var/lib/karixmc/showcase}/voidcraft:/data
-      - ./public/downloads/KarixMCBridge-0.6.5.jar:/plugins/KarixMCBridge.jar:ro
+      - ./public/downloads/KarixMCBridge-0.6.6.jar:/plugins/KarixMCBridge.jar:ro
       - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ProtocolLib-5.4.0.jar:/plugins/ProtocolLib.jar:ro
       - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/AuthMe-5.7.0.jar:/plugins/AuthMe.jar:ro
       - ${SHOWCASE_PLUGIN_ROOT:-/var/lib/karixmc/showcase-plugins}/ViaVersion-5.11.0.jar:/plugins/ViaVersion.jar:ro

@@ -60,10 +60,10 @@ export function ServerProfileActions({
 
   async function buy(item: ProfileItem) {
     const confirmed = window.confirm(
-      `Buy ${item.name} for ${points(item.pricePoints)} points? It will be delivered only on ${serverName} (${joinAddress}).`
+      `Buy ${item.name} for ${points(item.pricePoints)} points? It will be delivered only on ${serverName} (${joinAddress}). You can keep up to 10 deliveries waiting per server; anything unclaimed for 30 days is refunded.`
     );
     if (confirmed) {
-      await request("/api/player/purchase", { itemId: item.id });
+      await request("/api/player/purchase", { itemId: item.id, requestId: crypto.randomUUID() });
     }
   }
 
