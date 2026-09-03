@@ -63,6 +63,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
   ]);
 
   const bridgeState = bridgeStateAt(server);
+  const joinAddress = serverJoinAddress(server.host, server.port);
   const premiumPlan = activePremiumPlan(server.premiumPlan, server.premiumUntil);
   const gallery = server.galleryImages.split(",").map((image) => safeMediaPath(image)).filter(Boolean).slice(0, 5);
   const rules = server.rules.split("\n").map((rule) => rule.trim()).filter(Boolean);
@@ -86,7 +87,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
             </div>
             <div className="server-connect-panel">
               <span>Join address</span>
-              <code>{serverJoinAddress(server.host, server.port)}</code>
+              <code>{joinAddress}</code>
               <div className="tag-row"><span className="tag">{server.version}</span><span className="tag">{server.region}</span>{server.tags.split(",").map((tag) => <span className="tag" key={tag}>{tag.trim()}</span>)}</div>
             </div>
           </div>
@@ -109,6 +110,14 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
                 <p className="eyebrow">KarixMC operated test world</p>
                 <h2>Use this server to verify the complete product</h2>
                 <p>This is a real, joinable Paper server operated by KarixMC. It exists so players and creators can test the bridge, rewards, and store delivery before independent communities join the marketplace. Its activity is real; it is not a third-party endorsement or testimonial.</p>
+                <div className="showcase-quickstart">
+                  <strong>First-time Minecraft login</strong>
+                  <ol>
+                    <li>Join <code>{joinAddress}</code>.</li>
+                    <li>Run <code>/register YOUR_PASSWORD YOUR_PASSWORD</code> with 10–64 characters. Use a different password from your website account.</li>
+                    <li>After registering on any one demo world, use <code>/login YOUR_PASSWORD</code> on the other two. Registration is shared; the worlds, reward pools, and delivery queues are not.</li>
+                  </ol>
+                </div>
               </div>
             </aside>
           ) : null}
@@ -133,7 +142,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
             <ServerProfileActions
               serverId={server.id}
               serverName={server.name}
-              joinAddress={serverJoinAddress(server.host, server.port)}
+              joinAddress={joinAddress}
               authenticated={Boolean(user)}
               liked={Boolean(server.likes.length)}
               favorited={Boolean(server.favorites.length)}

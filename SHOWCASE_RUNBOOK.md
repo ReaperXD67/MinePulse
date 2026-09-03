@@ -17,8 +17,8 @@ These are first-party demonstration worlds. Every marketplace card and profile l
 1. Open `https://karixmc.pl`, create an account, and open Account.
 2. Generate a Minecraft link code.
 3. Join `karixmc.pl` with Java Edition. Minecraft 1.21.4 is recommended; ViaVersion and ViaBackwards also accept a broad range of modern Java clients.
-4. On the first connection, run `/register LONG_PASSWORD LONG_PASSWORD`. AuthMe stores a BCrypt hash in the private shared authentication database. Do not reuse the website password.
-5. On later connections, run `/login LONG_PASSWORD`. Registration is shared by all three worlds, although each new connection requires login.
+4. On the first connection, run `/register LONG_PASSWORD LONG_PASSWORD`. The Minecraft password must contain 10–64 visible characters. AuthMe stores a BCrypt hash in the private shared authentication database. Do not reuse the website password.
+5. On later connections—including your first visit to either of the other two demo worlds—run `/login LONG_PASSWORD`. Do not run `/register` again: one registration is deliberately shared by all three worlds, while each connection still requires login.
 6. Run `/karixmc link CODE` in chat only after AuthMe reports a successful login. The website code is short-lived and single-use.
 7. Move and play normally. Run `/points` and `/pool` to see the wallet and active campaign.
 8. If an activity challenge appears, answer it with `/answer VALUE` before its timer expires.
@@ -35,6 +35,7 @@ Nothing is granted merely for connecting. Rewards require a linked account, cons
 - The showcase is a separate Compose project. Only TCP ports 25565–25567 are published.
 - During the controlled beta, every Paper instance uses offline mode so paid and non-premium Java clients can join. AuthMe blocks movement, chat, inventory access, and KarixMC commands until the player registers or logs in; ProtocolLib supplies AuthMe's inventory protection on Paper 1.21.4.
 - A dedicated PostgreSQL container stores AuthMe registrations for all three worlds. It is attached only to an internal Docker network and publishes no host port. Passwords use BCrypt with 12 cost rounds and must be 10–64 characters.
+- Never grant operator status to an offline-mode player name before that exact name is registered and its AuthMe password is secured. An unregistered name can be claimed by any client during the non-premium beta.
 - Offline-mode names are password-protected pseudonyms, not proof of Mojang/Microsoft account ownership. This beta setting must not be marketed as Mojang identity verification.
 - AuthMe 5.7.0 and ProtocolLib 5.4.0 are pinned because their Bukkit API declarations are compatible with the Paper 1.21.4 showcase. AuthMe 6.0's Paper-specific build targets a newer Paper API and must not be substituted without upgrading and retesting the game server.
 - ViaVersion 5.11.0 and ViaBackwards 5.11.0 translate protocol versions. They do not guarantee perfect behavior for every historical release; 1.21.4 remains the reference client.
@@ -141,6 +142,7 @@ Do not advertise until all of these are true:
 - One paid client and one non-premium client both authenticate; neither can move, chat, run `/karixmc link`, or use inventory before AuthMe login.
 - A real player completes AuthMe login → website link → active reward → wallet update → store purchase → in-game delivery.
 - Registration on Skyforge is recognized on Ember and Voidcraft, while each connection still asks for `/login`.
+- No unregistered offline-mode player name appears in any world's operator list.
 - Backups contain `showcase-worlds.tar.gz` and `showcase-auth.dump`, checksums verify, and an off-host encrypted copy exists.
 - UFW exposes no unintended port and RCON is unreachable publicly.
 - Admin MFA and production email are enabled before broad public promotion; these remain separate account-security launch blockers if not yet configured.

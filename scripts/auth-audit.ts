@@ -22,12 +22,12 @@ async function json(response: APIResponse) {
 }
 
 async function main() {
-  const clientOptions = { baseURL: baseUrl, extraHTTPHeaders: { "x-forwarded-for": auditAddress } };
+  const clientOptions = { baseURL: baseUrl, extraHTTPHeaders: { "x-real-ip": auditAddress } };
   const first = await request.newContext(clientOptions);
   const second = await request.newContext(clientOptions);
   const attacker = await request.newContext({
     baseURL: baseUrl,
-    extraHTTPHeaders: { "x-forwarded-for": "203.0.113.77" }
+    extraHTTPHeaders: { "x-real-ip": "203.0.113.77" }
   });
 
   try {
@@ -121,9 +121,10 @@ async function main() {
       assert(response.status() === 401, `Failed login ${attempt + 1} returned ${response.status()}`);
     }
     const blocked = await attacker.post("/api/auth/login", {
+      headers: { "cf-connecting-ip": "198.51.100.250", "x-forwarded-for": "198.51.100.251" },
       data: { email: target, password: "Wrong!Password!Value!123" }
     });
-    assert(blocked.status() === 429 && Number(blocked.headers()["retry-after"]) > 0, "Login throttling did not activate");
+    assert(blocked.status() === 429 && Number(blocked.headers()["retry-after"]) > 0, "Spoofed forwarding headers bypassed login throttling");
 
     console.log(JSON.stringify({
       ok: true,
@@ -136,7 +137,8 @@ async function main() {
         remoteRevocation: true,
         passwordRotation: true,
         logoutRevocation: true,
-        bruteForceThrottle: true
+        bruteForceThrottle: true,
+        spoofedForwardingHeadersIgnored: true
       }
     }, null, 2));
   } finally {

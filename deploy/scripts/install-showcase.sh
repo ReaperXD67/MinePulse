@@ -199,6 +199,8 @@ done
 configure_authme() {
   local config="$1"
   local server_name="$2"
+  local messages
+  local messages_temp
   sed -i \
     -e 's/^    backend: SQLITE$/    backend: POSTGRESQL/' \
     -e 's/^    caching: true$/    caching: false/' \
@@ -221,6 +223,41 @@ configure_authme() {
   grep -q '^        passwordHash: BCRYPT$' "${config}" || { echo "AuthMe password hashing was not configured" >&2; exit 1; }
   chown 1000:1000 "${config}"
   chmod 0600 "${config}"
+
+  messages="$(dirname "${config}")/messages/messages_en.yml"
+  [[ -f "${messages}" ]] || { echo "AuthMe English messages were not generated" >&2; exit 1; }
+  messages_temp="$(mktemp)"
+  awk '
+    /^registration:$/ { section = "registration" }
+    /^# Password errors on registration$/ { section = "password" }
+    /^# Login$/ { section = "login" }
+    /^# Errors$/ { section = "error" }
+    section == "registration" && /^  register_request:/ {
+      print "  register_request: \"&bFirst time? Use &f/register <password> <password> &7(10-64 characters)\""
+      next
+    }
+    section == "registration" && /^  command_usage:/ {
+      print "  command_usage: \"&cUse /register <password> <password> with 10-64 characters.\""
+      next
+    }
+    section == "registration" && /^  name_taken:/ {
+      print "  name_taken: \"&eThis username is already registered across KarixMC. Use &f/login <password>&e.\""
+      next
+    }
+    section == "password" && /^  wrong_length:/ {
+      print "  wrong_length: \"&cUse 10-64 characters for your Minecraft password.\""
+      next
+    }
+    section == "login" && /^  login_request:/ {
+      print "  login_request: \"&eRegistered on any KarixMC demo? Use &f/login <password>\""
+      next
+    }
+    { print }
+  ' "${messages}" > "${messages_temp}"
+  install -o 1000 -g 1000 -m 0644 "${messages_temp}" "${messages}"
+  rm -f "${messages_temp}"
+  grep -Fq 'wrong_length: "&cUse 10-64 characters for your Minecraft password."' "${messages}" \
+    || { echo "AuthMe password guidance was not configured" >&2; exit 1; }
 }
 
 configure_authme "${SHOWCASE_DATA_ROOT}/skyforge/plugins/AuthMe/config.yml" "Skyforge Economy"

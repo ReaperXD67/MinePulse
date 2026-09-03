@@ -9,6 +9,8 @@ This document describes the security boundary of the KarixMC website and `KarixM
 - A plugin secret is a private signing key. It is shown once, encrypted at rest with AES-256-GCM, and can be rotated. The old key stops working immediately after rotation.
 - Every protocol-v2 plugin request and response uses HMAC-SHA256 over the HTTP method or response status, path, Server ID, timestamp, one-time nonce, and exact body hash.
 - The website rejects stale timestamps, duplicate nonces, altered bodies, invalid signatures, inactive servers, suspended servers, blacklisted servers, oversized messages, and excessive request rates.
+- Browser state changes are protected by strict Origin/Referer and Fetch Metadata checks at the Next.js proxy. Plugin requests remain separate and require protocol-v2 signatures.
+- Nginx replaces `X-Real-IP` from the actual TCP peer. Application throttles ignore client-supplied Cloudflare and forwarded-IP headers unless the deployment is deliberately moved behind a configured trusted proxy.
 - Each community account can publish one current server address. A partial unique database index enforces the limit during concurrent requests; official platform-operated showcases are exempt.
 - A short, atomic per-player lease permits rewards from only one server at a time. Optimistic heartbeat writes and a unique active-session index stop concurrent requests from crediting the same elapsed interval twice.
 
@@ -54,6 +56,13 @@ KarixMC contains this risk by calculating money and challenge state on the websi
 - Store commands reject control characters and leading slashes, must include `{player}` or `{uuid}`, and permit only those placeholders.
 - Point purchases use an atomic sufficient-balance update, so simultaneous purchases cannot spend the same wallet balance twice.
 - Public output is rendered through React escaping and protected by a restrictive Content Security Policy, frame denial, MIME sniffing protection, and a referrer policy.
+- Executable scripts require a fresh per-response CSP nonce; production `script-src` does not allow arbitrary inline scripts or eval.
+
+## Non-premium beta identities
+
+The official showcase temporarily accepts offline/non-premium Java clients. AuthMe therefore owns the player-name authentication boundary: a Minecraft name is not trustworthy until that exact name has completed AuthMe registration and login. The three official worlds share one private AuthMe database, so players register once and use `/login` on the other worlds.
+
+Never grant operator permissions, privileged groups, or allowlisted status to an unregistered offline-mode name. An attacker could otherwise claim the name first and inherit its privileges. The showcase monitor checks every operator name against the shared AuthMe registration table.
 
 ## If a plugin secret leaks
 

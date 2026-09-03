@@ -19,7 +19,7 @@ function assert(condition: unknown, message: string) {
 async function main() {
   const context = await request.newContext({
     baseURL: baseUrl,
-    extraHTTPHeaders: { "x-forwarded-for": auditAddress }
+    extraHTTPHeaders: { "x-real-ip": auditAddress }
   });
   try {
     const login = await context.post("/api/auth/register", {

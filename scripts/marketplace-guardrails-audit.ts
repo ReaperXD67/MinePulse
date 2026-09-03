@@ -63,7 +63,7 @@ async function createServer(owner: APIRequestContext, position: number) {
 }
 
 async function main() {
-  const contextOptions = { baseURL: baseUrl, extraHTTPHeaders: { "x-forwarded-for": auditAddress } };
+  const contextOptions = { baseURL: baseUrl, extraHTTPHeaders: { "x-real-ip": auditAddress } };
   const owner = await request.newContext(contextOptions);
   const reviewer = await request.newContext(contextOptions);
   try {

@@ -41,6 +41,26 @@ for index in "${!EXPECTED_SERVICES[@]}"; do
   done
   bridge_version="$("${COMPOSE[@]}" exec -T "${service}" rcon-cli version KarixMCBridge 2>/dev/null || true)"
   grep -Fq "0.6.5" <<<"${bridge_version}" || FAILURES+=("${service} is not running KarixMCBridge 0.6.5")
+  auth_policy="$("${COMPOSE[@]}" exec -T "${service}" sh -lc \
+    'grep -E "^(        minPasswordLength: 10|        passwordMaxLength: 64|        passwordHash: BCRYPT)$" /data/plugins/AuthMe/config.yml' \
+    2>/dev/null || true)"
+  [[ "$(wc -l <<<"${auth_policy}")" -eq 3 ]] || FAILURES+=("${service} AuthMe password policy drifted")
+  auth_message="$("${COMPOSE[@]}" exec -T "${service}" sh -lc \
+    'grep -F "wrong_length: \"&cUse 10-64 characters for your Minecraft password.\"" /data/plugins/AuthMe/messages/messages_en.yml' \
+    2>/dev/null || true)"
+  [[ -n "${auth_message}" ]] || FAILURES+=("${service} AuthMe password guidance drifted")
+
+  operator_names="$("${COMPOSE[@]}" exec -T "${service}" cat /data/ops.json 2>/dev/null | jq -r '.[].name' 2>/dev/null || true)"
+  while IFS= read -r operator_name; do
+    [[ -z "${operator_name}" ]] && continue
+    if [[ ! "${operator_name}" =~ ^[A-Za-z0-9_]{3,16}$ ]]; then
+      FAILURES+=("${service} has an invalid offline-mode operator name")
+      continue
+    fi
+    operator_registered="$("${COMPOSE[@]}" exec -T auth-db psql -U authme -d authme -Atc \
+      "SELECT count(*) FROM authme WHERE lower(username) = lower('${operator_name}')" 2>/dev/null || true)"
+    [[ "${operator_registered}" == "1" ]] || FAILURES+=("${service} operator ${operator_name} is not registered in AuthMe")
+  done <<<"${operator_names}"
 done
 
 LIVE_RESPONSE="$(mktemp)"

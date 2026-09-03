@@ -9,8 +9,10 @@ export function clampHeartbeatSeconds(rawSeconds: number) {
 }
 
 function challengeAnswerHash(challengeId: string, answer: string) {
+  const secret = process.env.AUTH_SECRET || (process.env.NODE_ENV === "production" ? "" : "minepulse-local-development-secret-change-before-production");
+  if (secret.length < 32) throw new Error("AUTH_SECRET must contain at least 32 characters");
   return crypto
-    .createHmac("sha256", process.env.AUTH_SECRET || "minepulse")
+    .createHmac("sha256", secret)
     .update(`${challengeId}:${answer.trim()}`)
     .digest("hex");
 }

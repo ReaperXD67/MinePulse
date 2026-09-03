@@ -93,6 +93,14 @@ docker compose --env-file .env.production -f docker-compose.production.yml run -
 
 Warnings about missing encrypted/off-site backups or alerts must be resolved before public launch.
 
+If either data-encryption key was initialized with a placeholder, rotate the stored ciphertext and environment values together after taking a fresh encrypted backup:
+
+```bash
+sudo bash deploy/scripts/rotate-encryption-keys.sh
+```
+
+The rotation stops only the two website replicas, re-encrypts plugin and administrator-MFA credentials in one database transaction, atomically replaces the root-only environment file, and restarts both replicas. It never prints the old or new keys. Do not replace these environment values by hand; doing so would make existing encrypted records unreadable.
+
 ### Configure the free email relay
 
 Resend is the selected SMTP provider because its free transactional tier currently includes 3,000 emails per month with a 100-email daily limit, supports SMTP directly, and requires no application SDK. Check the [current Resend pricing](https://resend.com/pricing) before launch because free-plan limits can change.

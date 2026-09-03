@@ -85,13 +85,10 @@ function sessionTokenHash(token: string) {
 }
 
 function requestAddress(request: Request) {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return (
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("x-real-ip") ||
-    forwarded ||
-    "unknown"
-  ).slice(0, 128);
+  // Production only exposes Next.js through Nginx, which replaces X-Real-IP
+  // with the TCP peer address. Do not trust CF-Connecting-IP or an incoming
+  // X-Forwarded-For chain while the domain points directly at this VPS.
+  return (request.headers.get("x-real-ip")?.trim() || "unknown").slice(0, 128);
 }
 
 export function privateAuthFingerprint(value: string) {

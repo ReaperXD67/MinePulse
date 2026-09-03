@@ -24,7 +24,7 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
-    extraHTTPHeaders: { "x-forwarded-for": auditAddress }
+    extraHTTPHeaders: { "x-real-ip": auditAddress }
   });
   const browserErrors: string[] = [];
 

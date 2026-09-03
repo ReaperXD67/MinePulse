@@ -56,7 +56,7 @@ async function signedPluginPost(serverId: string, secret: string, path: string, 
 }
 
 async function main() {
-  const options = { baseURL: baseUrl, extraHTTPHeaders: { "x-forwarded-for": auditAddress } };
+  const options = { baseURL: baseUrl, extraHTTPHeaders: { "x-real-ip": auditAddress } };
   const member = await request.newContext(options);
   const secondMember = await request.newContext(options);
   const admin = await request.newContext(options);

@@ -7981,6 +7981,33 @@ button.icon-stat-button:hover {
   color: var(--cyan);
 }
 
+.showcase-quickstart {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(106, 241, 255, 0.18);
+  background: rgba(3, 10, 13, 0.58);
+}
+
+.showcase-quickstart > strong {
+  color: #e4fbff;
+  font-size: 13px;
+}
+
+.showcase-quickstart ol {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding-left: 21px;
+  color: #b9cbd0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.showcase-quickstart code {
+  color: var(--cyan);
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 620px) {
   .official-showcase-notice,
   .official-showcase-disclosure {

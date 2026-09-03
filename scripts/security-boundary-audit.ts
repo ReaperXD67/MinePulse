@@ -100,11 +100,21 @@ async function pluginConfig(secret: string) {
 }
 
 async function main() {
-  const contextOptions = { baseURL: baseUrl, extraHTTPHeaders: { "x-forwarded-for": auditAddress } };
+  const contextOptions = { baseURL: baseUrl, extraHTTPHeaders: { "x-real-ip": auditAddress } };
   const owner = await request.newContext(contextOptions);
   const second = await request.newContext(contextOptions);
   const anonymous = await request.newContext(contextOptions);
   try {
+    const crossSiteMutation = await anonymous.post("/api/marketplace/shuffle", {
+      headers: { origin: "https://attacker.example", "sec-fetch-site": "cross-site" }
+    });
+    assert(crossSiteMutation.status() === 403, `Cross-site mutation returned ${crossSiteMutation.status()}`);
+
+    const oversizedJson = await anonymous.post("/api/auth/register", {
+      data: { username: "Oversized", email: "oversized@example.test", password: "x".repeat(70 * 1024) }
+    });
+    assert(oversizedJson.status() === 413, `Oversized JSON returned ${oversizedJson.status()}`);
+
     ownerId = await register(owner, ownerEmail, "Security Owner");
     await register(second, secondEmail, "Security Second");
 
@@ -219,7 +229,10 @@ async function main() {
     assert(newSecret.ok, `Rotated plugin secret failed (${newSecret.status})`);
 
     const home = await anonymous.get("/");
-    assert(home.headers()["content-security-policy"]?.includes("img-src 'self'"), "Self-only media CSP is missing");
+    const contentSecurityPolicy = home.headers()["content-security-policy"] || "";
+    assert(contentSecurityPolicy.includes("img-src 'self'"), "Self-only media CSP is missing");
+    assert(/script-src[^;]*'nonce-[^']+'/.test(contentSecurityPolicy), "Nonce-based script CSP is missing");
+    assert(!/script-src[^;]*'unsafe-inline'/.test(contentSecurityPolicy), "Script CSP still permits unsafe inline code");
     assert(home.headers()["x-content-type-options"] === "nosniff", "MIME-sniffing protection is missing");
 
     console.log(JSON.stringify({
@@ -239,7 +252,10 @@ async function main() {
         encryptedOneTimePluginSecret: true,
         secretRotationRevokesOldCredential: true,
         secretAbsentFromHtml: true,
-        browserSecurityHeaders: true
+        browserSecurityHeaders: true,
+        crossSiteMutationsBlocked: true,
+        oversizedJsonBlocked: true,
+        nonceBasedScriptPolicy: true
       }
     }, null, 2));
   } finally {
