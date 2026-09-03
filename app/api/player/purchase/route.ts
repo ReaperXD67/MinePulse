@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       // Serialize purchases per account so concurrent requests cannot bypass
       // the queue cap or minute window on separate application replicas.
       await tx.$queryRaw`
-        SELECT pg_advisory_xact_lock(hashtextextended(${`purchase-account:${user.id}`}, 0))
+        SELECT pg_advisory_xact_lock(hashtextextended(${`purchase-account:${user.id}`}, 0))::text
       `;
 
       const idempotent = await tx.purchase.findUnique({

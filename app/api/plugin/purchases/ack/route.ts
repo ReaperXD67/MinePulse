@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
     const result = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`
-        SELECT pg_advisory_xact_lock(hashtextextended(${`purchase-delivery:${server.id}`}, 0))
+        SELECT pg_advisory_xact_lock(hashtextextended(${`purchase-delivery:${server.id}`}, 0))::text
       `;
 
       const purchase = await tx.purchase.findUnique({
