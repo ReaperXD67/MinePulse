@@ -184,6 +184,17 @@ Broad public promotion should still wait for three external controls: verified t
 - **Mitigation:** Shared BCRYPT registration, single-session enforcement, login gates, and the new registered-operator monitor reduce account takeover and privilege escalation after registration.
 - **False-positive notes:** This is an inherent consequence of the requested non-premium compatibility, not an AuthMe implementation bug.
 
+### KARIX-OPEN-006 — The VPS root password was shared in chat
+
+- **Severity:** Medium
+- **Status:** Open user action
+- **Location:** VPS root credential lifecycle; not stored in this repository
+- **Evidence:** The root password was supplied as plain text in the project conversation during migration.
+- **Impact:** Anyone with access to that conversation could attempt to reuse the credential through a provider console or any service where it was reused.
+- **Required fix:** Rotate the root password through the VPS provider console or an authenticated SSH session, save the replacement only in a password manager, and do not send it through chat. Rotate any other account that reused the same value.
+- **Mitigation:** Live SSH policy is `PasswordAuthentication no`, `PermitRootLogin without-password`, and public-key authentication is enabled, so the disclosed password cannot currently authenticate over SSH.
+- **False-positive notes:** The credential disclosure is confirmed. Its SSH impact is reduced by the verified server configuration, but console access and password reuse remain outside that control.
+
 ## Verification record
 
 - Local: ESLint passed; Next.js 16.3.4 production build and TypeScript checks passed; `git diff --check` passed.
