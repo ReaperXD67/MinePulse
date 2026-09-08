@@ -38,11 +38,21 @@ async function auditViewport(name, viewport) {
 
   await page.goto(`${baseUrl}/plugin`, { waitUntil: "networkidle" });
   const pluginDownload = page.getByRole("link", { name: /Download jar/i });
-  if ((await pluginDownload.getAttribute("href")) !== "/downloads/KarixMCBridge-0.6.2.jar") {
-    errors.push(`${name}: plugin page is not serving bridge 0.6.2`);
+  if ((await pluginDownload.getAttribute("href")) !== "/downloads/KarixMCBridge-0.6.6.jar") {
+    errors.push(`${name}: plugin page is not serving bridge 0.6.6`);
   }
 
   await page.goto(baseUrl, { waitUntil: "networkidle" });
+  if (!(await page.getByText("Beta bank transfer", { exact: true }).first().isVisible())) {
+    errors.push(`${name}: beta bank-transfer panel is not visible`);
+  }
+  if (!(await page.getByText("BE11 9670 5166 0748", { exact: true }).first().isVisible())) {
+    errors.push(`${name}: beneficiary IBAN is not visible`);
+  }
+  const displayedPrices = await page.locator(".manual-offer small").allTextContents();
+  if (!displayedPrices.length || !displayedPrices.every((price) => price.trim().startsWith("€"))) {
+    errors.push(`${name}: package pricing is not consistently rendered in EUR (${displayedPrices.join("|")})`);
+  }
   await page.locator(".economy-band").waitFor({ state: "visible" });
   await page.locator(".voxel-scene canvas").waitFor({ state: "visible" });
   await page.waitForTimeout(800);
@@ -123,8 +133,11 @@ if (!loginResponse.ok()) {
   if (!(await ownerPage.getByText("Current device", { exact: true }).count())) {
     errors.push("owner account: current authenticated device is not identified");
   }
-  if (!(await ownerPage.getByText("No payment method is connected.", { exact: true }).count())) {
-    errors.push("owner account: admin-managed testing access is not explained");
+  if (!(await ownerPage.getByText("Beta bank transfer", { exact: true }).first().isVisible())) {
+    errors.push("owner account: manual beta purchase instructions are not visible");
+  }
+  if (!(await ownerPage.getByText("BE11 9670 5166 0748", { exact: true }).first().isVisible())) {
+    errors.push("owner account: beneficiary IBAN is not visible");
   }
   if (await ownerPage.getByText("Crypto funding", { exact: true }).count()) {
     errors.push("owner account: removed crypto funding UI is still visible");
@@ -181,18 +194,23 @@ if (!adminLogin.ok()) {
   });
   adminPage.on("pageerror", (error) => errors.push(`admin page ${adminPage.url()}: ${error.message}`));
   await adminPage.goto(`${baseUrl}/admin#server-grants`, { waitUntil: "networkidle" });
-  const search = adminPage.getByRole("textbox", { name: "Search server owner" });
+  const search = adminPage.getByRole("searchbox", { name: "Search server owner" });
   await search.fill("owner@minepulse.local");
   const result = adminPage.locator(".admin-account-results").getByRole("option", { name: /Skyforge Owner/i });
   await result.waitFor({ state: "visible" });
   await result.click();
   const serverSelect = adminPage.getByRole("combobox", { name: "Campaign server" });
   if (!(await serverSelect.isEnabled())) errors.push("admin campaign grant: owned server selector stayed disabled");
+  const campaignPackage = adminPage.getByRole("combobox", { name: "Confirmed campaign package" });
+  const packageOptions = await campaignPackage.locator("option:not([disabled])").allTextContents();
+  if (!packageOptions.length || !packageOptions.every((option) => option.includes("€"))) {
+    errors.push(`admin campaign grant: active database packages are not rendered in EUR (${packageOptions.join("|")})`);
+  }
   const premiumServerSelect = adminPage.getByRole("combobox", { name: "Premium server" });
   if (!(await premiumServerSelect.isEnabled())) errors.push("admin premium grant: owned server selector stayed disabled");
   const premiumDuration = adminPage.getByRole("combobox", { name: "Premium grant duration" });
-  if ((await premiumDuration.locator("option").allTextContents()).join("|") !== "1 week|2 weeks") {
-    errors.push("admin premium grant: expected one-week and two-week durations");
+  if ((await premiumDuration.locator("option").allTextContents()).join("|") !== "14 days") {
+    errors.push("admin premium grant: expected the beta 14-day duration");
   }
   await search.fill("PixelRunner");
   const playerResult = adminPage.locator(".admin-account-results").getByRole("option", { name: /PixelRunner/i });
@@ -237,7 +255,7 @@ if (!adminMobileLogin.ok()) {
   await adminMobilePage.goto(`${baseUrl}/admin#server-grants`, { waitUntil: "networkidle" });
   const overflow = await adminMobilePage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (overflow > 1) errors.push(`mobile admin overflow: ${overflow}px`);
-  if (!(await adminMobilePage.getByRole("textbox", { name: "Search server owner" }).isVisible())) {
+  if (!(await adminMobilePage.getByRole("searchbox", { name: "Search server owner" }).isVisible())) {
     errors.push("mobile admin server grant search is not visible");
   }
   const mobileFleetSearch = adminMobilePage.getByRole("textbox", { name: "Search servers" });

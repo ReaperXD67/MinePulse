@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { copyText } from "@/lib/copy-text";
+import { ManualPaymentPanel } from "@/components/ManualPaymentPanel";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Activity,
@@ -89,11 +90,17 @@ function pluginConfigText(appBaseUrl: string, serverId: string, pluginSecret: st
 export function OwnerConsole({
   servers,
   appBaseUrl,
-  discordUrl
+  discordUrl,
+  accountIdentifier,
+  campaignPackages,
+  premiumTiers
 }: {
   servers: OwnerServerView[];
   appBaseUrl: string;
   discordUrl: string;
+  accountIdentifier: string;
+  campaignPackages: Array<{ id: string; code: string; label: string; points: number; priceCents: number }>;
+  premiumTiers: Array<{ id: string; code: string; name: string; priceCents: number; durationDays: number }>;
 }) {
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info");
@@ -576,8 +583,8 @@ export function OwnerConsole({
 
             <div className="management-side-stack">
               <section className="subpanel">
-                <div className="panel-header compact-heading"><div><p className="eyebrow"><Coins size={14} /> Campaign</p><h4>Testing access</h4></div><span className="status-pill">Admin managed</span></div>
-                <p className="supporting-copy"><strong>Purchases are handled by KarixMC staff in the official Discord.</strong> Share only your account email, server name, and requested package. After confirmation, an administrator records the campaign credits or premium time here.</p>
+                <div className="panel-header compact-heading"><div><p className="eyebrow"><Coins size={14} /> Campaign</p><h4>Beta purchase and balance</h4></div><span className="status-pill">Admin managed</span></div>
+                <ManualPaymentPanel accountIdentifier={accountIdentifier} campaignPackages={campaignPackages} premiumTiers={premiumTiers} discordUrl={discordUrl} compact />
                 <div className="integrity-grid campaign-access-grid">
                   <div><span>Campaign pool</span><strong>{points(server.pointPool)} credits</strong></div>
                   <div><span>Visibility</span><strong>{activePremiumPlan(server.premiumPlan as "NONE" | "GOLD" | "DIAMOND", server.premiumUntil) === "NONE" ? "Standard" : server.premiumPlan}</strong></div>
@@ -585,8 +592,6 @@ export function OwnerConsole({
                 {activePremiumPlan(server.premiumPlan as "NONE" | "GOLD" | "DIAMOND", server.premiumUntil) !== "NONE" ? (
                   <p className="toast-line">{server.premiumPlan} active until {shortDate(server.premiumUntil!)}</p>
                 ) : <p className="toast-line">Contact the purchase desk when this server needs campaign credits or premium placement.</p>}
-                <a className="ghost-button campaign-discord-button" href={discordUrl} target={discordUrl.startsWith("http") ? "_blank" : undefined} rel={discordUrl.startsWith("http") ? "noreferrer" : undefined}><LifeBuoy size={15} /> Official Discord purchase desk</a>
-                <p className="credential-help"><ShieldCheck size={13} /> Staff never need your password, TOTP code, plugin secret, or private key.</p>
               </section>
 
               <section className="subpanel">

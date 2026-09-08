@@ -13,6 +13,7 @@ const schema = z.object({
   trustStatus: z.enum(["VERIFIED", "WATCHLIST", "SUSPENDED", "BLACKLISTED"]).optional(),
   premiumPlan: z.enum(["NONE", "GOLD", "DIAMOND"]).optional(),
   premiumDays: z.coerce.number().int().min(0).max(365).optional(),
+  description: z.string().trim().min(4).max(240).optional(),
   heartbeatIntervalSeconds: z.coerce.number().int().min(10).max(60).optional(),
   purchasePollSeconds: z.coerce.number().int().min(10).max(120).optional(),
   afkTimeoutSeconds: z.coerce.number().int().min(60).max(1800).optional(),
@@ -110,13 +111,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       }),
       prisma.billingLedger.create({
         data: {
-          ownerId: user.id,
+          ownerId: server.ownerId,
           serverId: id,
           kind: BillingKind.ADMIN_ADJUSTMENT,
           amountPoints: input.adjustPoints ?? 0,
-          note: policyChanged
-            ? `Admin changed listing/economy or bridge protection policy for ${server.name}`
-            : `Admin changed status/premium/points for ${server.name}`
+          planCode: input.premiumPlan && input.premiumPlan !== "NONE" ? input.premiumPlan : null,
+          note: input.description
+            ? `${input.description} (admin: ${user.username})`
+            : policyChanged
+              ? `Admin ${user.username} changed listing/economy or bridge protection policy for ${server.name}`
+              : `Admin ${user.username} changed status/premium/points for ${server.name}`
         }
       })
     ]);

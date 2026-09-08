@@ -47,6 +47,15 @@ KarixMC contains this risk by calculating money and challenge state on the websi
 - In-flight request guards, cooldowns, finite timeouts, counter clamps, expired-challenge cleanup, and plugin shutdown cleanup prevent unbounded queues and stale references.
 - Repeated network errors are throttled instead of printed on every tick.
 
+## Manual bank-order boundary
+
+- Public package quantities and prices remain database-managed; the website formats those existing cent values as EUR.
+- Discord messages, receipts, and screenshots are untrusted coordination material. An administrator grants a paid order only after independently seeing the settled transfer in the beneficiary bank account.
+- The manual campaign form presents active database packages and sends the selected point amount through the existing administrator-only grant endpoint. Premium is granted for the requested 14-day Gold or Diamond period.
+- The website does not receive, initiate, or automatically confirm a bank payment. Operators must maintain a separate reconciliation log and must not fulfill the same transfer twice.
+- Administrative grant ledgers record the affected account or server and the operator-entered reason.
+- Staff never request passwords, TOTP codes, plugin secrets, bank logins, card details, or private keys.
+
 ## Content and command safety
 
 - Region and Minecraft version use controlled values; a listing stores minimum and maximum supported versions.
@@ -81,6 +90,7 @@ Never put a plugin secret in screenshots, chat messages, source control, support
 - Reverse-proxy request limits, DDoS protection, firewall rules, monitoring, alerting, encrypted backups, and tested restores.
 - Separate least-privilege services and secrets, key rotation, dependency scanning, and a documented incident-response owner.
 - Legal review of the privacy policy, consent flow, payments, retention periods, and the rules of every launch region.
+- A written bank-reconciliation, duplicate-fulfillment, refund/dispute, mistaken-transfer, and operator-access procedure for the manual beta purchase flow.
 
 ## Reporting a vulnerability
 

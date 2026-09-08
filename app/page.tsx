@@ -1,14 +1,15 @@
-import { Crosshair, LayoutGrid, MessageCircle, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
+import { Crosshair, LayoutGrid, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
 import { MarketplaceLiveSync } from "@/components/MarketplaceLiveSync";
+import { ManualPaymentPanel } from "@/components/ManualPaymentPanel";
 import { DirectoryShuffleButton } from "@/components/DirectoryShuffleButton";
 import { VoxelHeroScene } from "@/components/VoxelHeroScene";
 import { currentUser } from "@/lib/auth";
 import { FIRST_POSITION_CHANCES, orderDirectory } from "@/lib/directory-order";
 import { DEFAULT_DIRECTORY_SEED, DIRECTORY_SEED_COOKIE } from "@/lib/directory-seed";
-import { compact, minutesLabel, money, points } from "@/lib/format";
+import { minutesLabel, money, points } from "@/lib/format";
 import { getMarketplaceSnapshot } from "@/lib/marketplace-snapshot";
 import { prisma } from "@/lib/prisma";
 import { createSeededRandom } from "@/lib/random";
@@ -272,26 +273,7 @@ export default async function MarketplacePage({
               <p>Members fund campaign credits with real money, then choose how quickly verified players earn them.</p>
             </div>
           </div>
-          <div className="metrics-row">
-            {pointPackages.map((pack) => (
-              <div className="mini-metric" key={pack.id}>
-                <span className="metric-label">{pack.label}</span>
-                <strong>{compact(pack.points)} pts</strong>
-                <p className="toast-line">{money(pack.priceCents)}</p>
-              </div>
-            ))}
-          </div>
-          <div className="manual-purchase-desk">
-            <div>
-              <span className="eyebrow"><MessageCircle size={14} /> Discord purchase desk</span>
-              <strong>Campaign credits, confirmed by a real administrator.</strong>
-              <p>Choose a package, contact KarixMC staff in the official Discord, and include your account email plus the server name that should receive the credits.</p>
-            </div>
-            <a className="solid-button" href={discordUrl} target={discordUrl.startsWith("http") ? "_blank" : undefined} rel={discordUrl.startsWith("http") ? "noreferrer" : undefined}>
-              <MessageCircle size={17} /> Contact purchase desk
-            </a>
-          </div>
-          <p className="manual-purchase-safety"><ShieldCheck size={15} /> KarixMC staff will never ask for your password, TOTP code, plugin secret, or private key. Credits appear only after an administrator records the confirmed order.</p>
+          <ManualPaymentPanel campaignPackages={pointPackages} premiumTiers={premiumTiers} discordUrl={discordUrl} />
         </div>
 
         <div className="panel">

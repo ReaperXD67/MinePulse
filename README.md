@@ -38,6 +38,12 @@ Buying a store item never refills a server campaign. Promo codes such as `BOOST1
 
 Reward rates support half-point steps such as `1`, `1.5`, `2`, `2.5`, and `3` points per second. Wallets still store whole points; the backend keeps fractional carry inside each session so players are paid fairly over time.
 
+## Beta Manual Orders
+
+The beta uses manual EUR bank transfers. The public website shows the active database-managed packages in euros, plus beneficiary `Damian Dawid Stoklosa`, IBAN `BE11 9670 5166 0748`, and description format `<KarixMC username or account email> <package code>`. Changing the displayed currency to EUR does not rewrite package quantities or prices in the database.
+
+Customers send one exact active-package amount per transfer. Staff grant campaign credits or 14-day premium placement manually from the administrator account only after seeing the settled transfer in the beneficiary bank account. Screenshots and Discord messages are not proof of payment.
+
 ## Stack
 
 - Next.js App Router
@@ -160,7 +166,7 @@ For local testing where Paper and the website run on the same machine, keep `api
 - Set `APP_BASE_URL` to the final HTTPS domain. Production validation rejects HTTP, localhost, placeholder domains, and URL paths.
 - Transactional email uses Nodemailer with Resend's free SMTP relay. Set `SMTP_URL` and `EMAIL_FROM`, then run `npm run email:check` to authenticate or `npm run email:check -- you@example.com` to send one test message. See `PRODUCTION_RUNBOOK.md` for DNS and production setup.
 - Production requires `AUTH_COOKIE_SECURE="true"`, verified email delivery, administrator TOTP, PostgreSQL, Redis, and independent secrets.
-- No automated payment method is connected. Campaign credit and premium orders are coordinated through the official Discord, then granted by an administrator after manual confirmation. Never request or accept account passwords, TOTP codes, plugin secrets, or private keys through Discord. Select and security-review an automated payment provider only after HTTPS, PostgreSQL, backups, refund rules, merchant verification, and signed webhook tests are ready.
+- No automated payment method is connected. Beta campaign-credit and premium orders use manual EUR bank transfers, with Discord used only for coordination. Never grant from a screenshot: verify the settled transfer in the beneficiary bank account, then use the manual campaign or premium grant in the administrator console. Never request or accept account passwords, TOTP codes, plugin secrets, bank logins, card details, or private keys through Discord. Select and security-review an automated payment provider only after HTTPS, PostgreSQL, backups, refund rules, merchant verification, and signed webhook tests are ready.
 - SQLite is now only a read-only source for the one-time beta-data importer. All active local and production runtime data uses PostgreSQL.
 - Do not reset the database during normal deployments. Removing and republishing an address creates a fresh server identity while retaining the removed record for audit history; account and admin controls provide targeted Minecraft unlinking.
 

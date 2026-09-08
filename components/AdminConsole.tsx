@@ -25,7 +25,7 @@ import {
   UserCheck,
   X
 } from "lucide-react";
-import { points, shortDate } from "@/lib/format";
+import { money, points, shortDate } from "@/lib/format";
 
 type PackageRow = {
   id: string;
@@ -292,7 +292,7 @@ export function AdminConsole({
       id: row.id,
       label: form.get("label"),
       points: form.get("points"),
-      priceCents: Math.round(Number(form.get("priceDollars")) * 100),
+      priceCents: Math.round(Number(form.get("priceEuros")) * 100),
       active: form.get("active") === "on"
     });
   }
@@ -304,7 +304,7 @@ export function AdminConsole({
       kind: row.kind,
       id: row.id,
       name: form.get("name"),
-      priceCents: Math.round(Number(form.get("priceDollars")) * 100),
+      priceCents: Math.round(Number(form.get("priceEuros")) * 100),
       durationDays: form.get("durationDays"),
       active: form.get("active") === "on",
       priority: form.get("priority")
@@ -388,7 +388,8 @@ export function AdminConsole({
     const form = new FormData(event.currentTarget);
     await send(`/api/admin/servers/${premiumServerId}`, {
       premiumPlan: form.get("premiumPlan"),
-      premiumDays: form.get("premiumDays")
+      premiumDays: form.get("premiumDays"),
+      description: form.get("description")
     });
   }
 
@@ -547,7 +548,7 @@ export function AdminConsole({
 
         <div className="admin-server-grant-grid">
           <form className="form-grid admin-grant-column" onSubmit={grantCampaignPoints}>
-            <div className="admin-grant-heading"><Coins size={18} /><div><strong>Campaign credits</strong><span>Reward budget only. It cannot be spent as a player wallet.</span></div></div>
+            <div className="admin-grant-heading"><Coins size={18} /><div><strong>Manual campaign grant</strong><span>Confirm the transfer in the bank first, then select the matching active package.</span></div></div>
             <select
               className="select"
               value={campaignServerId}
@@ -561,17 +562,20 @@ export function AdminConsole({
                 <option value={server.id} key={server.id}>{server.name} - {points(server.pointPool)} credits - {server.status}</option>
               ))}
             </select>
-            <div className="form-grid two">
-              <input className="field" name="amountPoints" type="number" min="1" max="1000000000" defaultValue="1000000" required aria-label="Campaign credits to grant" />
-              <input className="field" name="description" placeholder="Testing grant, event prize, or support correction" minLength={4} maxLength={240} required />
-            </div>
+            <select className="select" name="amountPoints" defaultValue="" required aria-label="Confirmed campaign package">
+              <option value="" disabled>Choose confirmed package</option>
+              {pointPackages.filter((offer) => offer.active).map((offer) => (
+                <option value={offer.points} key={offer.id}>{offer.label} - {points(offer.points)} credits - {money(offer.priceCents)}</option>
+              ))}
+            </select>
+            <input className="field" name="description" placeholder="Confirmed bank transfer, e.g. Karixai SMALL" minLength={4} maxLength={240} required />
             <button className="solid-button" disabled={busy || !selectedAccount || !campaignServerId} type="submit">
               <Coins size={16} /> Send campaign credits
             </button>
           </form>
 
           <form className="form-grid admin-grant-column premium-grant-column" onSubmit={grantPremium}>
-            <div className="admin-grant-heading"><Gem size={18} /><div><strong>Premium placement</strong><span>Grant a visible Gold or Diamond lane for a fixed test period.</span></div></div>
+            <div className="admin-grant-heading"><Gem size={18} /><div><strong>Manual premium grant</strong><span>Confirm the bank transfer first, then grant the requested 14-day placement.</span></div></div>
             <select
               className="select"
               value={premiumServerId}
@@ -590,11 +594,11 @@ export function AdminConsole({
                 <option value="GOLD">Gold lane</option>
                 <option value="DIAMOND">Diamond lane</option>
               </select>
-              <select className="select" name="premiumDays" defaultValue="7" aria-label="Premium grant duration">
-                <option value="7">1 week</option>
-                <option value="14">2 weeks</option>
+              <select className="select" name="premiumDays" defaultValue="14" aria-label="Premium grant duration">
+                <option value="14">14 days</option>
               </select>
             </div>
+            <input className="field" name="description" placeholder="Confirmed bank transfer, e.g. Karixai GOLD" minLength={4} maxLength={240} required />
             <button className="solid-button premium-grant-button" disabled={busy || !selectedAccount || !premiumServerId} type="submit">
               <Crown size={16} /> Grant premium placement
             </button>
@@ -699,11 +703,11 @@ export function AdminConsole({
                 <div className="form-grid two">
                   <input
                     className="field"
-                    name="priceDollars"
+                    name="priceEuros"
                     type="number"
                     step="0.01"
                     defaultValue={(row.priceCents / 100).toFixed(2)}
-                    aria-label="Price dollars"
+                    aria-label="Price euros"
                   />
                   <label className="ghost-button">
                     <input name="active" type="checkbox" defaultChecked={row.active} /> Active
@@ -731,11 +735,11 @@ export function AdminConsole({
                   <input className="field" name="name" defaultValue={row.name} aria-label="Tier name" />
                   <input
                     className="field"
-                    name="priceDollars"
+                    name="priceEuros"
                     type="number"
                     step="0.01"
                     defaultValue={(row.priceCents / 100).toFixed(2)}
-                    aria-label="Price dollars"
+                    aria-label="Price euros"
                   />
                 </div>
                 <div className="form-grid two">

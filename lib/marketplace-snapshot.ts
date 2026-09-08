@@ -65,12 +65,12 @@ async function createMarketplaceSnapshot() {
     prisma.pointPackage.findMany({
       where: { active: true },
       orderBy: { sortOrder: "asc" },
-      select: { id: true, label: true, points: true, priceCents: true }
+      select: { id: true, code: true, label: true, points: true, priceCents: true }
     }),
     prisma.premiumTier.findMany({
       where: { active: true },
       orderBy: { priority: "desc" },
-      select: { id: true, code: true, priority: true, priceCents: true, durationDays: true }
+      select: { id: true, code: true, name: true, priority: true, priceCents: true, durationDays: true }
     })
   ]);
 
@@ -122,7 +122,7 @@ export async function getMarketplaceSnapshot() {
   const now = Date.now();
   if (localSnapshot && localSnapshot.expiresAt > now) return localSnapshot.value;
 
-  const shared = await readSharedJson<MarketplaceSnapshot>("marketplace:snapshot:v2");
+  const shared = await readSharedJson<MarketplaceSnapshot>("marketplace:snapshot:v3");
   if (shared) {
     localSnapshot = { expiresAt: now + 2_000, value: shared };
     return shared;
@@ -130,6 +130,6 @@ export async function getMarketplaceSnapshot() {
 
   const value = await createMarketplaceSnapshot();
   localSnapshot = { expiresAt: now + 5_000, value };
-  await writeSharedJson("marketplace:snapshot:v2", value, 5);
+  await writeSharedJson("marketplace:snapshot:v3", value, 5);
   return value;
 }

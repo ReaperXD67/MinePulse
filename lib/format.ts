@@ -3,9 +3,9 @@ export function points(value: number) {
 }
 
 export function money(cents: number) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-IE", {
     style: "currency",
-    currency: "USD",
+    currency: "EUR",
     maximumFractionDigits: 2
   }).format(cents / 100);
 }

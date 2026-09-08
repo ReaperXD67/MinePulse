@@ -45,6 +45,7 @@
     "test:account-security": "tsx scripts/account-security-audit.ts",
     "test:security-boundaries": "tsx scripts/security-boundary-audit.ts",
     "test:premium-order": "tsx scripts/premium-order-audit.ts",
+    "test:manual-order": "tsx scripts/manual-order-audit.ts",
     "test:account-ban": "tsx scripts/account-ban-audit.ts"
   },
   "prisma": {

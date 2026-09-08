@@ -4,7 +4,7 @@
 
 The public beta is live at `https://karixmc.pl`. It uses PostgreSQL for durable data, Redis for shared rate limits and short-lived marketplace caching, two isolated Next.js application replicas, Nginx for TLS and load balancing, persistent media, and recurring encrypted database/media backups.
 
-Automated payment collection remains deliberately disabled with `PAYMENTS_ENABLED=false`. Campaign credit and premium orders are coordinated through the official Discord, then recorded by an administrator after manual confirmation. Staff must never request account passwords, TOTP codes, plugin secrets, or private keys through Discord.
+Automated payment collection remains deliberately disabled with `PAYMENTS_ENABLED=false`. Beta campaign-credit and premium orders use manual EUR bank transfers. Discord is only the coordination channel; an administrator verifies the settled bank transaction and then applies the matching package manually. Staff must never request account passwords, TOTP codes, plugin secrets, bank logins, card details, or private keys through Discord.
 
 ## Production architecture
 
@@ -45,7 +45,25 @@ Do not send production passwords or private keys in chat or commit them to Git.
 3. An off-site object-storage target supported by `rclone`; encrypted backups currently run on the VPS and the first recovery copy has been verified off-server.
 4. An alert webhook plus an external uptime monitor. The VPS timer cannot report when the entire VPS is offline.
 5. Complete the administrator password and TOTP bootstrap privately on the VPS, then set `ADMIN_2FA_REQUIRED=true`.
-6. Later: the selected automated payment provider and supported currencies. Keep automated payments disabled until then.
+6. Later: select and audit an automated payment provider. The manual beta storefront displays the existing database prices in EUR; keep `PAYMENTS_ENABLED=false` until signed provider webhooks and fulfillment idempotency have been tested.
+
+### Beta bank-transfer catalogue
+
+- Beneficiary: `Damian Dawid Stoklosa`
+- IBAN: `BE11 9670 5166 0748`
+- Currency: EUR
+- Customer description: `<KarixMC username or account email> <package code shown on the website>`
+- Example: `Karixai GOLD`
+
+For every paid order:
+
+1. Confirm the transfer is settled in the beneficiary bank account. A screenshot, pending transfer, email, or Discord message is not payment confirmation.
+2. Match the transfer description to the KarixMC account and its server. Resolve ambiguous or misspelled descriptions before granting anything.
+3. In Admin > Server grants, select the account and server. For campaign funding, select the matching active package; for Gold or Diamond, grant the requested 14-day placement. Put the customer's transfer description in the administrative reason.
+4. Submit once and record the fulfilled order in the operator's bank-reconciliation log. The website does not receive or confirm bank transfers automatically.
+5. Verify the new campaign balance or premium expiry on the member account, then confirm fulfillment in the official Discord.
+
+Do not combine packages in one transfer during beta. Keep bank access restricted to authorized operators, maintain a separate reconciliation log to prevent duplicate manual fulfillment, and handle refunds or disputes under wording approved for the launch regions.
 
 ## 1. Prepare the VPS
 

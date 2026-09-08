@@ -102,6 +102,31 @@ async function main() {
   assert(ledgers.length === 1 && ledgers[0].balanceAfter === 13345, "Point ledger balance trail is incorrect");
   assert(billings.length === 1 && billings[0].ownerId === ownerId, "Billing audit entry is incorrect");
 
+  const premiumGrantStartedAt = Date.now();
+  const premiumGrant = await fetch(`${baseUrl}/api/admin/servers/${serverId}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({
+      premiumPlan: "GOLD",
+      premiumDays: 14,
+      description: "Acceptance test confirmed bank transfer GOLD"
+    })
+  });
+  assert(premiumGrant.ok, `Premium grant failed (${premiumGrant.status}): ${await premiumGrant.text()}`);
+
+  const [premiumServer, premiumBilling] = await Promise.all([
+    prisma.server.findUniqueOrThrow({ where: { id: serverId } }),
+    prisma.billingLedger.findFirstOrThrow({
+      where: { serverId, planCode: "GOLD" },
+      orderBy: { createdAt: "desc" }
+    })
+  ]);
+  const premiumDays = (premiumServer.premiumUntil!.getTime() - premiumGrantStartedAt) / (24 * 60 * 60 * 1000);
+  assert(premiumServer.premiumPlan === "GOLD", "Premium plan was not activated");
+  assert(premiumDays > 13.99 && premiumDays <= 14.01, `Premium duration is not 14 days (${premiumDays})`);
+  assert(premiumBilling.ownerId === ownerId, "Premium billing entry is not attached to the server owner");
+  assert(premiumBilling.note.includes("confirmed bank transfer"), "Premium billing entry lost the bank reference");
+
   console.log(JSON.stringify({
     ok: true,
     checks: {
@@ -111,7 +136,10 @@ async function main() {
       grantedPoints: 12345,
       resultingPool: server.pointPool,
       pointLedger: ledgers.length,
-      billingLedger: billings.length
+      billingLedger: billings.length,
+      premiumPlan: premiumServer.premiumPlan,
+      premiumDays: 14,
+      premiumOwnerAudit: true
     }
   }, null, 2));
 }

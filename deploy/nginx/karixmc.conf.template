@@ -14,6 +14,7 @@ server {
     listen 80;
     listen [::]:80;
     server_name __DOMAIN__ www.__DOMAIN__;
+    server_tokens off;
 
     location /.well-known/acme-challenge/ {
         root /var/www/html;

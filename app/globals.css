@@ -4641,6 +4641,193 @@ body::before {
   border-top: 1px solid var(--line);
 }
 
+.manual-payment-panel {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.manual-payment-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.manual-payment-heading > div {
+  display: grid;
+  gap: 7px;
+}
+
+.manual-payment-heading .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.manual-payment-heading strong {
+  font-size: 1.02rem;
+}
+
+.manual-payment-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.manual-offer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.manual-offer {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.manual-offer > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--lime);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.manual-offer > strong {
+  overflow-wrap: anywhere;
+  font-size: 0.78rem;
+}
+
+.manual-offer > small {
+  color: #dce9e4;
+  font-size: 0.76rem;
+}
+
+.manual-offer.premium-gold {
+  border-color: rgba(247, 201, 72, 0.3);
+  background: rgba(247, 201, 72, 0.045);
+}
+
+.manual-offer.premium-gold > span {
+  color: var(--gold);
+}
+
+.manual-offer.premium-diamond {
+  border-color: rgba(72, 227, 255, 0.3);
+  background: rgba(72, 227, 255, 0.045);
+}
+
+.manual-offer.premium-diamond > span {
+  color: var(--cyan);
+}
+
+.manual-bank-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.manual-bank-details > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 11px 12px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.manual-bank-details dt,
+.manual-reference-example > span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.manual-bank-details dd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.manual-bank-details code,
+.manual-reference-example code {
+  overflow-wrap: anywhere;
+  color: var(--cyan);
+  font-size: 0.75rem;
+}
+
+.manual-bank-details .icon-button,
+.manual-reference-example .icon-button {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+}
+
+.manual-reference-example {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px dashed rgba(72, 227, 255, 0.3);
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: rgba(72, 227, 255, 0.035);
+}
+
+.manual-payment-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.manual-payment-actions .manual-purchase-safety {
+  margin: 0;
+}
+
+.manual-payment-panel .copy-feedback {
+  min-height: 1em;
+  margin: -8px 0 0;
+  color: var(--lime);
+  font-size: 0.72rem;
+}
+
+.manual-payment-compact {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.manual-payment-compact .manual-offer-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.manual-payment-compact .manual-bank-details,
+.manual-payment-compact .manual-payment-actions {
+  grid-template-columns: 1fr;
+}
+
 .manual-purchase-desk > div {
   display: grid;
   gap: 7px;
@@ -4694,6 +4881,23 @@ body::before {
 }
 
 @media (max-width: 760px) {
+  .manual-offer-grid,
+  .manual-payment-compact .manual-offer-grid,
+  .manual-bank-details {
+    grid-template-columns: 1fr;
+  }
+
+  .manual-payment-heading,
+  .manual-payment-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .manual-payment-actions .solid-button {
+    width: 100%;
+    justify-content: center;
+  }
+
   .manual-purchase-desk {
     grid-template-columns: 1fr;
   }

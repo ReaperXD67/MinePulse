@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description: "How KarixMC collects, uses, protects, and shares account, Minecraft, reward, and server data."
 };
 
-const updatedAt = "July 28, 2026";
+const updatedAt = "September 8, 2026";
 
 export default function PrivacyPage() {
   const legalName = process.env.NEXT_PUBLIC_LEGAL_NAME?.trim() || "KarixMC";
@@ -93,7 +93,7 @@ export default function PrivacyPage() {
               </div>
               <div>
                 <h3>Rewards and purchases</h3>
-                <p>Wallet and campaign balances, point ledger, level and claim rewards, store purchases, delivery status, and administrator-issued campaign or premium grants.</p>
+                <p>Wallet and campaign balances, point ledger, level and claim rewards, store purchases, delivery status, information included in manual-order correspondence or administrative grant reasons, and administrator-issued campaign or premium grants. Bank providers independently process sender and account information under their own notices.</p>
               </div>
               <div>
                 <h3>Servers and support</h3>
@@ -116,7 +116,7 @@ export default function PrivacyPage() {
               <div><strong>Verify linked play</strong><span>Consent and contract</span><p>After an in-game link command, receive limited activity counters needed to verify play and calculate rewards. Players can stop future sharing from the plugin.</p></div>
               <div><strong>Keep rewards fair</strong><span>Legitimate interests</span><p>Detect AFK sessions, replayed heartbeats, bots, plugin tampering, fake activity, abuse, and reward fraud.</p></div>
               <div><strong>Operate the marketplace</strong><span>Contract and legitimate interests</span><p>Publish server listings, calculate live status, rank premium listings, show average activity, process reports, and enforce network rules.</p></div>
-              <div><strong>Administrative grants</strong><span>Contract and legitimate interests</span><p>Credit testing campaigns or premium time, record the administrator and reason, issue corrections, and resolve disputes.</p></div>
+              <div><strong>Orders and administrative grants</strong><span>Contract and legitimate interests</span><p>Match a manual bank transfer to an account and server, prevent duplicate fulfillment, credit campaigns or premium time, record the administrator and reason, issue corrections, and resolve disputes.</p></div>
             </div>
             <p>We do not sell personal data and we do not use it for third-party behavioral advertising.</p>
           </section>
@@ -152,7 +152,7 @@ export default function PrivacyPage() {
             <div className="policy-heading"><LockKeyhole size={20} /><span>06</span><h2>Retention and security</h2></div>
             <p>
               Account and profile data is kept while the account is active. Gameplay, reward, integrity, report, and support
-              records are kept only as long as needed to operate balances, investigate abuse, resolve disputes, and maintain
+              records are kept only as long as needed to operate balances, reconcile paid orders, investigate abuse, resolve disputes, and maintain
               network reliability. Reward and audit ledgers may be retained longer where fraud-prevention, dispute, or other legal
               rules require it. Backup copies are removed through the normal backup rotation.
             </p>

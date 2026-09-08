@@ -27,7 +27,7 @@ export default async function AccountPage() {
   const renderedAt = serverNowMs();
   const activeAuthSessions = await listActiveSessions(user.id, auth.sessionId);
 
-  const [profile, purchases, pendingPurchaseCount, sessions, favorites, ledger, servers, billing, tickets, friendships] =
+  const [profile, purchases, pendingPurchaseCount, sessions, favorites, ledger, servers, billing, tickets, friendships, pointPackages, premiumTiers] =
     await Promise.all([
       prisma.user.findUnique({ where: { id: user.id } }),
       prisma.purchase.findMany({
@@ -91,6 +91,16 @@ export default async function AccountPage() {
           }
         },
         orderBy: { createdAt: "desc" }
+      }),
+      prisma.pointPackage.findMany({
+        where: { active: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, code: true, label: true, points: true, priceCents: true }
+      }),
+      prisma.premiumTier.findMany({
+        where: { active: true },
+        orderBy: { priority: "desc" },
+        select: { id: true, code: true, name: true, priceCents: true, durationDays: true }
       })
     ]);
 
@@ -297,8 +307,11 @@ export default async function AccountPage() {
       </section>
 
       <OwnerConsole
+        accountIdentifier={user.username}
         appBaseUrl={process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}
+        campaignPackages={pointPackages}
         discordUrl={process.env.NEXT_PUBLIC_DISCORD_URL || "/plugin#support"}
+        premiumTiers={premiumTiers}
         servers={servers.map(serializeOwnerServer)}
       />
 
