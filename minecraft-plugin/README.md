@@ -1,4 +1,4 @@
-# KarixMC Bridge 0.6.6
+# KarixMC Bridge 0.6.7
 
 The Paper/Spigot plugin connects real Minecraft activity to KarixMC. The visible plugin ID and configuration folder are `KarixMCBridge`; the supported command namespace is `/karixmc`.
 
@@ -11,7 +11,7 @@ The Paper/Spigot plugin connects real Minecraft activity to KarixMC. The visible
 
 ## Install
 
-1. Download `KarixMCBridge-0.6.6.jar` from `/plugin` on the website.
+1. Download `KarixMCBridge-0.6.7.jar` from `/plugin` on the website.
 2. Copy it into the Paper server's `plugins/` directory.
 3. Start Paper once, then stop it after `plugins/KarixMCBridge/config.yml` is created.
 4. In KarixMC, open **Account -> Your servers -> Plugin connection**.
@@ -38,7 +38,8 @@ Behavioral configuration no longer lives in the plugin YAML. Owners manage their
 
 - heartbeat interval
 - purchase polling interval
-- AFK timeout, default 300 seconds
+- AFK detection enabled/disabled independently, with a default timeout of 300 seconds
+- reward/linking chat notices enabled/disabled independently
 - arithmetic challenge enabled/required state
 - challenge interval, default 300 seconds
 - answer window
@@ -47,6 +48,10 @@ Behavioral configuration no longer lives in the plugin YAML. Owners manage their
 - protection level
 
 Only connection credentials remain local because the plugin needs them before it can securely contact the website.
+
+For a quiet server, switch **Send /answer activity checks** and **Show reward and linking notices** off in Creator Studio. AFK detection can remain on or be disabled separately. Disabling checks clears pending questions and immediately stops them blocking rewards; disabling AFK lets linked idle players earn. Explicit commands still reply, and purchase delivery notifications remain available. Enabled activity checks always display their question so players can answer it.
+
+Bridge 0.6.7 also sends an anonymous total online-player count with each one-minute policy sync, including zero on an empty server. No identities of unlinked players are sent. The website distinguishes that total from linked players earning rewards and does not treat a stale count as live. Upgrade an existing bridge by replacing its JAR and restarting Paper; keep its existing configuration and data files.
 
 ## Player Commands
 
@@ -63,15 +68,15 @@ Only connection credentials remain local because the plugin needs them before it
 ## Verification Flow
 
 1. The plugin accumulates meaningful movement, chat, command, and inventory activity.
-2. After the owner-configured idle period, the heartbeat reports the player as AFK and no points are awarded.
-3. KarixMC periodically creates an arithmetic question such as `How much is 2 + 3? Use /answer <value>`.
+2. When AFK detection is enabled, the owner-configured idle period pauses rewards.
+3. When activity checks are enabled, KarixMC periodically creates an arithmetic question such as `How much is 2 + 3? Use /answer <value>`.
 4. The plugin displays it and sends the player's answer in a signed heartbeat.
 5. The website validates the answer. Required checks pause rewards until the answer is accepted.
 6. KarixMC calculates the reward server-side and deducts it from the campaign pool.
 
 Players must run the link command before reward activity sharing starts. Unlinked Minecraft players can still play normally and are excluded from heartbeat batches. The plugin sends the linked UUID and name, AFK state, bounded movement and interaction counters, elapsed-time claim, and challenge submission. It does not read or send player IP addresses.
 
-Version 0.6.6 sends bounded batches of at most 200 linked players per heartbeat cycle instead of one HTTP request per player. Large servers are split into multiple sequential chunks. The website remembers the last heartbeat containing qualifying movement or activity and applies the configured AFK timeout across later quiet heartbeats. If AuthMe is installed, KarixMC activity, linking, statistics, challenges, and purchase delivery remain blocked until AuthMe reports that the player is authenticated. The retired `/minepulse` command is no longer registered. Requests and responses use HMAC-SHA256 over the exact body, timestamps, and persisted unique nonces. The website rejects stale, altered, replayed, or wrongly signed messages. Response bodies are size-limited before allocation, repeated log failures are throttled, player command requests use cooldowns, and startup diagnostics identify the exact invalid or missing connection setting without exposing secrets.
+Version 0.6.7 sends bounded batches of at most 200 linked players per heartbeat cycle instead of one HTTP request per player. Large servers are split into multiple sequential chunks. The website remembers the last heartbeat containing qualifying movement or activity and applies the configured AFK timeout across later quiet heartbeats. If AuthMe is installed, KarixMC activity, linking, statistics, challenges, and purchase delivery remain blocked until AuthMe reports that the player is authenticated. The retired `/minepulse` command is no longer registered. Requests and responses use HMAC-SHA256 over the exact body, timestamps, and persisted unique nonces. The website rejects stale, altered, replayed, or wrongly signed messages. Response bodies are size-limited before allocation, repeated log failures are throttled, player command requests use cooldowns, and startup diagnostics identify the exact invalid or missing connection setting without exposing secrets.
 
 No plugin can make a server owner unable to modify software on a machine they control. A dishonest owner can fabricate activity inputs or automate a visible arithmetic question. KarixMC limits the damage by making server time, rates, balances, player caps, challenge state, pool deductions, nonce history, reports, trust states, and enforcement website-authoritative. High-value launch phases should add behavioral fraud analytics and manual review; this is detection and containment, not impossible-to-bypass attestation.
 

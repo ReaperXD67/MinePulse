@@ -50,6 +50,8 @@ async function main() {
       data: {
         adjustPoints: 1250,
         afkTimeoutSeconds: 420,
+        afkProtectionEnabled: false,
+        pluginMessagesEnabled: false,
         challengeEnabled: true,
         challengeIntervalSeconds: 720,
         challengeAnswerWindowSeconds: 75,
@@ -67,6 +69,7 @@ async function main() {
     assert(updated.pointPool === 2250, "Campaign pool adjustment was not persisted");
     assert(updated.pluginConfigRevision === 2, "Plugin policy revision was not incremented");
     assert(updated.afkTimeoutSeconds === 420, "AFK timeout was not persisted");
+    assert(!updated.afkProtectionEnabled && !updated.pluginMessagesEnabled, "Independent AFK/chat toggles were not persisted");
     assert(updated.challengeIntervalSeconds === 720, "Challenge interval was not persisted");
     assert(updated.challengeAnswerWindowSeconds === 75, "Answer window was not persisted");
     assert(updated.minimumActivityEvents === 2, "Activity threshold was not persisted");
@@ -98,11 +101,23 @@ async function main() {
     const payload = await config.json();
     assert(payload.policy.revision === 2, "Plugin received the wrong policy revision");
     assert(payload.policy.afkTimeoutSeconds === 420, "Plugin received the wrong AFK timeout");
+    assert(!payload.policy.afkProtectionEnabled && !payload.policy.pluginMessagesEnabled, "Plugin did not receive disabled AFK/chat policy");
     assert(payload.policy.challengeIntervalSeconds === 720, "Plugin received the wrong challenge interval");
     assert(payload.policy.challengeAnswerWindowSeconds === 75, "Plugin received the wrong answer window");
     assert(payload.policy.botProtectionLevel === 3, "Plugin received the wrong protection level");
 
-    console.log(JSON.stringify({ ok: true, serverId: server.id, revision: payload.policy.revision }, null, 2));
+    const ownerLogin = await api.post("/api/auth/login", { data: { email: ownerEmail, password } });
+    assert(ownerLogin.ok(), "Owner could not sign in to update their own policy");
+    const ownerUpdate = await api.patch(`/api/owner/servers/${server.id}`, {
+      data: { afkProtectionEnabled: true, pluginMessagesEnabled: true, challengeEnabled: false }
+    });
+    assert(ownerUpdate.ok(), `Owner toggle update failed: ${await ownerUpdate.text()}`);
+    const ownerPolicy = await prisma.server.findUniqueOrThrow({ where: { id: server.id } });
+    assert(ownerPolicy.afkProtectionEnabled && ownerPolicy.pluginMessagesEnabled && !ownerPolicy.challengeEnabled, "Owner switches were not saved independently");
+    assert(ownerPolicy.afkTimeoutSeconds === 420 && ownerPolicy.challengeIntervalSeconds === 720, "Changing a switch must preserve the saved timer values");
+    assert(ownerPolicy.pluginConfigRevision === 3, "Owner switch update must trigger a policy sync");
+
+    console.log(JSON.stringify({ ok: true, serverId: server.id, revision: ownerPolicy.pluginConfigRevision, ownerAndAdminToggles: true }, null, 2));
   } finally {
     await api.dispose();
     await prisma.server.deleteMany({ where: { id: server.id } });

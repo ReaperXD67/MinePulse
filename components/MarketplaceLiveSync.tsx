@@ -1,21 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
-function signature(serverIds: string[]) {
-  return [...serverIds].sort().join("|");
-}
-
-export function MarketplaceLiveSync({ serverIds }: { serverIds: string[] }) {
+export function MarketplaceLiveSync() {
   const router = useRouter();
-  const initialSignature = useMemo(() => signature(serverIds), [serverIds]);
-  const expectedSignature = useRef(initialSignature);
   const checking = useRef(false);
-
-  useEffect(() => {
-    expectedSignature.current = initialSignature;
-  }, [initialSignature]);
 
   useEffect(() => {
     let disposed = false;
@@ -28,11 +18,8 @@ export function MarketplaceLiveSync({ serverIds }: { serverIds: string[] }) {
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || !Array.isArray(payload.serverIds)) return;
 
-        const nextSignature = signature(payload.serverIds);
-        if (nextSignature !== expectedSignature.current) {
-          expectedSignature.current = nextSignature;
-          router.refresh();
-        }
+        // Player counts and rewards change even when the same servers remain listed.
+        if (!disposed) router.refresh();
       } catch {
         // Keep the current directory visible during a temporary network failure.
       } finally {

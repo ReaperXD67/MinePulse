@@ -58,11 +58,11 @@ export default async function PluginPage() {
       <section className="plugin-hero" style={{ backgroundImage: "url('/voxel-network.png')" }}>
         <div className="plugin-hero-shade" />
         <div className="container plugin-hero-content">
-          <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.6.6</span><i>Paper / Spigot 1.20-1.21</i></div>
+          <div className="plugin-signal"><PlugZap size={17} /><span>Bridge release 0.6.7</span><i>Paper / Spigot 1.20-1.21</i></div>
           <h1>KarixMC Bridge</h1>
           <p>Connect real Minecraft activity to the reward economy. The website owns policy and balances; the plugin verifies play, delivers purchases, and stays deliberately small.</p>
           <div className="inline-actions plugin-hero-actions">
-            <a className="solid-button download-button" href="/downloads/KarixMCBridge-0.6.6.jar" download>
+            <a className="solid-button download-button" href="/downloads/KarixMCBridge-0.6.7.jar" download>
               <ArrowDownToLine size={17} /> Download jar
             </a>
             <Link className="ghost-button" href="/account#servers"><ServerCog size={17} /> Open server setup</Link>
@@ -92,7 +92,7 @@ export default async function PluginPage() {
         <div className="container plugin-two-column">
           <div>
             <div className="plugin-section-heading"><span>Owner-controlled policy</span><h2>Change protection without touching YAML.</h2></div>
-            <p className="plugin-copy">The bridge pulls its current policy every minute. Owners can tune the five-minute AFK threshold, heartbeat timing, arithmetic checks, answer window, movement sensitivity, interaction minimum, and protection level from Creator Studio. Only players who explicitly link are included in activity batches, and the bridge never sends their IP address.</p>
+            <p className="plugin-copy">The bridge syncs every minute. Switch AFK detection and /answer checks on or off independently, adjust their timing, and choose quieter reward notices in Creator Studio. Bridge 0.6.7 reports the total online count, including unlinked players, without sending their identities. Only linked players share reward activity; no player IP addresses are sent.</p>
             <div className="policy-readout">
               <div><Clock3 size={17} /><span><strong>AFK threshold</strong><small>300 seconds by default</small></span><b>LIVE</b></div>
               <div><Bot size={17} /><span><strong>Arithmetic check</strong><small>Every five minutes by default</small></span><b>SERVER VERIFIED</b></div>

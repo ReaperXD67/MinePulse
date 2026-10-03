@@ -24,6 +24,9 @@ import { activePremiumPlan } from "@/lib/premium";
 import { serverJoinAddress } from "@/lib/server-address";
 import { safeMediaPath } from "@/lib/server-profile";
 import { bridgeStateAt } from "@/lib/server-liveness";
+import { getServerPresence } from "@/lib/server-presence-query";
+import { ServerPresenceStats } from "@/components/ServerPresenceStats";
+import { ServerProfileLiveSync } from "@/components/ServerProfileLiveSync";
 
 export const dynamic = "force-dynamic";
 
@@ -54,12 +57,13 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  const [sessionTotals, deliveredPurchases] = await Promise.all([
+  const [sessionTotals, deliveredPurchases, presence] = await Promise.all([
     prisma.serverSession.aggregate({
       where: { serverId: server.id },
       _sum: { activeSeconds: true, rewardedPoints: true, suspiciousScore: true }
     }),
-    prisma.purchase.count({ where: { serverId: server.id, status: "DELIVERED" } })
+    prisma.purchase.count({ where: { serverId: server.id, status: "DELIVERED" } }),
+    getServerPresence([server])
   ]);
 
   const bridgeState = bridgeStateAt(server);
@@ -71,6 +75,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
 
   return (
     <main className="server-profile-page">
+      <ServerProfileLiveSync />
       <section className="server-profile-hero" style={{ "--profile-image": `url(${safeMediaPath(server.bannerImage) || "/voxel-network.png"})` } as React.CSSProperties}>
         <div className="container server-profile-hero-inner">
           <div className="profile-breadcrumbs"><Link href="/">Servers</Link><span>/</span><span>{server.name}</span></div>
@@ -91,6 +96,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
               <div className="tag-row"><span className="tag">{server.version}</span><span className="tag">{server.region}</span>{server.tags.split(",").map((tag) => <span className="tag" key={tag}>{tag.trim()}</span>)}</div>
             </div>
           </div>
+          <ServerPresenceStats presence={presence.get(server.id)!} />
           <div className="profile-metrics-strip">
             <div><Coins size={17} /><span>Campaign pool</span><strong>{compact(server.pointPool)}</strong></div>
             <div><Zap size={17} /><span>Earn rate</span><strong>{server.rewardRatePerSecond}/s</strong></div>
@@ -194,7 +200,7 @@ export default async function ServerProfilePage({ params }: { params: Promise<{ 
           </section>
 
           <section className="panel">
-            <div className="panel-header compact-heading"><div><p className="eyebrow"><Users size={14} /> Activity</p><h3>Hourly averages</h3></div></div>
+            <div className="panel-header compact-heading"><div><p className="eyebrow"><Users size={14} /> Activity</p><h3>Linked-player activity</h3><p>Hourly samples of linked player sessions. These are not total Minecraft player counts.</p></div></div>
             <div className="hourly-stat-list">
               {server.hourlyStats.map((stat) => {
                 const average = stat.sampleCount ? Math.round(stat.onlinePlayerTotal / stat.sampleCount) : 0;

@@ -1,0 +1,49 @@
+.presence {
+  padding: 22px 0;
+  color: var(--text);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.heading > strong { font-size: 17px; font-weight: 650; }
+.heading > span { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; white-space: nowrap; }
+.heading i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.live { color: var(--lime); }
+.offline { color: var(--muted); }
+
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; }
+.metrics > div { min-width: 0; padding: 0 18px; border-right: 1px solid var(--line); }
+.metrics > div:first-child { padding-left: 0; }
+.metrics > div:last-child { border-right: 0; padding-right: 0; }
+.metrics dt { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.metrics dt svg { flex-shrink: 0; }
+.metrics dd { margin: 8px 0 4px; font-size: 30px; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.metrics > div:first-child dd { color: var(--lime); }
+.metrics small { display: block; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.note, .definition { margin: 16px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.definition { margin-top: 4px; }
+
+.compact { padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.compact .heading { margin-bottom: 14px; }
+.compact .heading > strong { font-size: 13px; }
+.compact .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 0; }
+.compact .metrics > div { padding: 0 12px; }
+.compact .metrics > div:nth-child(odd) { padding-left: 0; }
+.compact .metrics > div:nth-child(even) { border-right: 0; padding-right: 0; }
+.compact .metrics dd { font-size: 25px; }
+.compact .metrics dt { font-size: 12px; }
+.compact .note { font-size: 11px; }
+
+@media (max-width: 640px) {
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 0; }
+  .metrics > div:nth-child(odd) { padding-left: 0; }
+  .metrics > div:nth-child(even) { border-right: 0; padding-right: 0; }
+  .heading > strong { font-size: 15px; }
+  .metrics dd { font-size: 27px; }
+}

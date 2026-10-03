@@ -284,6 +284,8 @@ model Server {
   heartbeatIntervalSeconds     Int             @default(20)
   purchasePollSeconds          Int             @default(15)
   afkTimeoutSeconds            Int             @default(300)
+  afkProtectionEnabled         Boolean         @default(true)
+  pluginMessagesEnabled        Boolean         @default(true)
   challengeEnabled             Boolean         @default(true)
   challengeIntervalSeconds     Int             @default(300)
   challengeAnswerWindowSeconds Int             @default(90)
@@ -293,6 +295,8 @@ model Server {
   lastHeartbeatAt              DateTime?
   lastConfigSyncAt             DateTime?
   lastPluginVersion            String?
+  onlinePlayerCount            Int?
+  onlinePlayerCountAt          DateTime?
   integrityFailures            Int             @default(0)
   createdAt                    DateTime        @default(now())
   updatedAt                    DateTime        @updatedAt

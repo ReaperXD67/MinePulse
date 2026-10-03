@@ -160,7 +160,7 @@ export default async function MarketplacePage({
       </section>
 
       <section className="container" id="servers">
-        <MarketplaceLiveSync serverIds={visibleServers.map((server) => server.id)} />
+        <MarketplaceLiveSync />
         <div className="section-bar">
           <div>
             <p className="eyebrow"><RadioTower size={14} /> Live directory</p>

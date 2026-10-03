@@ -1,5 +1,7 @@
 "use client";
 
+import { ProtectionPolicyFields, protectionPolicyPayload } from "@/components/ProtectionPolicyFields";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -67,6 +69,8 @@ type ServerRow = {
   heartbeatIntervalSeconds: number;
   purchasePollSeconds: number;
   afkTimeoutSeconds: number;
+  afkProtectionEnabled: boolean;
+  pluginMessagesEnabled: boolean;
   challengeEnabled: boolean;
   challengeIntervalSeconds: number;
   challengeAnswerWindowSeconds: number;
@@ -320,16 +324,7 @@ export function AdminConsole({
       trustStatus: form.get("trustStatus"),
       premiumPlan: form.get("premiumPlan"),
       premiumDays: form.get("premiumDays") || undefined,
-      heartbeatIntervalSeconds: form.get("heartbeatIntervalSeconds"),
-      purchasePollSeconds: form.get("purchasePollSeconds"),
-      afkTimeoutSeconds: form.get("afkTimeoutSeconds"),
-      challengeEnabled: form.get("challengeEnabled") === "on",
-      challengeIntervalSeconds: form.get("challengeIntervalSeconds"),
-      challengeAnswerWindowSeconds: form.get("challengeAnswerWindowSeconds"),
-      challengeRequired: form.get("challengeRequired") === "on",
-      minimumMovementDistance: form.get("minimumMovementDistance"),
-      minimumActivityEvents: form.get("minimumActivityEvents"),
-      botProtectionLevel: form.get("botProtectionLevel")
+      ...protectionPolicyPayload(form)
     });
   }
 
@@ -568,7 +563,11 @@ export function AdminConsole({
                 <option value={offer.points} key={offer.id}>{offer.label} - {points(offer.points)} credits - {money(offer.priceCents)}</option>
               ))}
             </select>
-            <input className="field" name="description" placeholder="Confirmed bank transfer, e.g. Karixai SMALL" minLength={4} maxLength={240} required />
+            <div className="form-row">
+              <label htmlFor="campaign-payment-note">Payment confirmation note (required)</label>
+              <input id="campaign-payment-note" className="field" name="description" placeholder="e.g. Karixai · SMALL · bank reference 123456" minLength={4} maxLength={240} required aria-describedby="campaign-payment-help" />
+              <small id="campaign-payment-help">After checking that the payment arrived in your bank, enter the payer, package and transfer reference (or payment date). This note is saved in billing history; it does not send or verify a bank transfer.</small>
+            </div>
             <button className="solid-button" disabled={busy || !selectedAccount || !campaignServerId} type="submit">
               <Coins size={16} /> Send campaign credits
             </button>
@@ -598,7 +597,11 @@ export function AdminConsole({
                 <option value="14">14 days</option>
               </select>
             </div>
-            <input className="field" name="description" placeholder="Confirmed bank transfer, e.g. Karixai GOLD" minLength={4} maxLength={240} required />
+            <div className="form-row">
+              <label htmlFor="premium-payment-note">Payment confirmation note (required)</label>
+              <input id="premium-payment-note" className="field" name="description" placeholder="e.g. Karixai · GOLD · bank reference 123456" minLength={4} maxLength={240} required aria-describedby="premium-payment-help" />
+              <small id="premium-payment-help">After checking that the payment arrived in your bank, enter the payer, plan and transfer reference (or payment date). This note is saved in billing history; it does not send or verify a bank transfer.</small>
+            </div>
             <button className="solid-button premium-grant-button" disabled={busy || !selectedAccount || !premiumServerId} type="submit">
               <Crown size={16} /> Grant premium placement
             </button>
@@ -851,20 +854,7 @@ export function AdminConsole({
 
                   <fieldset>
                     <legend><ShieldCheck size={15} /> AFK and activity checks</legend>
-                    <div className="form-grid three">
-                      <div className="form-row"><label>AFK after</label><input className="field" name="afkTimeoutSeconds" type="number" min="60" max="1800" defaultValue={server.afkTimeoutSeconds} /><small>seconds</small></div>
-                      <div className="form-row"><label>Ask /answer every</label><input className="field" name="challengeIntervalSeconds" type="number" min="60" max="3600" defaultValue={server.challengeIntervalSeconds} /><small>seconds</small></div>
-                      <div className="form-row"><label>Answer window</label><input className="field" name="challengeAnswerWindowSeconds" type="number" min="30" max="300" defaultValue={server.challengeAnswerWindowSeconds} /><small>seconds</small></div>
-                      <div className="form-row"><label>Heartbeat</label><input className="field" name="heartbeatIntervalSeconds" type="number" min="10" max="60" defaultValue={server.heartbeatIntervalSeconds} /><small>seconds</small></div>
-                      <div className="form-row"><label>Purchase poll</label><input className="field" name="purchasePollSeconds" type="number" min="10" max="120" defaultValue={server.purchasePollSeconds} /><small>seconds</small></div>
-                      <div className="form-row"><label>Protection</label><select className="select" name="botProtectionLevel" defaultValue={server.botProtectionLevel}><option value="1">Balanced</option><option value="2">Strict</option><option value="3">Maximum</option></select></div>
-                      <div className="form-row"><label>Movement distance</label><input className="field" name="minimumMovementDistance" type="number" min="0.05" max="3" step="0.05" defaultValue={server.minimumMovementDistance} /></div>
-                      <div className="form-row"><label>Events to reset AFK</label><input className="field" name="minimumActivityEvents" type="number" min="0" max="20" defaultValue={server.minimumActivityEvents} /><small>Movement also resets it</small></div>
-                    </div>
-                    <div className="policy-toggles">
-                      <label className="toggle-row"><input name="challengeEnabled" type="checkbox" defaultChecked={server.challengeEnabled} /> Enable arithmetic checks</label>
-                      <label className="toggle-row"><input name="challengeRequired" type="checkbox" defaultChecked={server.challengeRequired} /> Pause rewards until correct answer</label>
-                    </div>
+                    <ProtectionPolicyFields key={`${server.id}:${server.pluginConfigRevision}`} policy={server} />
                   </fieldset>
                 </div>
 

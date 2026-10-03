@@ -1,0 +1,39 @@
+.protection-controls {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.protection-control .toggle-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  min-height: 32px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.protection-control .toggle-row .badge {
+  margin-left: auto;
+}
+
+.protection-control p {
+  margin: 4px 0 0 25px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 65ch;
+}
+
+.plugin-policy-form input:disabled,
+.admin-fleet-settings-grid input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-grant-column .form-row small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}

@@ -1,4 +1,6 @@
 import type { Prisma } from "@/lib/generated/prisma/client";
+import { getServerPresence } from "@/lib/server-presence-query";
+import type { ServerPresence } from "@/lib/server-presence";
 
 export const ownerServerInclude = {
   items: { where: { status: "ACTIVE" }, orderBy: { createdAt: "desc" } },
@@ -36,6 +38,7 @@ export type OwnerServerView = {
   pointPool: number;
   rewardRatePerSecond: number;
   maxPaidPlayers: number;
+  presence: ServerPresence;
   minPlaySecondsForComment: number;
   premiumPlan: string;
   premiumUntil: string | null;
@@ -45,6 +48,8 @@ export type OwnerServerView = {
   heartbeatIntervalSeconds: number;
   purchasePollSeconds: number;
   afkTimeoutSeconds: number;
+  afkProtectionEnabled: boolean;
+  pluginMessagesEnabled: boolean;
   challengeEnabled: boolean;
   challengeIntervalSeconds: number;
   challengeAnswerWindowSeconds: number;
@@ -75,7 +80,12 @@ export type OwnerServerView = {
   }>;
 };
 
-export function serializeOwnerServer(server: OwnerServerRecord): OwnerServerView {
+export async function serializeOwnerServers(servers: OwnerServerRecord[]): Promise<OwnerServerView[]> {
+  const presence = await getServerPresence(servers);
+  return servers.map((server) => serializeOwnerServer(server, presence.get(server.id)!));
+}
+
+export function serializeOwnerServer(server: OwnerServerRecord, presence: ServerPresence): OwnerServerView {
   return {
     id: server.id,
     slug: server.slug,
@@ -100,6 +110,7 @@ export function serializeOwnerServer(server: OwnerServerRecord): OwnerServerView
     pointPool: server.pointPool,
     rewardRatePerSecond: server.rewardRatePerSecond,
     maxPaidPlayers: server.maxPaidPlayers,
+    presence,
     minPlaySecondsForComment: server.minPlaySecondsForComment,
     premiumPlan: server.premiumPlan,
     premiumUntil: server.premiumUntil?.toISOString() ?? null,
@@ -109,6 +120,8 @@ export function serializeOwnerServer(server: OwnerServerRecord): OwnerServerView
     heartbeatIntervalSeconds: server.heartbeatIntervalSeconds,
     purchasePollSeconds: server.purchasePollSeconds,
     afkTimeoutSeconds: server.afkTimeoutSeconds,
+    afkProtectionEnabled: server.afkProtectionEnabled,
+    pluginMessagesEnabled: server.pluginMessagesEnabled,
     challengeEnabled: server.challengeEnabled,
     challengeIntervalSeconds: server.challengeIntervalSeconds,
     challengeAnswerWindowSeconds: server.challengeAnswerWindowSeconds,

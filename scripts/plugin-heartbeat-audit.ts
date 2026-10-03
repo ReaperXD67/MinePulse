@@ -199,6 +199,37 @@ async function main() {
   const afk = await signedPost("/api/plugin/heartbeat", heartbeatPayload({ afk: true, movementScore: 0, activityEvents: 0 }));
   assert(afk.body.rewardState === "AFK" && afk.body.earned === 0, "AFK heartbeat earned points");
 
+  await prisma.server.update({ where: { id: serverId }, data: { afkProtectionEnabled: false, challengeEnabled: true, pluginMessagesEnabled: false } });
+  await prisma.serverSession.updateMany({ where: { serverId, userId: player.id }, data: { startedAt: new Date(Date.now() - 600_000) } });
+  await agePlayerSession();
+  const checkWithoutAfk = await signedPost("/api/plugin/heartbeat", heartbeatPayload({ afk: true, movementScore: 0, activityEvents: 0 }));
+  assert(checkWithoutAfk.body.rewardState === "ACTIVITY_CHECK" && checkWithoutAfk.body.challenge, "Disabling AFK must leave enabled answer checks effective");
+
+  await prisma.server.update({ where: { id: serverId }, data: { challengeEnabled: false } });
+  await agePlayerSession();
+  const disabledChecks = await signedPost("/api/plugin/heartbeat", heartbeatPayload({ afk: true, movementScore: 0, activityEvents: 0 }));
+  assert(disabledChecks.body.rewardState === "EARNING" && disabledChecks.body.earned === 30, "Disabled AFK must ignore both stale plugin AFK and server activity timeout");
+  assert(disabledChecks.body.challenge === null && !disabledChecks.body.requiresChallenge && !disabledChecks.body.challengeEnabled, "Disabling checks must clear pending challenge and stop reward blocking");
+  assert(disabledChecks.body.pluginMessagesEnabled === false, "Quiet-chat preference must reach the bridge immediately");
+  const clearedCheck = await prisma.serverSession.findFirstOrThrow({ where: { serverId, userId: player.id, status: "ACTIVE" } });
+  assert(clearedCheck.challengeId === null && clearedCheck.challengeAnswerHash === null, "Pending challenge was not cleared in storage");
+
+  await prisma.server.update({ where: { id: serverId }, data: { afkProtectionEnabled: true, pluginMessagesEnabled: true } });
+  await agePlayerSession();
+  const restoredAfk = await signedPost("/api/plugin/heartbeat", heartbeatPayload({ afk: true, movementScore: 0, activityEvents: 0 }));
+  assert(restoredAfk.body.rewardState === "AFK" && restoredAfk.body.earned === 0, "Re-enabling AFK must restore protection");
+
+  const emptyTelemetry = await signedPost("/api/plugin/config", { serverId, pluginVersion: "0.6.7-audit", onlinePlayerCount: 0 });
+  assert(emptyTelemetry.response.ok, "Zero-player telemetry must be accepted");
+  let telemetryServer = await prisma.server.findUniqueOrThrow({ where: { id: serverId } });
+  assert(telemetryServer.onlinePlayerCount === 0 && telemetryServer.onlinePlayerCountAt, "Zero online players were not persisted");
+  await signedPost("/api/plugin/config", { serverId, pluginVersion: "0.6.7-audit", onlinePlayerCount: 42 });
+  const legacyConfig = await signedPost("/api/plugin/config", { serverId, pluginVersion: "0.6.6-audit" });
+  telemetryServer = await prisma.server.findUniqueOrThrow({ where: { id: serverId } });
+  assert(legacyConfig.response.ok && telemetryServer.onlinePlayerCount === 42, "Legacy config sync must preserve last telemetry without inventing a count");
+  const invalidTelemetry = await signedPost("/api/plugin/config", { serverId, pluginVersion: "0.6.7-audit", onlinePlayerCount: -1 });
+  assert(!invalidTelemetry.response.ok, "Negative player telemetry must be rejected");
+
   await agePlayerSession();
   const replayNonce = crypto.randomUUID();
   const replayPayload = heartbeatPayload({ afk: true, movementScore: 0, activityEvents: 0 });
@@ -275,7 +306,7 @@ async function main() {
   const storedSession = await prisma.serverSession.findFirstOrThrow({ where: { serverId, userId: player.id, status: "ACTIVE" } });
   const storedPlayer = await prisma.user.findUniqueOrThrow({ where: { id: player.id } });
   assert(!("ipHash" in storedSession), "Server sessions must not expose an IP field");
-  assert(storedPlayer.walletPoints === 210, `Expected wallet 210, received ${storedPlayer.walletPoints}`);
+  assert(storedPlayer.walletPoints === 240, `Expected wallet 240, received ${storedPlayer.walletPoints}`);
 
   console.log(JSON.stringify({
     ok: true,
@@ -289,6 +320,10 @@ async function main() {
       quietHeartbeatGrace: true,
       serverSideAfkTimeout: true,
       afkBlocking: true,
+      independentProtectionToggles: true,
+      pendingChallengeClearedWhenDisabled: true,
+      quietChatPolicy: true,
+      aggregateOnlineTelemetry: true,
       oneRewardServerAtATime: true,
       expiredRewardLeaseSwitches: true,
       concurrentHeartbeatCreditOnce: true,

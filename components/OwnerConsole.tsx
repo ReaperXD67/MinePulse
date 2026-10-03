@@ -1,5 +1,9 @@
 "use client";
 
+import { ServerPresenceStats } from "@/components/ServerPresenceStats";
+
+import { ProtectionPolicyFields, protectionPolicyPayload } from "@/components/ProtectionPolicyFields";
+
 import Link from "next/link";
 import { copyText } from "@/lib/copy-text";
 import { ManualPaymentPanel } from "@/components/ManualPaymentPanel";
@@ -360,16 +364,7 @@ export function OwnerConsole({
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     await send(`/api/owner/servers/${serverId}`, {
-      heartbeatIntervalSeconds: form.get("heartbeatIntervalSeconds"),
-      purchasePollSeconds: form.get("purchasePollSeconds"),
-      afkTimeoutSeconds: form.get("afkTimeoutSeconds"),
-      challengeEnabled: form.get("challengeEnabled") === "on",
-      challengeIntervalSeconds: form.get("challengeIntervalSeconds"),
-      challengeAnswerWindowSeconds: form.get("challengeAnswerWindowSeconds"),
-      challengeRequired: form.get("challengeRequired") === "on",
-      minimumMovementDistance: form.get("minimumMovementDistance"),
-      minimumActivityEvents: form.get("minimumActivityEvents"),
-      botProtectionLevel: form.get("botProtectionLevel")
+      ...protectionPolicyPayload(form)
     }, "PATCH");
   }
 
@@ -541,6 +536,8 @@ export function OwnerConsole({
             <Link className="ghost-button" href={`/servers/${server.slug}`}><ExternalLink size={15} /> View profile</Link>
           </header>
 
+          <div style={{ padding: "0 24px" }}><ServerPresenceStats presence={server.presence} /></div>
+
           <div className="management-grid">
             <details className="subpanel-disclosure" open>
               <summary><span><Save size={16} /> Profile and reward rules</span></summary>
@@ -613,21 +610,8 @@ export function OwnerConsole({
                   <div><span>Risk score</span><strong>{server.riskScore}</strong></div>
                 </div>
                 <form className="plugin-policy-form" onSubmit={(event) => updatePluginPolicy(event, server.id)}>
-                  <div className="policy-form-heading"><Timer size={16} /><div><strong>Live anti-AFK policy</strong><span>Saved here and synced by the bridge.</span></div></div>
-                  <div className="form-grid two">
-                    <div className="form-row"><label>AFK after seconds</label><input className="field" name="afkTimeoutSeconds" type="number" min="60" max="1800" defaultValue={server.afkTimeoutSeconds} /></div>
-                    <div className="form-row"><label>Challenge every seconds</label><input className="field" name="challengeIntervalSeconds" type="number" min="60" max="3600" defaultValue={server.challengeIntervalSeconds} /></div>
-                    <div className="form-row"><label>Answer window seconds</label><input className="field" name="challengeAnswerWindowSeconds" type="number" min="30" max="300" defaultValue={server.challengeAnswerWindowSeconds} /></div>
-                    <div className="form-row"><label>Heartbeat seconds</label><input className="field" name="heartbeatIntervalSeconds" type="number" min="10" max="60" defaultValue={server.heartbeatIntervalSeconds} /></div>
-                    <div className="form-row"><label>Purchase poll seconds</label><input className="field" name="purchasePollSeconds" type="number" min="10" max="120" defaultValue={server.purchasePollSeconds} /></div>
-                    <div className="form-row"><label>Movement distance</label><input className="field" name="minimumMovementDistance" type="number" min="0.05" max="3" step="0.05" defaultValue={server.minimumMovementDistance} /></div>
-                    <div className="form-row"><label>Events to reset AFK timer</label><input className="field" name="minimumActivityEvents" type="number" min="0" max="20" defaultValue={server.minimumActivityEvents} /><small>Movement also resets the timer.</small></div>
-                    <div className="form-row"><label>Protection level</label><select className="select" name="botProtectionLevel" defaultValue={server.botProtectionLevel}><option value="1">Balanced</option><option value="2">Strict</option><option value="3">Maximum</option></select></div>
-                  </div>
-                  <div className="policy-toggles">
-                    <label className="toggle-row"><input name="challengeEnabled" type="checkbox" defaultChecked={server.challengeEnabled} /> Arithmetic checks enabled</label>
-                    <label className="toggle-row"><input name="challengeRequired" type="checkbox" defaultChecked={server.challengeRequired} /> Pause rewards until answered</label>
-                  </div>
+                  <div className="policy-form-heading"><Timer size={16} /><div><strong>Activity and chat controls</strong><span>Choose how players earn and what the bridge sends in chat.</span></div></div>
+                  <ProtectionPolicyFields key={`${server.id}:${server.pluginConfigRevision}`} policy={server} />
                   <button className="ghost-button" disabled={busy} type="submit"><ShieldCheck size={15} /> Sync protection policy</button>
                 </form>
               </section>

@@ -38,8 +38,8 @@ async function auditViewport(name, viewport) {
 
   await page.goto(`${baseUrl}/plugin`, { waitUntil: "networkidle" });
   const pluginDownload = page.getByRole("link", { name: /Download jar/i });
-  if ((await pluginDownload.getAttribute("href")) !== "/downloads/KarixMCBridge-0.6.6.jar") {
-    errors.push(`${name}: plugin page is not serving bridge 0.6.6`);
+  if ((await pluginDownload.getAttribute("href")) !== "/downloads/KarixMCBridge-0.6.7.jar") {
+    errors.push(`${name}: plugin page is not serving bridge 0.6.7`);
   }
 
   await page.goto(baseUrl, { waitUntil: "networkidle" });

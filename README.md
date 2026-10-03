@@ -113,6 +113,14 @@ npm run game:test:down
 
 ## Key Flows
 
+### Player visibility and activity controls
+
+Server cards, server profiles, and Creator Studio show **Online now**, **Playing now**, **Earning now**, and **Registered here**. Bridge 0.6.7 reports the anonymous Minecraft online total once per minute. Older bridges show **Linked online** instead. Playing and earning use a two-minute activity window; registered players are distinct KarixMC accounts that have joined that particular server. Disconnected bridges show unavailable live counts instead of misleading zeroes.
+
+In Creator Studio or the administrator fleet, **Activity and chat controls** independently switch AFK reward pauses, `/answer` questions, and automatic reward/linking notices on or off. To keep chat quiet, turn off questions and notices; explicit commands still reply. Replace the old bridge JAR with 0.6.7 and restart Paper for quiet-chat controls and the full online count.
+
+The administrator's seven-day point flow separates verified play earnings, daily/level bonuses, and spending, with exact daily values and UTC calendar boundaries. Payment confirmation notes identify the payer, package, and bank reference or payment date after staff verify receipt in the bank.
+
 - `/` shows the randomized marketplace. Premium servers shuffle first. Regular servers shuffle below. Empty campaigns are hidden.
 - `/` can also filter the shuffled directory by tags such as Survival, SMP, or Economy.
 - `/account` combines the member wallet, public profile, privacy, friends, purchases, play sessions, favorites, server publishing, campaign funding, store management, plugin credentials, and support inbox.
@@ -132,7 +140,7 @@ Important endpoints:
 - `POST /api/plugin/purchases/pull` fairly leases eligible pending commands for a server.
 - `POST /api/plugin/purchases/ack` claim-safely confirms delivery or refunds the purchase-time price.
 
-Version 0.6.6 batches linked-player activity, syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, tracks the last verified activity across heartbeats, and uses website-generated arithmetic `/answer` challenges. Purchase commands use fair expiring claims and a durable plugin-side receipt journal so failed acknowledgements do not re-run an already recorded delivery. When AuthMe is installed, the bridge fails closed until the player has completed `/register` or `/login`, including for rewards, account linking, statistics, and purchase delivery. The retired `/minepulse` alias is no longer registered. Quiet heartbeats continue earning until the configured AFK timeout actually expires. Every plugin request and response is authenticated with HMAC-SHA256, a timestamp, and a persisted one-time nonce. The plugin never sends player IP addresses. KarixMC calculates elapsed time, reward rates, campaign deductions, challenges, and wallet changes on the website; the plugin never directly edits balances.
+Version 0.6.7 batches linked-player activity, syncs protection policy from Creator Studio, links Minecraft identities with short-lived account codes, tracks the last verified activity across heartbeats, and uses website-generated arithmetic `/answer` challenges. Purchase commands use fair expiring claims and a durable plugin-side receipt journal so failed acknowledgements do not re-run an already recorded delivery. When AuthMe is installed, the bridge fails closed until the player has completed `/register` or `/login`, including for rewards, account linking, statistics, and purchase delivery. The retired `/minepulse` alias is no longer registered. Quiet heartbeats continue earning until the configured AFK timeout actually expires. Every plugin request and response is authenticated with HMAC-SHA256, a timestamp, and a persisted one-time nonce. The plugin never sends player IP addresses. KarixMC calculates elapsed time, reward rates, campaign deductions, challenges, and wallet changes on the website; the plugin never directly edits balances.
 
 ## Plugin Build
 

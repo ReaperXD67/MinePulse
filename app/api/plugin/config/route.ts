@@ -6,7 +6,8 @@ export const runtime = "nodejs";
 
 const schema = z.object({
   serverId: z.string().min(1),
-  pluginVersion: z.string().trim().min(3).max(30)
+  pluginVersion: z.string().trim().min(3).max(30),
+  onlinePlayerCount: z.number().int().min(0).max(100000).optional()
 });
 
 export async function POST(request: Request) {
@@ -18,7 +19,14 @@ export async function POST(request: Request) {
 
     await prisma.server.update({
       where: { id: server.id },
-      data: { lastConfigSyncAt: new Date(), lastPluginVersion: input.pluginVersion }
+      data: {
+        lastConfigSyncAt: new Date(),
+        lastPluginVersion: input.pluginVersion,
+        ...(input.onlinePlayerCount !== undefined ? {
+          onlinePlayerCount: input.onlinePlayerCount,
+          onlinePlayerCountAt: new Date()
+        } : {})
+      }
     });
 
     return pluginJson(auth, {
@@ -36,6 +44,8 @@ export async function POST(request: Request) {
         heartbeatIntervalSeconds: server.heartbeatIntervalSeconds,
         purchasePollSeconds: server.purchasePollSeconds,
         afkTimeoutSeconds: server.afkTimeoutSeconds,
+        afkProtectionEnabled: server.afkProtectionEnabled,
+        pluginMessagesEnabled: server.pluginMessagesEnabled,
         challengeEnabled: server.challengeEnabled,
         challengeIntervalSeconds: server.challengeIntervalSeconds,
         challengeAnswerWindowSeconds: server.challengeAnswerWindowSeconds,

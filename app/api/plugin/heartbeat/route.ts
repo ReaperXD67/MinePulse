@@ -129,6 +129,8 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
           trustStatus: true,
           heartbeatIntervalSeconds: true,
           afkTimeoutSeconds: true,
+          afkProtectionEnabled: true,
+          pluginMessagesEnabled: true,
           challengeEnabled: true,
           challengeIntervalSeconds: true,
           challengeAnswerWindowSeconds: true,
@@ -260,7 +262,7 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
       const lastActivityAt = meaningfulActivity ? now : previousActivityAt;
       const activityTimedOut =
         now.getTime() - lastActivityAt.getTime() >= freshServer.afkTimeoutSeconds * 1000;
-      const afk = input.afk || activityTimedOut;
+      const afk = freshServer.afkProtectionEnabled && (input.afk || activityTimedOut);
       const challengePending = Boolean(challengeId);
       const challengeOk = !freshServer.challengeRequired || !challengePending;
       const withinPaidCap = paidSlots.some((activeSession) => activeSession.id === session.id);
@@ -463,6 +465,8 @@ export async function processHeartbeat(input: HeartbeatInput, server: Server, re
         rewardable,
         rewardState,
         rewardMessage,
+        pluginMessagesEnabled: freshServer.pluginMessagesEnabled,
+        challengeEnabled: freshServer.challengeEnabled,
         integrityVerified: true,
         requiresChallenge: challengePending,
         challengeAccepted,

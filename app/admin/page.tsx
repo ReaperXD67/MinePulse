@@ -111,7 +111,7 @@ export default async function AdminPage({
           <strong>{stats.users}</strong>
         </div>
         <div className="stat-tile" style={{ "--accent": "var(--cyan)" } as React.CSSProperties}>
-          <span>Players online now</span>
+          <span>Linked players online</span>
           <strong>{stats.onlinePlayersNow}</strong>
         </div>
         <div className="stat-tile" style={{ "--accent": "var(--gold)" } as React.CSSProperties}>
@@ -149,7 +149,7 @@ export default async function AdminPage({
         <div className="panel-header">
           <div>
             <h2>Seven-day point flow</h2>
-            <p>Earned points paid to players and spent on server items.</p>
+            <p>See what players earned by playing, collected in bonuses, and spent on server items.</p>
           </div>
         </div>
         <StatsChart data={stats.chart} />
@@ -221,6 +221,8 @@ export default async function AdminPage({
           heartbeatIntervalSeconds: server.heartbeatIntervalSeconds,
           purchasePollSeconds: server.purchasePollSeconds,
           afkTimeoutSeconds: server.afkTimeoutSeconds,
+          afkProtectionEnabled: server.afkProtectionEnabled,
+          pluginMessagesEnabled: server.pluginMessagesEnabled,
           challengeEnabled: server.challengeEnabled,
           challengeIntervalSeconds: server.challengeIntervalSeconds,
           challengeAnswerWindowSeconds: server.challengeAnswerWindowSeconds,

@@ -129,7 +129,12 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     registerCommand("mpcode");
 
     Bukkit.getScheduler().runTaskTimer(this, this::tickBridge, 40L, 100L);
-    Bukkit.getScheduler().runTaskTimerAsynchronously(this, this::syncPolicy, 20L, 1200L);
+    Bukkit.getScheduler().runTaskTimer(this, () -> {
+      // Bukkit player collections must be read on the server thread. Only the
+      // anonymous count crosses into the asynchronous policy request.
+      int onlinePlayerCount = Bukkit.getOnlinePlayers().size();
+      Bukkit.getScheduler().runTaskAsynchronously(this, () -> syncPolicy(onlinePlayerCount));
+    }, 20L, 1200L);
     getLogger().info("KarixMC bridge enabled. Protection policy will sync from the website.");
   }
 
@@ -190,7 +195,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     movementScoreSinceHeartbeat.put(player.getUniqueId(), 0);
     activityEventsSinceHeartbeat.put(player.getUniqueId(), 0);
     lastHeartbeatSentAt.put(player.getUniqueId(), now());
-    if (!consentedPlayers.contains(player.getUniqueId())) {
+    if (!consentedPlayers.contains(player.getUniqueId()) && policy.revision > 0 && policy.pluginMessagesEnabled) {
       player.sendMessage(prefix() + ChatColor.GRAY + "KarixMC activity sharing is off. Use /karixmc link <code> to opt in; player IP addresses are never sent.");
     }
   }
@@ -473,7 +478,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     if (response.has("linked") && !response.get("linked").getAsBoolean()) {
       long current = now();
       long lastNotice = lastLinkNoticeAt.getOrDefault(playerId, 0L);
-      if (current - lastNotice >= 60) {
+      if (policy.pluginMessagesEnabled && current - lastNotice >= 60) {
         lastLinkNoticeAt.put(playerId, current);
         String message = response.has("message")
           ? response.get("message").getAsString()
@@ -483,13 +488,18 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
       return;
     }
 
-    boolean accepted = response.has("challengeAccepted") && response.get("challengeAccepted").getAsBoolean();
+    boolean checksEnabled = response.has("challengeEnabled")
+      ? response.get("challengeEnabled").getAsBoolean() : policy.challengeEnabled;
+    boolean accepted = checksEnabled && response.has("challengeAccepted") && response.get("challengeAccepted").getAsBoolean();
+    if (!checksEnabled || !response.has("challenge") || response.get("challenge").isJsonNull()) {
+      challenges.remove(playerId);
+    }
     if (accepted) {
       challenges.remove(playerId);
       player.sendMessage(prefix() + ChatColor.GREEN + "Activity check confirmed.");
     }
 
-    if (response.has("challenge") && !response.get("challenge").isJsonNull()) {
+    if (checksEnabled && response.has("challenge") && !response.get("challenge").isJsonNull()) {
       JsonObject data = response.getAsJsonObject("challenge");
       String id = data.get("id").getAsString();
       Challenge current = challenges.get(playerId);
@@ -525,6 +535,9 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     String state = response.get("rewardState").getAsString();
     String message = response.get("rewardMessage").getAsString();
     String previous = lastRewardState.put(playerId, state);
+    boolean messagesEnabled = response.has("pluginMessagesEnabled")
+      ? response.get("pluginMessagesEnabled").getAsBoolean() : policy.pluginMessagesEnabled;
+    if (!messagesEnabled) return;
     long current = now();
     long lastNotice = lastRewardNoticeAt.getOrDefault(playerId, 0L);
     boolean changed = previous == null || !previous.equals(state);
@@ -543,13 +556,14 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     }
   }
 
-  private void syncPolicy() {
+  private void syncPolicy(int onlinePlayerCount) {
     if (!configured() || !policySyncInFlight.compareAndSet(false, true)) {
       return;
     }
 
     JsonObject payload = credentials();
     payload.addProperty("pluginVersion", getDescription().getVersion());
+    payload.addProperty("onlinePlayerCount", onlinePlayerCount);
     try {
       JsonObject response = post("/api/plugin/config", payload);
       JsonObject data = response.getAsJsonObject("policy");
@@ -558,6 +572,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
         getLogger().info("KarixMC website policy synced at revision " + next.revision + ".");
       }
       policy = next;
+      if (!next.challengeEnabled) challenges.clear();
     } catch (Exception error) {
       warnConnection("Policy sync failed; keeping the last safe policy: " + safeError(error));
     } finally {
@@ -901,7 +916,7 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
 
   private boolean isAfk(Player player, long current) {
     long lastActive = lastActiveAt.getOrDefault(player.getUniqueId(), current);
-    return current - lastActive >= policy.afkTimeoutSeconds;
+    return policy.afkProtectionEnabled && current - lastActive >= policy.afkTimeoutSeconds;
   }
 
   private void initializeAuthMeGate() {
@@ -1229,18 +1244,24 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
     private final int heartbeatIntervalSeconds;
     private final int purchasePollSeconds;
     private final int afkTimeoutSeconds;
+    private final boolean afkProtectionEnabled;
+    private final boolean challengeEnabled;
+    private final boolean pluginMessagesEnabled;
     private final double minimumMovementDistance;
 
-    private PluginPolicy(int revision, int heartbeatIntervalSeconds, int purchasePollSeconds, int afkTimeoutSeconds, double minimumMovementDistance) {
+    private PluginPolicy(int revision, int heartbeatIntervalSeconds, int purchasePollSeconds, int afkTimeoutSeconds, double minimumMovementDistance, boolean afkProtectionEnabled, boolean challengeEnabled, boolean pluginMessagesEnabled) {
       this.revision = revision;
       this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
       this.purchasePollSeconds = purchasePollSeconds;
       this.afkTimeoutSeconds = afkTimeoutSeconds;
       this.minimumMovementDistance = minimumMovementDistance;
+      this.afkProtectionEnabled = afkProtectionEnabled;
+      this.challengeEnabled = challengeEnabled;
+      this.pluginMessagesEnabled = pluginMessagesEnabled;
     }
 
     private static PluginPolicy defaults() {
-      return new PluginPolicy(0, 20, 15, 300, 0.2);
+      return new PluginPolicy(0, 20, 15, 300, 0.2, true, true, true);
     }
 
     private static PluginPolicy from(JsonObject data) {
@@ -1249,7 +1270,10 @@ public final class MinePulseBridgePlugin extends JavaPlugin implements Listener,
         data.get("heartbeatIntervalSeconds").getAsInt(),
         data.get("purchasePollSeconds").getAsInt(),
         data.get("afkTimeoutSeconds").getAsInt(),
-        data.get("minimumMovementDistance").getAsDouble()
+        data.get("minimumMovementDistance").getAsDouble(),
+        !data.has("afkProtectionEnabled") || data.get("afkProtectionEnabled").getAsBoolean(),
+        !data.has("challengeEnabled") || data.get("challengeEnabled").getAsBoolean(),
+        !data.has("pluginMessagesEnabled") || data.get("pluginMessagesEnabled").getAsBoolean()
       );
     }
   }

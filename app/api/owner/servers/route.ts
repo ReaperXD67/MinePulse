@@ -9,7 +9,7 @@ import { routeError } from "@/lib/api";
 import { normalizeServerAddress } from "@/lib/server-address";
 import { protectPluginSecret } from "@/lib/plugin-credentials";
 import { MAX_SERVERS_PER_MEMBER } from "@/lib/server-limits";
-import { ownerServerInclude, serializeOwnerServer } from "@/lib/owner-server-view";
+import { ownerServerInclude, serializeOwnerServers } from "@/lib/owner-server-view";
 import {
   minecraftVersionSchema,
   normalizeBannerImage,
@@ -31,7 +31,7 @@ export async function GET() {
     });
 
     return NextResponse.json(
-      { servers: servers.map(serializeOwnerServer) },
+      { servers: await serializeOwnerServers(servers) },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {

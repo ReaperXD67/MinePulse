@@ -4,6 +4,7 @@ import { activePremiumPlan } from "@/lib/premium";
 import { readSharedJson, writeSharedJson } from "@/lib/redis";
 import { safeMediaPath } from "@/lib/server-profile";
 import { bridgeStateAt } from "@/lib/server-liveness";
+import { getServerPresence } from "@/lib/server-presence-query";
 
 type MarketplaceSnapshot = Awaited<ReturnType<typeof createMarketplaceSnapshot>>;
 
@@ -38,6 +39,8 @@ async function createMarketplaceSnapshot() {
         trustStatus: true,
         lastHeartbeatAt: true,
         lastConfigSyncAt: true,
+        onlinePlayerCount: true,
+        onlinePlayerCountAt: true,
         items: {
           where: { status: "ACTIVE" },
           orderBy: { pricePoints: "asc" },
@@ -74,6 +77,8 @@ async function createMarketplaceSnapshot() {
     })
   ]);
 
+  const presence = await getServerPresence(servers, now.getTime());
+
   return {
     servers: servers
       .map((server) => {
@@ -93,6 +98,7 @@ async function createMarketplaceSnapshot() {
           pointPool: server.pointPool,
           rewardRatePerSecond: server.rewardRatePerSecond,
           maxPaidPlayers: server.maxPaidPlayers,
+          presence: presence.get(server.id)!,
           averageOnline: server.hourlyStats[0]?.sampleCount
             ? Math.round(server.hourlyStats[0].onlinePlayerTotal / server.hourlyStats[0].sampleCount)
             : 0,
@@ -122,7 +128,7 @@ export async function getMarketplaceSnapshot() {
   const now = Date.now();
   if (localSnapshot && localSnapshot.expiresAt > now) return localSnapshot.value;
 
-  const shared = await readSharedJson<MarketplaceSnapshot>("marketplace:snapshot:v3");
+  const shared = await readSharedJson<MarketplaceSnapshot>("marketplace:snapshot:v5");
   if (shared) {
     localSnapshot = { expiresAt: now + 2_000, value: shared };
     return shared;
@@ -130,6 +136,6 @@ export async function getMarketplaceSnapshot() {
 
   const value = await createMarketplaceSnapshot();
   localSnapshot = { expiresAt: now + 5_000, value };
-  await writeSharedJson("marketplace:snapshot:v3", value, 5);
+  await writeSharedJson("marketplace:snapshot:v5", value, 5);
   return value;
 }

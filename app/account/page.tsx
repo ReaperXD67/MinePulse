@@ -9,7 +9,7 @@ import { DailyRewardPanel } from "@/components/DailyRewardPanel";
 import { SecurityPanel } from "@/components/SecurityPanel";
 import { currentAuthContext, listActiveSessions } from "@/lib/auth";
 import { minutesLabel, money, points, shortDate } from "@/lib/format";
-import { ownerServerInclude, serializeOwnerServer } from "@/lib/owner-server-view";
+import { ownerServerInclude, serializeOwnerServers } from "@/lib/owner-server-view";
 import { prisma } from "@/lib/prisma";
 import { serverJoinAddress } from "@/lib/server-address";
 import { safeMediaPath } from "@/lib/server-profile";
@@ -312,7 +312,7 @@ export default async function AccountPage() {
         campaignPackages={pointPackages}
         discordUrl={process.env.NEXT_PUBLIC_DISCORD_URL || "/plugin#support"}
         premiumTiers={premiumTiers}
-        servers={servers.map(serializeOwnerServer)}
+        servers={await serializeOwnerServers(servers)}
       />
 
       <section className="panel" id="support">

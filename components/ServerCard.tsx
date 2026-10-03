@@ -7,6 +7,8 @@ import { ArrowUpRight, Coins, Crown, Gem, Heart, MessageSquare, RadioTower, Shie
 import { compact, daysLeft, points } from "@/lib/format";
 import { rewardRateVisualTier } from "@/lib/reward-rate";
 import { serverJoinAddress } from "@/lib/server-address";
+import { ServerPresenceStats } from "@/components/ServerPresenceStats";
+import type { ServerPresence } from "@/lib/server-presence";
 
 export type MarketplaceServer = {
   id: string;
@@ -24,6 +26,7 @@ export type MarketplaceServer = {
   rewardRatePerSecond: number;
   maxPaidPlayers: number;
   averageOnline: number;
+  presence: ServerPresence;
   premiumPlan: "NONE" | "GOLD" | "DIAMOND";
   premiumUntil: string | null;
   trustStatus: "VERIFIED" | "WATCHLIST" | "SUSPENDED" | "BLACKLISTED";
@@ -93,6 +96,7 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
           ) : null}
         </div>
 
+        <ServerPresenceStats presence={server.presence} compact />
         <p className="server-description">{server.description}</p>
         <div className="tag-row"><span className="tag">{server.version}</span><span className="tag">{server.region}</span>{server.tags.slice(0, 3).map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div>
 
@@ -102,7 +106,7 @@ export function ServerCard({ server }: { server: MarketplaceServer }) {
             <span className="metric-label">Earn {rewardTier === "standard" ? null : <em>{rewardLabel}</em>}</span>
             <strong>{rewardTier === "standard" ? null : <Zap size={15} />} {server.rewardRatePerSecond}/s</strong>
           </div>
-          <div className="mini-metric"><span className="metric-label">Avg online</span><strong>{server.averageOnline}</strong></div>
+          <div className="mini-metric"><span className="metric-label">Reward slots</span><strong>{server.maxPaidPlayers}</strong></div>
         </div>
 
         {teaser ? <div className="store-teaser"><div><span>Store preview</span><strong>{teaser.name}</strong><small>{teaser.description}</small></div><b>{points(teaser.pricePoints)} pts</b></div> : <div className="store-teaser empty-teaser">No store items published</div>}
