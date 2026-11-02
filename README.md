@@ -29,6 +29,8 @@ The public site runs on two loopback-only application replicas behind Nginx HTTP
 
 Deployment, recovery, monitoring, and rollback procedures are in [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md).
 
+Tested app-only beta releases use [rolling app updates](./PRODUCTION_RUNBOOK.md#beta-rolling-app-updates), preserving the existing environment and replacing one replica at a time with readiness checks and an image rollback. The full `production:validate` check remains a launch-readiness requirement; SMTP delivery and administrator TOTP setup are still pending for the current beta.
+
 ## Two Separate Currencies
 
 - **Wallet points** live in a member wallet. Verified play is the main source; level rewards, the 20-hour claim, and documented admin grants also add wallet points. Wallet points can buy server store items.

@@ -190,6 +190,25 @@ sudo APP_ENV_FILE=/opt/karixmc/.env.production bash deploy/scripts/deploy-native
 
 Nginx exposes only ports 80 and 443, redirects HTTP to HTTPS, load-balances the two loopback-only app replicas, sets security headers, and applies tighter limits to authentication and plugin endpoints. PostgreSQL and Redis have no public host ports.
 
+### Beta rolling app updates
+
+The existing beta supports app-only releases without changing its configuration. Use this process only for a tested, approved commit with no schema or deployment-configuration changes. Preserve `.env.production` byte-for-byte, compare its effective configuration with both running replicas privately, and retain an encrypted database/media backup plus a verified rollback image of the current running application before building. Record the target commit, running image IDs, rollback tag, and environment checksum; never print secret values.
+
+From `/opt/karixmc`, use the existing environment and Compose definition:
+
+```bash
+COMPOSE=(docker compose --env-file .env.production -f docker-compose.production.yml)
+"${COMPOSE[@]}" build app
+"${COMPOSE[@]}" up -d --no-deps app_replica
+curl --fail --silent --show-error http://127.0.0.1:3001/api/health/ready
+```
+
+Wait for the replica readiness check to pass before continuing. If it remains unhealthy after 25 attempts two seconds apart, restore the saved rollback image. Once the replica is healthy, replace `app` with `"${COMPOSE[@]}" up -d --no-deps app` and check `http://127.0.0.1:3000/api/health/ready` in the same way. Verify both replicas, public `https://karixmc.pl/api/health/ready`, the changed behavior, the unchanged environment checksum, and the preserved runtime configuration before accepting the release. This process does not restart PostgreSQL/Redis or run migrations.
+
+On failure, retag the saved image as `karixmc-app:latest`, run `"${COMPOSE[@]}" up -d --no-deps app app_replica`, and repeat the health checks. Keep the failed image and logs for investigation.
+
+The full `npm run production:validate` check remains required for launch readiness and configuration changes. SMTP delivery, required email verification, and administrator TOTP setup remain separately pending in the current beta; app-only updates preserve the existing settings.
+
 ## 6. Verify launch
 
 ```bash
