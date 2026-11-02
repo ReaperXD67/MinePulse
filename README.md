@@ -40,7 +40,7 @@ Reward rates support half-point steps such as `1`, `1.5`, `2`, `2.5`, and `3` po
 
 ## Beta Manual Orders
 
-The beta uses manual EUR bank transfers. The public website shows the active database-managed packages in euros, plus beneficiary `Damian Dawid Stoklosa`, IBAN `NL45 REVO 1944 8203 88`, and description format `<KarixMC username or account email> <package code>`. Changing the displayed currency to EUR does not rewrite package quantities or prices in the database.
+The beta uses manual EUR bank transfers. The public website shows the active database-managed packages in euros, plus beneficiary `Damian Stoklosa`, IBAN `NL45 REVO 1944 8203 88`, and description format `<KarixMC username or account email> <package code>`. Changing the displayed currency to EUR does not rewrite package quantities or prices in the database.
 
 Customers send one exact active-package amount per transfer. Staff grant campaign credits or 14-day premium placement manually from the administrator account only after seeing the settled transfer in the beneficiary bank account. Screenshots and Discord messages are not proof of payment.
 

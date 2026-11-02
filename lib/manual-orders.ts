@@ -1,5 +1,5 @@
 export const BETA_MANUAL_PAYMENT = {
-  beneficiary: "Damian Dawid Stoklosa",
+  beneficiary: "Damian Stoklosa",
   iban: "NL45REVO1944820388",
   ibanDisplay: "NL45 REVO 1944 8203 88",
   currency: "EUR",
