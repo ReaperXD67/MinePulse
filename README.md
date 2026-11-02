@@ -146,6 +146,7 @@ Version 0.6.7 batches linked-player activity, syncs protection policy from Creat
 
 See [minecraft-plugin/README.md](minecraft-plugin/README.md) for the full Paper installation, connection, firewall, security, and troubleshooting guide.
 See [SECURITY.md](SECURITY.md) for trust boundaries, transmitted data, protocol controls, incident response, and responsible disclosure.
+See [dependency maintenance](SECURITY.md#dependency-maintenance) for dependency minimums, upstream security fixes, and upgrade checks.
 
 From `minecraft-plugin/`:
 

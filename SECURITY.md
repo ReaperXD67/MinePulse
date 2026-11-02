@@ -83,6 +83,18 @@ Never grant operator permissions, privileged groups, or allowlisted status to an
 
 Never put a plugin secret in screenshots, chat messages, source control, support tickets, or client-side JavaScript. Use a separate random `PLUGIN_SECRET_ENCRYPTION_KEY` in production and back it up securely; losing it makes stored plugin credentials unreadable.
 
+## Dependency maintenance
+
+Maintain these minimum versions in `package.json` and the committed lockfile:
+
+- Next.js **16.4.4** or newer, including the fixes for [typed-array cache RCE](https://github.com/vercel/next.js/security/advisories/GHSA-673q-mjm6-r5xr) and [image-optimization RCE](https://github.com/vercel/next.js/security/advisories/GHSA-2464-fhr4-w9xw).
+- sharp **0.35.5** or newer in both the direct dependency and the override, covering the upstream [SVG-processing memory vulnerability](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w).
+- Zod **4.6.7** or newer, retaining the [early rejection of oversized bounded collections](https://github.com/colinhacks/zod/pull/6652) used by plugin request validation.
+
+Run `npm audit` after dependency changes and before deployment, then review affected code paths and available upstream fixes. These minimums do not imply a clean audit: unrelated runtime and development dependencies may still have findings. Verify dependency updates with the relevant application checks and a production build before deploying.
+
+Nodemailer remains on 9.x. Resolving its remaining [parser advisories](https://github.com/nodemailer/nodemailer/security/advisories/GHSA-8c8m-p3m8-cjg8) requires a separately verified upgrade to 10.1.4 or newer, including signup verification and password-reset email checks.
+
 ## Production requirements
 
 - HTTPS domain, secure cookies, HSTS, and `allow-insecure-http: false` in every plugin.
