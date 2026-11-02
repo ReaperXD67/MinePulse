@@ -50,7 +50,7 @@ Do not send production passwords or private keys in chat or commit them to Git.
 ### Beta bank-transfer catalogue
 
 - Beneficiary: `Damian Dawid Stoklosa`
-- IBAN: `BE11 9670 5166 0748`
+- IBAN: `NL45 REVO 1944 8203 88`
 - Currency: EUR
 - Customer description: `<KarixMC username or account email> <package code shown on the website>`
 - Example: `Karixai GOLD`

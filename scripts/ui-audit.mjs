@@ -46,7 +46,7 @@ async function auditViewport(name, viewport) {
   if (!(await page.getByText("Beta bank transfer", { exact: true }).first().isVisible())) {
     errors.push(`${name}: beta bank-transfer panel is not visible`);
   }
-  if (!(await page.getByText("BE11 9670 5166 0748", { exact: true }).first().isVisible())) {
+  if (!(await page.getByText("NL45 REVO 1944 8203 88", { exact: true }).first().isVisible())) {
     errors.push(`${name}: beneficiary IBAN is not visible`);
   }
   const displayedPrices = await page.locator(".manual-offer small").allTextContents();
@@ -136,7 +136,7 @@ if (!loginResponse.ok()) {
   if (!(await ownerPage.getByText("Beta bank transfer", { exact: true }).first().isVisible())) {
     errors.push("owner account: manual beta purchase instructions are not visible");
   }
-  if (!(await ownerPage.getByText("BE11 9670 5166 0748", { exact: true }).first().isVisible())) {
+  if (!(await ownerPage.getByText("NL45 REVO 1944 8203 88", { exact: true }).first().isVisible())) {
     errors.push("owner account: beneficiary IBAN is not visible");
   }
   if (await ownerPage.getByText("Crypto funding", { exact: true }).count()) {

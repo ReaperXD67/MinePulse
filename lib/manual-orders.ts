@@ -1,7 +1,7 @@
 export const BETA_MANUAL_PAYMENT = {
   beneficiary: "Damian Dawid Stoklosa",
-  iban: "BE11967051660748",
-  ibanDisplay: "BE11 9670 5166 0748",
+  iban: "NL45REVO1944820388",
+  ibanDisplay: "NL45 REVO 1944 8203 88",
   currency: "EUR",
   descriptionFormat: "<KarixMC username or account email> <package code>",
   descriptionExample: "Karixai GOLD"

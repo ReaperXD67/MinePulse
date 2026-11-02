@@ -13,7 +13,8 @@ assert.equal(pointPackageOrderCode("POINTS_1M", 10_000_000), "MEDIUM");
 assert.equal(pointPackageOrderCode("POINTS_5M", 25_000_000), "BIG");
 
 const iban = BETA_MANUAL_PAYMENT.iban.replace(/\s/g, "").toUpperCase();
-assert.match(iban, /^BE\d{14}$/);
+assert.match(iban, /^NL\d{2}[A-Z]{4}\d{10}$/);
+assert.equal(BETA_MANUAL_PAYMENT.ibanDisplay.replace(/\s/g, ""), iban, "Displayed and copied IBAN must match");
 const rearranged = `${iban.slice(4)}${iban.slice(0, 4)}`;
 let remainder = 0n;
 for (const character of rearranged) {
