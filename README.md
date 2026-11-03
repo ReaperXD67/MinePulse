@@ -31,6 +31,8 @@ Deployment, recovery, monitoring, and rollback procedures are in [PRODUCTION_RUN
 
 Tested app-only beta releases use [rolling app updates](./PRODUCTION_RUNBOOK.md#beta-rolling-app-updates), preserving the existing environment and replacing one replica at a time with readiness checks and an image rollback. The full `production:validate` check remains a launch-readiness requirement; SMTP delivery and administrator TOTP setup are still pending for the current beta.
 
+Project-specific agent instructions and the standing preference to verify, push, and deploy requested website updates with the existing setup are recorded in [AGENTS.md](./AGENTS.md).
+
 ## Two Separate Currencies
 
 - **Wallet points** live in a member wallet. Verified play is the main source; level rewards, the 20-hour claim, and documented admin grants also add wallet points. Wallet points can buy server store items.
