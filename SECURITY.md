@@ -2,6 +2,16 @@
 
 This document describes the security boundary of the KarixMC website and `KarixMCBridge` 0.6.7. It is a technical operating guide, not a promise that any internet service can be made bug-free.
 
+## Account email dependency
+
+Nodemailer is pinned to **10.1.4**, replacing 9.0.3. This addresses the address-parser CPU denial-of-service findings [GHSA-2x7j-588g-ccc2](https://github.com/advisories/GHSA-2x7j-588g-ccc2) (first fixed in 9.1.0) and [GHSA-v53p-9fqp-m79j](https://github.com/advisories/GHSA-v53p-9fqp-m79j) (first fixed in 10.0.6), plus the findings whose installed-package audit ranges extended through 10.1.3. The official 10.1.4 release uses the **MIT-0** license and requires Node 20 or newer; the existing Docker target is Node 22. Its exact official-registry artifact integrity is retained in the lockfile. No other package is upgraded.
+
+`npm run test:account-email-transport` exercises the existing import/URL-transport API and JSON/stream MIME output with networking disabled: exact single-recipient envelope, Unicode sender display names, multipart text/HTML and finite header containment. No SMTP connection, provider credential, production account or denial-of-service payload is involved. Existing local auth/account-security and search metadata checks remain relevant. These checks do not establish production SMTP delivery or eliminate every application/dependency risk; retain the current dependency audit findings in release evidence rather than claiming the site is fully secure.
+
+The official npm audit of the updated lock on November 11, 2026 reported **nine moderate findings and no high or critical findings**; Nodemailer was absent from that report. This is a dated dependency observation, not a clean-audit or application-security guarantee.
+
+The website passes a saved, validated single account email as `to` and server-configured `EMAIL_FROM` as `from`; it does not expose a general recipient-list parser. That narrows the apparent path to the known payloads, without proving that every legacy/imported value is safe. Do not remove validation or body/rate limits because the dependency was updated. See the maintainer's [10.0 migration notes](https://github.com/nodemailer/nodemailer/releases/tag/v10.0.0) and [10.1.4 release](https://github.com/nodemailer/nodemailer/releases/tag/v10.1.4).
+
 ## Trust boundaries
 
 - The KarixMC website and database are authoritative for wallets, campaign pools, reward rates, paid-player caps, challenges, store prices, purchases, premium state, reports, and enforcement.

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Activity,
@@ -18,11 +17,13 @@ import {
   WalletCards
 } from "lucide-react";
 import { currentUser } from "@/lib/auth";
+import { publicPageMetadata } from "@/lib/site-metadata";
 
-export const metadata: Metadata = {
-  title: "KarixMC Bridge | Install and protect rewards",
-  description: "Download and connect the KarixMC Paper/Spigot plugin for verified playtime rewards."
-};
+export const metadata = publicPageMetadata(
+  "/plugin",
+  "KarixMC Bridge | Install and protect rewards | KarixMC",
+  "Download and connect the KarixMC Paper/Spigot plugin for verified playtime rewards."
+);
 
 const commands = [
   { command: "/points", detail: "Wallet, verified playtime, and rewards earned on the current server." },

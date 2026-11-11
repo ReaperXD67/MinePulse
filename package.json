@@ -43,9 +43,12 @@
     "test:minecraft-unlink": "tsx scripts/minecraft-unlink-audit.ts",
     "test:auth": "tsx scripts/auth-audit.ts",
     "test:account-security": "tsx scripts/account-security-audit.ts",
+    "test:account-email-transport": "tsx scripts/account-email-transport-audit.ts",
     "test:security-boundaries": "tsx scripts/security-boundary-audit.ts",
     "test:premium-order": "tsx scripts/premium-order-audit.ts",
     "test:manual-order": "tsx scripts/manual-order-audit.ts",
+    "test:search-presence": "tsx scripts/search-presence-audit.ts",
+    "test:search-presence-ui": "tsx scripts/search-presence-ui-audit.ts",
     "test:account-ban": "tsx scripts/account-ban-audit.ts"
   },
   "prisma": {
@@ -69,7 +72,7 @@
     "jose": "^6.2.3",
     "lucide-react": "^1.20.0",
     "next": "^16.4.4",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "10.1.4",
     "otpauth": "^9.5.1",
     "pg": "^8.22.0",
     "react": "^19.2.8",

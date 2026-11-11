@@ -19,6 +19,14 @@ KarixMC is a production-style MVP for a Minecraft server marketplace where verif
 
 Members earn points on funded servers, then spend those earned points on ranks, crates, cosmetics, or any server-configured item. The same account can also publish servers, buy campaign credits with real money, choose reward rates per second, cap paid players, and buy Gold or Diamond placement. Admins control pricing, bonus promo codes, reports, punishments, campaign pools, premium state, server visibility, and platform statistics.
 
+## Search and link previews
+
+Public directory, setup, privacy, server and member pages have their own canonical URL and Open Graph/Twitter previews, using the existing abstract network illustration. The homepage includes a small, nonce-protected `WebSite` description. `/sitemap.xml` lists the directory, setup, privacy and active verified/watchlist server profiles; account and member URLs are excluded from that discovery list. `/robots.txt` advertises the sitemap while preserving the previously open crawl policy.
+
+See [Search presence](./docs/SEARCH_PRESENCE.md) for scope, crawler controls, implementation and local verification. This supplies accurate discovery signals; it does not report search indexing, rankings, AI citations or acquired users.
+
+Account email uses the pinned Nodemailer 10.1.4 runtime dependency; [security notes](./SECURITY.md#account-email-dependency) describe its advisory fixes and provider-free validation. This does not establish production SMTP delivery.
+
 ## Production Deployment
 
 - **Live website:** [https://karixmc.pl](https://karixmc.pl)

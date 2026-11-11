@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Activity,
@@ -13,11 +12,13 @@ import {
   ShieldCheck,
   UserRoundCheck
 } from "lucide-react";
+import { publicPageMetadata } from "@/lib/site-metadata";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description: "How KarixMC collects, uses, protects, and shares account, Minecraft, reward, and server data."
-};
+export const metadata = publicPageMetadata(
+  "/privacy",
+  "Privacy Policy | KarixMC",
+  "How KarixMC collects, uses, protects, and shares account, Minecraft, reward, and server data."
+);
 
 const updatedAt = "September 8, 2026";
 
