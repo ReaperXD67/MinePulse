@@ -1,6 +1,6 @@
 import { Crosshair, LayoutGrid, RadioTower, RefreshCw, Search, Server, ShieldCheck, Star, WalletCards, X } from "lucide-react";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { ServerCard, type MarketplaceServer } from "@/components/ServerCard";
 import { MarketplaceLiveSync } from "@/components/MarketplaceLiveSync";
 import { ManualPaymentPanel } from "@/components/ManualPaymentPanel";
@@ -13,8 +13,10 @@ import { minutesLabel, money, points } from "@/lib/format";
 import { getMarketplaceSnapshot } from "@/lib/marketplace-snapshot";
 import { prisma } from "@/lib/prisma";
 import { createSeededRandom } from "@/lib/random";
+import { publicPageMetadata, SITE_DESCRIPTION, SITE_TITLE, structuredDataJson, websiteStructuredData } from "@/lib/site-metadata";
 
 export const dynamic = "force-dynamic";
+export const metadata = publicPageMetadata("/", SITE_TITLE, SITE_DESCRIPTION);
 
 export default async function MarketplacePage({
   searchParams
@@ -23,6 +25,7 @@ export default async function MarketplacePage({
 }) {
   const user = await currentUser();
   const cookieStore = await cookies();
+  const nonce = (await headers()).get("x-nonce") || undefined;
   const now = new Date();
   const { tag, q, view } = await searchParams;
   const selectedTag = typeof tag === "string" ? tag.trim() : "";
@@ -108,6 +111,7 @@ export default async function MarketplacePage({
 
   return (
     <main>
+      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: structuredDataJson(websiteStructuredData) }} />
       <section className="arena-hero">
         <VoxelHeroScene />
         <div className="hero-noise" aria-hidden="true" />

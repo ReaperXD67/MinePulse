@@ -4,8 +4,18 @@ import { Coins, ExternalLink, Gamepad2, RadioTower, ShieldCheck } from "lucide-r
 import { minutesLabel, points, shortDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { safeMediaPath } from "@/lib/server-profile";
+import { publicPageMetadata } from "@/lib/site-metadata";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return publicPageMetadata(
+    `/members/${encodeURIComponent(id)}`,
+    "Community member | KarixMC",
+    "A public member profile and published Minecraft servers on KarixMC."
+  );
+}
 
 export default async function MemberProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

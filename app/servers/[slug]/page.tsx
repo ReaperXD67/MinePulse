@@ -27,8 +27,23 @@ import { bridgeStateAt } from "@/lib/server-liveness";
 import { getServerPresence } from "@/lib/server-presence-query";
 import { ServerPresenceStats } from "@/components/ServerPresenceStats";
 import { ServerProfileLiveSync } from "@/components/ServerProfileLiveSync";
+import { publicPageMetadata } from "@/lib/site-metadata";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const server = await prisma.server.findUnique({
+    where: { slug },
+    select: { slug: true, name: true, description: true, status: true, trustStatus: true }
+  });
+  if (!server || server.status === "REMOVED" || server.trustStatus === "BLACKLISTED") notFound();
+  return publicPageMetadata(
+    `/servers/${encodeURIComponent(server.slug)}`,
+    `${server.name} | KarixMC`,
+    server.description
+  );
+}
 
 export default async function ServerProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

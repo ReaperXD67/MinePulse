@@ -17,8 +17,10 @@ import { TopbarShell } from "@/components/TopbarShell";
 import { currentUser } from "@/lib/auth";
 import { UserRole } from "@/lib/generated/prisma/client";
 import { points } from "@/lib/format";
+import { SITE_ORIGIN } from "@/lib/site-metadata";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_ORIGIN),
   title: {
     default: "KarixMC | Play anywhere. Earn everywhere.",
     template: "%s | KarixMC"
